@@ -2278,7 +2278,7 @@ isOneToOne: false
                            },
 "get_company_page":
 { Args: { "p_slug": string }; Returns: {
-              "based_in_country": string,"based_in_country_name": string,"description": string,"display_name": string,"industry_code": string,"industry_name": string,"open_vacancy_count": number,"slug": string,"vacancies": Json,"viewer_role": Database["public"]['Enums']["member_role"],"website": string
+              "based_in_country": string,"based_in_country_name": string,"description": string,"display_name": string,"industry_code": string,"industry_name": string,"job_order_count": number,"job_orders": Json,"open_vacancy_count": number,"slug": string,"vacancies": Json,"viewer_partner_slug": string,"viewer_role": Database["public"]['Enums']["member_role"],"website": string
             }[]
                            },
 "get_dashboard_applications":

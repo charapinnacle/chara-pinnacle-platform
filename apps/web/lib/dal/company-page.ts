@@ -3,7 +3,10 @@ import { cache } from "react";
 import { companyPageFrom, companyViewerOf, type CompanyPage, type CompanyViewer } from "@/lib/companies/page";
 import { createClient } from "@/lib/supabase/server";
 
-export type PublicCompanyPage = { state: "found"; page: CompanyPage; viewer: CompanyViewer } | { state: "not_found" };
+// partnerSlug: the viewer's own listed partner, for the links of the named job orders (V54); null for everyone else.
+export type PublicCompanyPage =
+  | { state: "found"; page: CompanyPage; viewer: CompanyViewer; partnerSlug: string | null }
+  | { state: "not_found" };
 
 // The public company page of an employer (FR-K5), once per request for the page and its metadata. A page that is off, a
 // suspended employer, a slug that is not an employer's and a switched-off release are all not_found.
@@ -14,8 +17,8 @@ export const getCompanyPage = cache(async (slug: string): Promise<PublicCompanyP
   if (error) throw new Error("The company page could not be loaded", { cause: error });
   const [row] = data;
   if (!row) return { state: "not_found" };
-  const { viewer_role: role, ...rest } = row;
-  return { state: "found", page: companyPageFrom(rest), viewer: companyViewerOf(role) };
+  const { viewer_role: role, viewer_partner_slug: partnerSlug, ...rest } = row;
+  return { state: "found", page: companyPageFrom(rest), viewer: companyViewerOf(role), partnerSlug: partnerSlug ?? null };
 });
 
 // Whether the employer's page is on, for the switch of its owners and administrators; members read their organisation.

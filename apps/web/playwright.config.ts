@@ -165,6 +165,7 @@ const config = defineConfig({
         "**/submission-pipeline.spec.ts",
         "**/commitment-reconsent.spec.ts",
         "**/find-employers.spec.ts",
+        "**/job-order-company-page.spec.ts",
       ],
     },
     {
@@ -635,13 +636,21 @@ const config = defineConfig({
       testMatch: "**/find-employers.spec.ts",
       dependencies: ["commitment-reconsent-release"],
     },
+    // Named job orders on the company page (V54) set releases 2a and 2b for the whole database, so they follow Find
+    // Employers.
+    {
+      name: "job-order-company-page-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/job-order-company-page.spec.ts",
+      dependencies: ["find-employers-release"],
+    },
     // The sitemap is compared with every public vacancy of the database, so no other spec may open or close one while
     // these tests run: they follow every other project.
     {
       name: "sitemap",
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/search-engine-sitemap.spec.ts",
-      dependencies: ["find-employers-release"],
+      dependencies: ["job-order-company-page-release"],
     },
     // The load times of the performance smoke are measured when no other spec loads the server: last of all.
     {

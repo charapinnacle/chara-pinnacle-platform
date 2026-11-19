@@ -34,7 +34,12 @@ const row = {
   description: "We build steel halls\n\nin northern Germany.",
   open_vacancy_count: 2,
   vacancies: [vacancy(1), vacancy(2)],
+  job_order_count: 0,
+  job_orders: [],
 };
+
+const ORDER = "0a1b2c3d-0000-4000-8000-00000000aa01";
+const jobOrder = { title: "Welders for the Hamburg yard", country_code: "DE", country: "Germany", workers_needed: 30, published_on: "2026-11-02" };
 
 const withVacancies: CompanyPage = companyPageFrom(row);
 const withoutVacancies: CompanyPage = companyPageFrom({ ...row, open_vacancy_count: 0, vacancies: [] });
@@ -74,6 +79,16 @@ describe("companyPageFrom (FR-K5 AC3)", () => {
 
   it("refuses vacancies of another shape", () => {
     expect(() => companyPageFrom({ ...row, vacancies: [{ id: 1 }] })).toThrow();
+  });
+
+  it("maps the named job orders, with the id only when the function gives one (V54)", () => {
+    const page = companyPageFrom({ ...row, job_order_count: 2, job_orders: [{ ...jobOrder, id: ORDER }, jobOrder] });
+    expect(page.jobOrderCount).toBe(2);
+    expect(page.jobOrders).toEqual([
+      { id: ORDER, title: "Welders for the Hamburg yard", country: "Germany", workersNeeded: 30, publishedOn: "2026-11-02" },
+      { id: null, title: "Welders for the Hamburg yard", country: "Germany", workersNeeded: 30, publishedOn: "2026-11-02" },
+    ]);
+    expect(() => companyPageFrom({ ...row, job_orders: [{ title: 1 }] })).toThrow();
   });
 });
 
@@ -177,5 +192,24 @@ describe("CompanyPageView (FR-K5 AC3, AC10)", () => {
     const html = renderToStaticMarkup(<CompanyPageView lang="en" page={{ ...withVacancies, description: "<b>Join</b> <script>x()</script>" }} />);
     expect(html).not.toContain("<b>");
     expect(html).not.toContain("<script");
+  });
+
+  it("shows no job order section when the company names none", () => {
+    const html = renderToStaticMarkup(<CompanyPageView lang="en" page={withVacancies} />);
+    expect(html).not.toContain("Job orders");
+  });
+
+  it("shows the named job orders as titles to a visitor and as links to a partner's own job order pages (V54)", () => {
+    const visitor = companyPageFrom({ ...row, job_order_count: 1, job_orders: [jobOrder] });
+    const visitorHtml = renderToStaticMarkup(<CompanyPageView lang="en" page={visitor} />);
+    expect(visitorHtml).toContain("Job orders");
+    expect(visitorHtml).toContain("Welders for the Hamburg yard");
+    expect(visitorHtml).toContain("Germany · <span class=\"tabular-nums\">30</span> workers · Published");
+    expect(visitorHtml).not.toContain("/job-orders/");
+
+    const partner = companyPageFrom({ ...row, job_order_count: 120, job_orders: [{ ...jobOrder, id: ORDER }] });
+    const partnerHtml = renderToStaticMarkup(<CompanyPageView lang="en" page={partner} partnerSlug="manila" />);
+    expect(partnerHtml).toContain(`href="/en/org/manila/job-orders/${ORDER}"`);
+    expect(partnerHtml).toContain("The 1 newest of 120 job orders.");
   });
 });

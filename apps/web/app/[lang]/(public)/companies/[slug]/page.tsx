@@ -34,7 +34,7 @@ export default async function CompanyPage({ params }: PageProps<"/[lang]/compani
   const { lang, slug } = await params;
   const result = await loadPage(slug);
   if (!result || result.state === "not_found") notFound();
-  const { page, viewer } = result;
+  const { page, viewer, partnerSlug } = result;
   const path = companyPagePath(lang, page.slug);
   const connection = viewer === "outsider" ? await getProfileConnection(page.slug) : null;
   const follow =
@@ -70,7 +70,7 @@ export default async function CompanyPage({ params }: PageProps<"/[lang]/compani
     ) : undefined;
   return (
     <PageContainer layout="page">
-      <CompanyPageView lang={lang} page={page} actions={actions} />
+      <CompanyPageView lang={lang} page={page} actions={actions} partnerSlug={partnerSlug} />
     </PageContainer>
   );
 }

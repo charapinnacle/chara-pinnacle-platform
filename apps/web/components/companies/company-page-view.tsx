@@ -3,9 +3,10 @@ import { TextLink } from "@/components/forms/text-link";
 import { Card } from "@/components/layout/card";
 import { DetailList } from "@/components/layout/detail-list";
 import { PageHeader } from "@/components/layout/page-header";
-import type { CompanyPage, CompanyVacancy } from "@/lib/companies/page";
+import type { CompanyJobOrder, CompanyPage, CompanyVacancy } from "@/lib/companies/page";
 import { formatDate } from "@/lib/i18n/format";
 import { formatSalary, publicWebsite } from "@/lib/jobs/presentation";
+import { jobOrderPath } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 import { employmentTypeLabels } from "@/lib/validation/job";
 
@@ -14,6 +15,8 @@ type CompanyPageViewProps = {
   page: CompanyPage;
   // The viewer's actions (FR-K5 AC8); the page that knows the viewer decides.
   actions?: React.ReactNode;
+  // The viewer's own listed partner, whose job order pages the named job orders link to (V54).
+  partnerSlug?: string | null;
 };
 
 function VacancyRow({ lang, vacancy }: { lang: string; vacancy: CompanyVacancy }) {
@@ -38,10 +41,33 @@ function VacancyRow({ lang, vacancy }: { lang: string; vacancy: CompanyVacancy }
   );
 }
 
-// The public company page of an employer (FR-K5, spec section 17): the company's own details and its open vacancies, never
-// the legal name, members, contact details or the plan (DATA_MODEL.md section 10). Named job orders join it with release
-// 2b (V54).
-export function CompanyPageView({ lang, page, actions }: CompanyPageViewProps) {
+// A named job order links to the job order page of the viewer's partner company; everyone else reads its title, since job
+// orders are opened by partners only (decision 3.1).
+function JobOrderRow({ lang, jobOrder, partnerSlug }: { lang: string; jobOrder: CompanyJobOrder; partnerSlug: string | null }) {
+  return (
+    <li className="grid gap-1 py-5">
+      <h3 className="text-h3 break-words">
+        {partnerSlug && jobOrder.id ? (
+          <TextLink href={jobOrderPath(lang, partnerSlug, jobOrder.id)} className="break-words">
+            {jobOrder.title}
+          </TextLink>
+        ) : (
+          jobOrder.title
+        )}
+      </h3>
+      <p className="text-body break-words text-muted-foreground">
+        {jobOrder.country} · <span className="tabular-nums">{jobOrder.workersNeeded}</span>{" "}
+        {jobOrder.workersNeeded === 1 ? "worker" : "workers"} · Published{" "}
+        <time dateTime={jobOrder.publishedOn}>{formatDate(jobOrder.publishedOn)}</time>
+      </p>
+    </li>
+  );
+}
+
+// The public company page of an employer (FR-K5, spec section 17): the company's own details, its open vacancies and,
+// while release 2b is on, the job orders it chose to name; never the legal name, members, contact details, the plan or an
+// anonymous job order (DATA_MODEL.md section 10, NFR-S11).
+export function CompanyPageView({ lang, page, actions, partnerSlug = null }: CompanyPageViewProps) {
   const website = publicWebsite(page.website);
   const details = [
     { label: "Based in", value: page.basedIn.name },
@@ -111,6 +137,29 @@ export function CompanyPageView({ lang, page, actions }: CompanyPageViewProps) {
               </>
             )}
           </section>
+
+          {page.jobOrders.length > 0 ? (
+            <section aria-labelledby="company-job-orders-heading" className="grid gap-3">
+              <h2 id="company-job-orders-heading" className="text-h2">
+                Job orders
+              </h2>
+              <p className="text-body text-muted-foreground">
+                {partnerSlug
+                  ? "Workforce requirements this company published for recruitment and staffing companies. Open one to see whether your company can respond."
+                  : "Workforce requirements this company published for recruitment and staffing companies, who see the details when signed in."}
+              </p>
+              {page.jobOrderCount > page.jobOrders.length ? (
+                <p className="text-body text-muted-foreground">
+                  The {page.jobOrders.length} newest of {page.jobOrderCount} job orders.
+                </p>
+              ) : null}
+              <ul className="divide-y border-y">
+                {page.jobOrders.map((jobOrder, index) => (
+                  <JobOrderRow key={jobOrder.id ?? index} lang={lang} jobOrder={jobOrder} partnerSlug={partnerSlug} />
+                ))}
+              </ul>
+            </section>
+          ) : null}
         </div>
       </article>
     </div>

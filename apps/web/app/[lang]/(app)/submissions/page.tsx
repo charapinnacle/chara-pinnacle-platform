@@ -2,6 +2,7 @@ import { UserRoundCheck } from "lucide-react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { EmptyState } from "@/components/feedback/empty-state";
+import { Notice } from "@/components/forms/notice";
 import { TextLink } from "@/components/forms/text-link";
 import { Card } from "@/components/layout/card";
 import { PageHeader } from "@/components/layout/page-header";
@@ -11,13 +12,15 @@ import { listMySubmissionRequests, listMySubmissions } from "@/lib/dal/submissio
 import { isReleased } from "@/lib/dal/release";
 import { formatDate } from "@/lib/i18n/format";
 import { submissionPath } from "@/lib/routes";
+import { WORKERS_NEVER_PAY } from "@/lib/validation/commitment";
 
 export const metadata: Metadata = { title: "Submissions", robots: { index: false } };
 
 // The candidate's submission requests and submissions (FR-O4 steps Invite, Approve, Withdraw; AC5, AC9, AC10; NFR-U4),
 // while candidate submissions are released: the requests waiting for an answer first, with the date they expire, then
 // the answered ones with their status. Reading the requests links those sent to the candidate's confirmed address before
-// the account existed.
+// the account existed. The page says that workers never pay and where a fee demand is reported (FR-J3 step Show and
+// Report, release 2b): from the request of the company that asked.
 export default async function SubmissionsPage({ params }: PageProps<"/[lang]/submissions">) {
   const { lang } = await params;
   if (!(await isReleased("release_candidate_submissions"))) notFound();
@@ -30,6 +33,11 @@ export default async function SubmissionsPage({ params }: PageProps<"/[lang]/sub
         title="Submissions"
         description="Recruitment and staffing companies ask your permission before they submit you to an employer. Nothing is shared until you approve."
       />
+      <Notice tone="info">
+        <p>
+          {WORKERS_NEVER_PAY}. If a company asks you for a fee, open its request and choose Report a fee demand.
+        </p>
+      </Notice>
       {requests.length === 0 && submissions.length === 0 ? (
         <div role="status">
           <EmptyState
