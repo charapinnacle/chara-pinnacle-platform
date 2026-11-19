@@ -12,7 +12,10 @@ type ModalDialogProps = {
 
 // The native dialog element gives a modal its focus trap, Escape to close and the return of focus to the control that
 // opened it. The content is mounted only while open, so a form starts empty each time. A click on the backdrop closes it
-// only when asked for, because a dialog that holds typed input must not lose it to a stray click.
+// only when asked for, because a dialog that holds typed input must not lose it to a stray click. Escape and the backdrop
+// close it through onClose at once: the native close event comes a task later, and a press on the trigger in between
+// would find the state still open and be lost. For the same reason a close event that arrives once the dialog is open
+// again is ignored.
 export function ModalDialog({ open, onClose, title, children, closeOnBackdrop = false }: ModalDialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
@@ -28,13 +31,16 @@ export function ModalDialog({ open, onClose, title, children, closeOnBackdrop = 
     <dialog
       ref={ref}
       aria-labelledby={titleId}
-      onClose={onClose}
+      onCancel={onClose}
+      onClose={(event) => {
+        if (!event.currentTarget.open) onClose();
+      }}
       onClick={(event) => {
         if (!closeOnBackdrop || event.target !== event.currentTarget) return;
         const box = event.currentTarget.getBoundingClientRect();
         const outside =
           event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom;
-        if (outside) event.currentTarget.close();
+        if (outside) onClose();
       }}
       className="m-auto w-[calc(100%-2rem)] max-w-md rounded-2xl border bg-card p-card-xl text-foreground shadow-card backdrop:bg-black/50 sm:p-card-2xl"
     >

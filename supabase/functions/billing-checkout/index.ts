@@ -12,6 +12,11 @@ const deps = {
   serviceClient: serviceClient(Deno.env),
   provider: billingProviderFromEnv(Deno.env),
   siteUrl,
+  portalConfigurations: {
+    employer: Deno.env.get("STRIPE_PORTAL_CONFIGURATION_EMPLOYER") || undefined,
+    recruitment_company: Deno.env.get("STRIPE_PORTAL_CONFIGURATION_RECRUITMENT_COMPANY") || undefined,
+    staffing_company: Deno.env.get("STRIPE_PORTAL_CONFIGURATION_STAFFING_COMPANY") || undefined,
+  },
 };
 
 Deno.serve((req) => handleBillingCheckout(req, deps));

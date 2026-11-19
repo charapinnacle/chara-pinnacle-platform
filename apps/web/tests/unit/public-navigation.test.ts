@@ -10,8 +10,11 @@ import {
   legalGroups,
   legalSlugs,
   menuLinks,
+  networkFeatures,
+  networkMenu,
   publicFooterColumns,
 } from "@/lib/public/navigation";
+import type { ReleaseSwitch } from "@/lib/release";
 
 const footerLinks = legalGroups.flatMap(({ links }) => links);
 
@@ -37,7 +40,7 @@ describe("the navigation of the public pages (FR-H1 AC3, D90)", () => {
     expect(menuLinks.map(({ path }) => path)).toEqual(["jobs", "employers", "", "how-it-works"]);
   });
 
-  it("names the client's later-phase navigation as text only: none of it is a path of the site", () => {
+  it("names the client's later-phase navigation, which the header, the menu links and the footer never name", () => {
     expect(laterPhaseFeatures).toEqual([
       "Find workers",
       "Request workers",
@@ -115,5 +118,48 @@ describe("the links for an account kind", () => {
     expect(labels(forAccountKind(menuLinks, "company"))).toEqual(["For employers", "How Chara Pinnacle works"]);
     expect(labels(forAccountKind(menuLinks, null))).toEqual(labels(menuLinks));
     expect(labels(forAccountKind(headerLinks, undefined))).toEqual(labels(headerLinks));
+  });
+});
+
+describe("the network items of the menu (FR-L5 AC4)", () => {
+  const order = ["Find workers", "Request workers", "Find companies", "Recruitment partners", "Staffing partners", "Workforce corridors", "Job orders"];
+  const directories = [
+    { path: "partners/recruitment", label: "Recruitment partners" },
+    { path: "partners/staffing", label: "Staffing partners" },
+  ];
+  const jobOrders = { path: "job-orders", label: "Job orders" };
+  const three = ["release_partner_directories", "release_job_orders", "release_find_workers"] as const;
+  const combinations: ReleaseSwitch[][] = Array.from({ length: 8 }, (_, bits) => three.filter((_, index) => bits & (1 << index)));
+
+  it("links the two partner directories exactly while release 2a is on and Job orders while release 2b is on, for every combination of the three switches", () => {
+    for (const released of combinations) {
+      const { links, later } = networkMenu(released);
+      const live = [
+        ...(released.includes("release_partner_directories") ? directories : []),
+        ...(released.includes("release_job_orders") ? [jobOrders] : []),
+      ];
+      expect(links, released.join()).toEqual(live);
+      expect(later, released.join()).toEqual(order.filter((label) => !live.some((link) => link.label === label)));
+    }
+  });
+
+  it("keeps the items whose pages do not exist yet as labels whatever their switch says, in the order of the client's structure", () => {
+    expect(networkFeatures.map(({ label }) => label)).toEqual(order);
+    expect(networkMenu([]).later).toEqual(order);
+    const all = networkMenu([...three, "release_candidate_submissions", "release_messaging"]);
+    expect(all.links).toEqual([...directories, jobOrders]);
+    expect(all.later).toEqual(["Find workers", "Request workers", "Find companies", "Workforce corridors"]);
+    expect(networkFeatures.filter(({ path }) => path !== null).map(({ path }) => path)).toEqual([...directories, jobOrders].map(({ path }) => path));
+  });
+
+  it("offers a worker none of the network's pages, and a company and a visitor every released one", () => {
+    const explore = [...menuLinks, ...networkMenu(["release_partner_directories"]).links];
+    const labels = (links: readonly { label: string }[]) => links.map(({ label }) => label);
+    expect(labels(forAccountKind(explore, "worker"))).toEqual(["Find jobs", "For job seekers", "How Chara Pinnacle works"]);
+    expect(labels(forAccountKind(explore, "company"))).toEqual(["For employers", "How Chara Pinnacle works", "Recruitment partners", "Staffing partners"]);
+    expect(labels(forAccountKind(explore, null))).toEqual(labels(explore));
+    const withJobOrders = [...menuLinks, ...networkMenu(["release_partner_directories", "release_job_orders"]).links];
+    expect(labels(forAccountKind(withJobOrders, "worker"))).not.toContain("Job orders");
+    expect(labels(forAccountKind(withJobOrders, "company"))).toContain("Job orders");
   });
 });

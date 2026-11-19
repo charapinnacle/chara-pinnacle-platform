@@ -88,6 +88,26 @@ describe("getUsage (FR-G5 AC7)", () => {
     expect(rpcMock).toHaveBeenCalledWith("billing_usage", { p_org: "org-1" });
   });
 
+  it("returns the workforce profile and team keys of a partner type, in the order of its plans (FR-R1)", async () => {
+    rpcMock.mockResolvedValue({
+      data: [
+        { limit_key: "members", used: 1, limit_value: 1 },
+        { limit_key: "markets", used: 2, limit_value: 3 },
+        { limit_key: "listed_occupations", used: 4, limit_value: 10 },
+        { limit_key: "workforce_listings", used: 0, limit_value: 10 },
+        { limit_key: "job_order_responses_per_month", used: 0, limit_value: 10 },
+      ],
+      error: null,
+    });
+    expect(await getUsage("org-1", "staffing_company")).toEqual([
+      { key: "markets", used: 2, limit: 3 },
+      { key: "listed_occupations", used: 4, limit: 10 },
+      { key: "workforce_listings", used: 0, limit: 10 },
+      { key: "members", used: 1, limit: 1 },
+    ]);
+    expect((await getUsage("org-1", "recruitment_company")).map((item) => item.key)).toEqual(["markets", "listed_occupations", "workforce_listings", "members"]);
+  });
+
   it("fails without the cause in the message when the database refuses, so that the error page shows", async () => {
     rpcMock.mockResolvedValue({ data: null, error: { message: "CHARA_FORBIDDEN", details: "aal2_required" } });
     await expect(getUsage("org-1")).rejects.toThrow("The usage could not be loaded");

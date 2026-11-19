@@ -11,8 +11,9 @@ import { SuspendedOrganization } from "@/components/layout/suspended-organizatio
 import { COMPLAINTS_SLUG, LegalLink, TextLink } from "@/components/forms/text-link";
 import { isSubscriptionEnded, listJobs } from "@/lib/dal/hiring";
 import { organizationCrumb } from "@/lib/app/navigation";
+import { isReleased } from "@/lib/dal/release";
 import { requireOrgRole } from "@/lib/dal/session";
-import { billingPath, jobPath, jobsPath } from "@/lib/routes";
+import { appealsPath, billingPath, jobPath, jobsPath } from "@/lib/routes";
 import { isEditable, STALE_OPEN_TEXT } from "@/lib/jobs/lifecycle";
 import { isJobStatus, jobDateText, jobStatusText, jobStatusTone, statusLabels } from "@/lib/jobs/presentation";
 import { parseJobCursor } from "@/lib/validation/job";
@@ -25,7 +26,11 @@ export default async function JobsPage({ params, searchParams }: PageProps<"/[la
   if (organization.suspended) return <SuspendedOrganization title="Vacancies" subject="vacancies" />;
   const cursor = parseJobCursor(after);
   const status = isJobStatus(statusParam) ? statusParam : null;
-  const [page, ended] = await Promise.all([listJobs(organization.id, cursor, status), isSubscriptionEnded(organization.id)]);
+  const [page, ended, appeals] = await Promise.all([
+    listJobs(organization.id, cursor, status),
+    isSubscriptionEnded(organization.id),
+    isReleased("release_partner_directories"),
+  ]);
   const canCreate = organization.role !== "member";
   const newJob = canCreate ? (
     <LinkButton href={`${jobsPath(lang, slug)}/new`} size="default" className="gap-2">
@@ -75,9 +80,15 @@ export default async function JobsPage({ params, searchParams }: PageProps<"/[la
                 </span>
                 {job.staleOpen ? <span className="font-medium text-foreground">{STALE_OPEN_TEXT}</span> : null}
                 {job.moderationState === "hidden" ? (
-                  <LegalLink slug={COMPLAINTS_SLUG} newTabLabel="(opens in a new tab)">
-                    How to appeal
-                  </LegalLink>
+                  appeals ? (
+                    <TextLink href={appealsPath(lang)}>
+                      How to appeal<span className="sr-only"> {job.title}</span>
+                    </TextLink>
+                  ) : (
+                    <LegalLink slug={COMPLAINTS_SLUG} newTabLabel="(opens in a new tab)">
+                      How to appeal
+                    </LegalLink>
+                  )
                 ) : null}
                 {canCreate && isEditable(job.status) ? (
                   <TextLink href={`${jobPath(lang, slug, job.id)}/edit`}>

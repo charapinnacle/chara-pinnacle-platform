@@ -36,6 +36,7 @@ export async function getPricingViewer(): Promise<PricingViewer> {
   const organizations = await getMyOrganizations(user.id).catch(() => null);
   if (!organizations) return { kind: "unknown" };
   const manager = organizations.find((organization) => roleRank[organization.role] >= roleRank.admin);
-  if (manager) return { kind: "manager", slug: manager.slug };
-  return organizations.length > 0 ? { kind: "member" } : { kind: "setup" };
+  if (manager) return { kind: "manager", slug: manager.slug, type: manager.type };
+  const [first] = organizations;
+  return first ? { kind: "member", type: first.type } : { kind: "setup" };
 }

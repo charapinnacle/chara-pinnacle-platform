@@ -6,14 +6,44 @@ import { adminClient } from "@/lib/dal/admin";
 import { requirePlatformRole } from "@/lib/dal/session";
 import { defaultLocale } from "@/lib/i18n/locale";
 import { adminPath } from "@/lib/routes";
-import { reportMoveInputSchema, type ReportMoveInput } from "@/lib/validation/report";
+import { jobModerationInputSchema } from "@/lib/validation/admin";
+import {
+  reportDecisionInputSchema,
+  reportMoveInputSchema,
+  reportStatusLabels,
+  type ReportDecisionInput,
+  type ReportMoveInput,
+} from "@/lib/validation/report";
 import { fieldErrors } from "@/lib/validation/sign-up";
 
-const MOVED = { message: "This report was moved by someone else. Reload the page." } as const;
+const REASON_ERROR = { errors: { reason: "Give a reason of 10 to 2000 characters" } } as const;
 
-// Only Trust & Safety acts on a report; the Platform Administrator reads. Every move takes a reason (FR-F1), and the reason
-// of a closing is the note that a signed-in reporter reads. The database locks the report and refuses a second move, so of
-// two simultaneous calls one finds the new state.
+// A report another staff member closed (or moved) first: the database locks the report, so of two simultaneous decisions
+// one finds it closed (FR-S1 AC11).
+function changed(status: keyof typeof reportStatusLabels): AdminResult {
+  return { message: `This report was changed by someone else, reload the page. It is now ${reportStatusLabels[status]}.` };
+}
+
+const REPORT_CHANGED = {
+  "CHARA_INVALID_STATE:new": changed("new"),
+  "CHARA_INVALID_STATE:in_review": changed("in_review"),
+  "CHARA_INVALID_STATE:actioned": changed("actioned"),
+  "CHARA_INVALID_STATE:dismissed": changed("dismissed"),
+} as const;
+
+const TARGET_CHANGED = {
+  "CHARA_INVALID_STATE:hidden": { message: "This item is already hidden. Reload the page." },
+  "CHARA_INVALID_STATE:visible": { message: "This item is not hidden. Reload the page." },
+  "CHARA_INVALID_STATE:org_suspended": { message: "This item is hidden with the suspension of its organisation. Reload the page." },
+  "CHARA_INVALID_STATE:suspended": { message: "This organisation is already suspended. Reload the page." },
+  "CHARA_INVALID_STATE:active": { message: "This organisation is not suspended. Reload the page." },
+  "CHARA_FORBIDDEN:release_off": { message: "Partner profiles are not live yet, so there is nothing to decide on." },
+  "CHARA_INVALID_INPUT:decision": { message: "This decision does not fit what the report is about. Reload the page." },
+  "CHARA_INVALID_INPUT:reason": REASON_ERROR,
+} as const;
+
+// Only Trust & Safety act on a report; the Platform Administrator reads. A move to review takes a reason (FR-F1); a report
+// about a candidate or a page is closed with a note, which a signed-in reporter reads.
 export async function moveReport(input: ReportMoveInput): Promise<AdminResult> {
   const parsed = reportMoveInputSchema.safeParse(input);
   if (!parsed.success) return { errors: fieldErrors(parsed.error) };
@@ -24,10 +54,46 @@ export async function moveReport(input: ReportMoveInput): Promise<AdminResult> {
   const { error } = await (await adminClient()).rpc("admin_set_report_status", { p_id: id, p_status: status, p_note: reason });
   if (error) {
     return adminRefusal(error, path, {
-      CHARA_INVALID_STATE: MOVED,
+      ...REPORT_CHANGED,
       "CHARA_INVALID_INPUT:reason": { errors: { reason: "Give a note of 10 to 2000 characters" } },
     });
   }
+  revalidatePath(path);
+  return { done: true };
+}
+
+// A decision of FR-S1 on a report: hide the item, suspend its organisation or dismiss, with the statement of reasons. The
+// database closes the report in the same transaction and informs the affected party and the reporter.
+export async function decideReport(input: ReportDecisionInput): Promise<AdminResult> {
+  const parsed = reportDecisionInputSchema.safeParse(input);
+  if (!parsed.success) return { errors: fieldErrors(parsed.error) };
+  const { id, decision, reason } = parsed.data;
+  await requirePlatformRole(defaultLocale, ["trust_safety"]);
+
+  const path = adminPath(defaultLocale, `reports/${id}`);
+  const { error } = await (await adminClient()).rpc("moderation_decide", { p_decision: decision, p_reasons: reason, p_report: id });
+  if (error) return adminRefusal(error, path, { ...REPORT_CHANGED, ...TARGET_CHANGED });
+  revalidatePath(path);
+  return { done: true };
+}
+
+type PartnerProfileInput = { id: string; action: "hide" | "unhide"; reason: string };
+
+// A partner profile hidden or shown again on staff's own finding, from the page of the organisation.
+export async function moderatePartnerProfile(input: PartnerProfileInput): Promise<AdminResult> {
+  const parsed = jobModerationInputSchema.safeParse(input);
+  if (!parsed.success) return { errors: fieldErrors(parsed.error) };
+  const { id, action, reason } = parsed.data;
+  await requirePlatformRole(defaultLocale, ["trust_safety"]);
+
+  const path = adminPath(defaultLocale, `organizations/${id}`);
+  const { error } = await (await adminClient()).rpc("moderation_decide", {
+    p_decision: action,
+    p_reasons: reason,
+    p_target_type: "partner_profile",
+    p_target_id: id,
+  });
+  if (error) return adminRefusal(error, path, TARGET_CHANGED);
   revalidatePath(path);
   return { done: true };
 }

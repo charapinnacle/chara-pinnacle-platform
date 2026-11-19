@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { Page, Request } from "@playwright/test";
 import { expectAccessibleAtBothWidths } from "./support/applications";
 import { expectNoAxeViolations } from "./support/axe";
 import { execute, literal, query } from "./support/db";
@@ -149,15 +149,30 @@ test.describe("in-app notifications (FR-T1)", () => {
   test("a skeleton shows while the list loads", async ({ context, page }) => {
     const candidate = await createCommittedUser("worker");
     await signInBrowser(context, candidate);
-    let prefetched = false;
+    const pending = new Set<Request>();
+    let answered = 0;
     page.on("request", (request) => {
-      if (request.url().includes("/en/notifications")) prefetched = true;
+      if (request.url().includes("/en/notifications")) pending.add(request);
     });
+    const settle = (request: Request) => {
+      if (pending.delete(request)) answered += 1;
+    };
+    page.on("requestfinished", settle);
+    page.on("requestfailed", settle);
     await page.goto("/en/dashboard/worker");
     const link = bell(page);
     await waitForHydration(link);
-    // The loading screen of a route is fetched when its link comes into view; only then can it show at once.
-    await expect.poll(() => prefetched).toBe(true);
+    // The dashboard's own blocks stream their skeletons first; once they are gone the only loading status is the page's.
+    await expect(page.getByRole("status", { name: "Loading" })).toHaveCount(0);
+    // The loading screen of a route is fetched in several requests when its link comes into view; only once all of them
+    // are answered, with none following for a moment, can it show at once.
+    await expect
+      .poll(async () => {
+        const before = answered;
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        return answered > 0 && pending.size === 0 && answered === before;
+      })
+      .toBe(true);
     await page.route("**/en/notifications*", async (route) => {
       await new Promise((resolve) => setTimeout(resolve, 1500));
       await route.continue();
@@ -179,7 +194,13 @@ test.describe("in-app notifications (FR-T1)", () => {
     const section = page.locator("#email-notifications");
     const applications = section.getByRole("switch", { name: "New applications" });
     await expect(applications).toBeChecked();
-    await expect(section.getByRole("switch")).toHaveCount(1);
+    // New applications, the follower digest that every account may receive (FR-L4, V24), the closing reminder of
+    // workforce requirements (FR-M2, V33) and the new and withdrawn partner responses (FR-O2, FR-N2, V44).
+    await expect(section.getByRole("switch")).toHaveCount(5);
+    await expect(section.getByRole("switch", { name: "New vacancies of companies you follow" })).toBeChecked();
+    await expect(section.getByRole("switch", { name: "Workforce requirement closing reminders" })).toBeChecked();
+    await expect(section.getByRole("switch", { name: "Responses to your workforce requirements", exact: true })).toBeChecked();
+    await expect(section.getByRole("switch", { name: "Withdrawn responses to your workforce requirements" })).toBeChecked();
     for (const label of ["Vacancy hidden by moderation", "Failed payments", "Team invitations", "New versions of legal documents"]) {
       const row = section.getByRole("listitem").filter({ hasText: label });
       await expect(row).toContainText("Always sent");
@@ -202,7 +223,10 @@ test.describe("in-app notifications (FR-T1)", () => {
     await applications.focus();
     await page.keyboard.press("Space");
     await expect(applications).not.toBeChecked();
-    await page.keyboard.press("Tab");
+    // Past the four other switches to the save button.
+    for (let presses = 0; presses < 5; presses += 1) {
+      await page.keyboard.press("Tab");
+    }
     await expect(section.getByRole("button", { name: "Save email choices" })).toBeFocused();
     await page.keyboard.press("Enter");
     release();
@@ -213,22 +237,106 @@ test.describe("in-app notifications (FR-T1)", () => {
     await page.unroute(`**${SETTINGS}`);
     await section.getByRole("button", { name: "Save email choices" }).click();
     await expect(page.getByText("Email choices saved", { exact: true })).toBeVisible();
-    expect(emailKinds(admin.id)).toEqual({ application_received: false });
+    expect(emailKinds(admin.id)).toEqual({
+      application_received: false,
+      followed_company_activity: true,
+      requirement_closing_soon: true,
+      response_received: true,
+      response_withdrawn: true,
+    });
 
     await page.reload();
     await expect(page.locator("#email-notifications").getByRole("switch", { name: "New applications" })).not.toBeChecked();
     await expect(page.getByRole("radio", { name: "Immediately" })).toBeChecked();
   });
 
-  test("a worker has no switch: every email of a worker is always sent", async ({ context, page }) => {
+  test("a worker's only switch is the follower digest (FR-L4 AC6): every other email of a worker is always sent", async ({ context, page }) => {
     const candidate = await createCommittedUser("worker");
     await signInBrowser(context, candidate);
     await page.goto(SETTINGS);
     const section = page.locator("#email-notifications");
     await expect(section.getByRole("listitem").filter({ hasText: "Application updates" })).toContainText("Always sent");
-    await expect(page.getByRole("switch")).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Save email choices" })).toHaveCount(0);
+    await expect(page.getByRole("switch")).toHaveCount(1);
+    const digest = section.getByRole("switch", { name: "New vacancies of companies you follow" });
+    await expect(digest).toBeChecked();
+    await waitForHydration(digest);
+    await digest.click();
+    await section.getByRole("button", { name: "Save email choices" }).click();
+    await expect(page.getByText("Email choices saved", { exact: true })).toBeVisible();
+    expect(emailKinds(candidate.id)).toEqual({ followed_company_activity: false });
     await expectAccessibleAtBothWidths(page);
+  });
+
+  test("FR-S1 AC8: a moderation decision reaches the partner with its sentence and link, a reporter with the outcome, and its email is always sent", async ({
+    context,
+    page,
+    browser,
+  }) => {
+    const company = await newCompany();
+    execute(
+      `select pgmq.send('notifications', jsonb_build_object(
+         'kind', 'moderation_decision', 'user_id', ${literal(company.owner.id)}, 'mandatory', true, 'organization_id', ${literal(company.id)},
+         'target_type', 'partner_profile', 'target_id', ${literal(company.id)}, 'decision', 'hide',
+         'reasons', 'The profile claims placements that were never made.', 'moderation_action_id', 1))`,
+    );
+    await signInBrowser(context, company.owner);
+    await page.goto(LIST);
+    const item = page.getByRole("list", { name: "Notifications" }).getByRole("listitem").first();
+    await expect(item).toContainText("Your public profile was hidden by moderation");
+    await expect(item).toContainText("Moderation");
+    await expect(item.getByRole("link")).toHaveAttribute("href", `/en/org/${company.slug}/workforce-profile#moderation-heading`);
+    await expect(item).not.toContainText("The profile claims placements");
+    await expectNoAxeViolations(page);
+    await page.goto(SETTINGS);
+    await expect(page.locator("#email-notifications").getByRole("listitem").filter({ hasText: "Moderation decisions" })).toContainText("Always sent");
+
+    const reporter = await createCommittedUser("worker");
+    const id = Number(execute(
+      `insert into public.reports (target_type, content_path, category, details, good_faith_confirmed, reporter_user_id, status, handled_by,
+         handled_at, resolution_note)
+       values ('content', '/en/jobs', 'other', 'A report closed for the notification test.', true, ${literal(reporter.id)}, 'dismissed',
+         ${literal(reporter.id)}, now(), 'Nothing breaks the rules here.') returning id`,
+    ).trim().split("\n")[0]);
+    execute(
+      `select pgmq.send('notifications', jsonb_build_object('kind', 'moderation_decision', 'user_id', ${literal(reporter.id)},
+         'mandatory', true, 'report_id', ${id}, 'outcome', 'dismissed'))`,
+    );
+    const other = await browser.newContext();
+    await signInBrowser(other, reporter);
+    const reporterPage = await other.newPage();
+    await reporterPage.goto(LIST);
+    const closed = reporterPage.getByRole("list", { name: "Notifications" }).getByRole("listitem").first();
+    await expect(closed.getByRole("link", { name: `Your report R-${String(id).padStart(6, "0")} was closed` })).toHaveAttribute("href", "/en/reports");
+    await expect(closed.getByRole("link", { name: "Complaints and Dispute Process" })).toHaveAttribute("href", "/en/legal/complaints-and-dispute-process");
+    await expect(closed).toContainText("If you disagree with this outcome, see the Complaints and Dispute Process.");
+    await expectNoAxeViolations(reporterPage);
+    await other.close();
+  });
+
+  test("FR-S1 AC9, AC12: the outcome of an appeal and a suspension that can be appealed open the decision page", async ({ context, page }) => {
+    const company = await newCompany();
+    execute(
+      `select pgmq.send('notifications', jsonb_build_object(
+         'kind', 'moderation_decision', 'user_id', ${literal(company.owner.id)}, 'mandatory', true, 'organization_id', ${literal(company.id)},
+         'appeal_id', 7, 'appeal_outcome', 'restored', 'target_type', 'organization', 'target_id', ${literal(company.id)},
+         'reasons', 'The suspension was based on a mistaken report.', 'moderation_action_id', 41));
+       select pgmq.send('notifications', jsonb_build_object(
+         'kind', 'account_suspended', 'user_id', ${literal(company.owner.id)}, 'mandatory', true, 'organization_id', ${literal(company.id)},
+         'reasons', 'Fee demands from several workers were confirmed.', 'moderation_action_id', 40))`,
+    );
+    await signInBrowser(context, company.owner);
+    await page.goto(LIST);
+    const items = page.getByRole("list", { name: "Notifications" }).getByRole("listitem");
+    const suspension = items.filter({ hasText: "was suspended" });
+    await expect(suspension.getByRole("link")).toHaveAttribute("href", "/en/appeals/40");
+    const outcome = items.filter({ hasText: "Your appeal about" });
+    await expect(outcome.getByRole("link")).toHaveAttribute("href", "/en/appeals/41");
+    await expect(outcome).toContainText("the decision was reversed");
+    await expect(outcome).not.toContainText("mistaken report");
+    await expectNoAxeViolations(page);
+    expect(query<{ mandatory: boolean }>(
+      `select mandatory from public.notifications where user_id = ${literal(company.owner.id)} and kind = 'moderation_decision'`,
+    )).toEqual([{ mandatory: true }]);
   });
 
   test("NFR-S8: the list shows only the user's own notifications", async ({ context, page }) => {

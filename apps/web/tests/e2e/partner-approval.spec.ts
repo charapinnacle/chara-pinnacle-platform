@@ -189,6 +189,18 @@ test.describe("Partner reviews (FR-J4)", () => {
       ),
     ).toEqual([{ accessed_by: trust.id, staff_role: "trust_safety", purpose: "partner_review" }]);
 
+    // The checklist is required before an approval: the first unticked point gets the focus.
+    await page.getByRole("button", { name: "Approve and list" }).click();
+    await expect(page.getByRole("alert").filter({ hasText: "Tick every point of the checklist before you approve." })).toBeVisible();
+    await expect(page.getByRole("dialog", { name: "List partner" })).toHaveCount(0);
+    await expect(page.getByRole("checkbox", { name: "Legal entity matches public register" })).toBeFocused();
+    await expectAccessibleAtBothWidths(page);
+    await page.setViewportSize({ width: 1280, height: 900 });
+    for (const check of ["Legal entity matches public register", "Website belongs to the company", "Licences reviewed"]) {
+      await page.getByRole("checkbox", { name: check }).check();
+    }
+    await expect(page.getByText("Tick every point of the checklist before you approve.")).toHaveCount(0);
+
     // AC3: approve with a reason; the reviewer lands on the queue with focus on the next partner.
     await page.getByRole("button", { name: "Approve and list" }).click();
     const approve = page.getByRole("dialog", { name: "List partner" });
@@ -216,7 +228,7 @@ test.describe("Partner reviews (FR-J4)", () => {
     await expect(decline).toBeVisible();
     await decline.getByRole("button", { name: "Decline partner" }).focus();
     await page.keyboard.press("Enter");
-    await expect(decline.getByRole("alert").filter({ hasText: "There is a problem" })).toContainText("Give a reason of at least 10 characters");
+    await expect(decline.getByRole("alert").filter({ hasText: "There is a problem" })).toContainText("Give a reason of at least 10 characters.");
     await expect(decline.getByLabel("Reason")).toBeFocused();
     const reason = "The registry has no company with this registration number.";
     await page.keyboard.type(reason);
@@ -242,7 +254,14 @@ test.describe("Partner reviews (FR-J4)", () => {
     await page.getByRole("button", { name: "Request information" }).click();
     const request = page.getByRole("dialog", { name: "Request information" });
     await request.getByRole("button", { name: "Send request" }).click();
-    await expect(request.getByRole("alert").filter({ hasText: "There is a problem" })).toContainText("Choose the step to reopen");
+    await expect(request.getByRole("alert").filter({ hasText: "There is a problem" })).toContainText("Choose the step to reopen.");
+    await expect(request.getByLabel("Step to reopen").getByRole("option")).toHaveText([
+      "Choose a step",
+      "Company details",
+      "Where you serve and what you offer",
+      "Employer-pays commitment",
+      "Licences",
+    ]);
     await request.getByLabel("Step to reopen").selectOption("where_you_serve");
     await request.getByLabel("Message to the company").fill("Please add every country you source workers from.");
     await request.getByRole("button", { name: "Send request" }).click();
@@ -266,6 +285,11 @@ test.describe("Partner reviews (FR-J4)", () => {
     await logIn(declined.page, second.user, "/en/dashboard/employer");
     await expect(declined.page.getByRole("heading", { name: "Your company is not listed", level: 2 })).toBeVisible();
     await expect(declined.page.getByText(reason)).toBeVisible();
+    // NFR-C7: the decline names the same redress route as its email.
+    await expect(declined.page.getByRole("link", { name: "How to appeal this decision" })).toHaveAttribute(
+      "href",
+      "/en/legal/complaints-and-dispute-process",
+    );
     expect(await declined.page.locator("main").innerText()).not.toContain(trust.email);
     await expectAccessibleAtBothWidths(declined.page);
     await declined.context.close();
@@ -305,6 +329,9 @@ test.describe("Partner reviews (FR-J4)", () => {
     await page.getByRole("button", { name: "Continue" }).click();
 
     await expect(page.getByRole("heading", { name: "Submit your company again", level: 1 })).toBeVisible();
+    await page
+      .getByRole("checkbox", { name: "I have updated what our team asked about, or checked that nothing needs to change." })
+      .check();
     await page.getByRole("button", { name: "Submit again for review" }).click();
     await expect(page.getByRole("heading", { name: "Your company is waiting for review", level: 1 })).toBeVisible();
     const [row] = query<{ review_status: string; fresh: boolean; info_step: string | null; last: boolean }>(

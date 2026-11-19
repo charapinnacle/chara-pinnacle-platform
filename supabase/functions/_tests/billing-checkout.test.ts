@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { handleBillingCheckout } from "../billing-checkout/handler.ts";
+import { handleBillingCheckout, type PortalConfigurations } from "../billing-checkout/handler.ts";
 import { type BillingProvider, BillingProviderError, type CheckoutInput } from "../_shared/billing/provider.ts";
 import { harness, reply, type Route } from "./harness.ts";
 
@@ -26,11 +26,11 @@ const started = reply(200, [row]);
 const database = (message: string, code: string, details: string | null = null) =>
   reply(400, { code, message, details, hint: null });
 
-function providerSpy(options: { fail?: boolean } = {}) {
+function providerSpy(options: { fail?: boolean; name?: "null" | "stripe" } = {}) {
   const checkouts: CheckoutInput[] = [];
-  const portals: { customerRef: string; returnUrl: string }[] = [];
+  const portals: { customerRef: string; returnUrl: string; configuration?: string }[] = [];
   const provider: Pick<BillingProvider, "name" | "createCheckout" | "createPortal"> = {
-    name: "stripe",
+    name: options.name ?? "stripe",
     createCheckout(input) {
       checkouts.push(input);
       return options.fail
@@ -65,6 +65,7 @@ function run(
   spy = providerSpy(),
   method = "POST",
   auditReply: Response = reply(200, true),
+  portalConfigurations: PortalConfigurations = {},
 ) {
   const database = harness(routes);
   const audit = harness({ [AUDIT]: auditReply });
@@ -82,6 +83,7 @@ function run(
     serviceClient: audit.client,
     provider: spy.provider,
     siteUrl: SITE,
+    portalConfigurations,
   });
   return { database, audit, spy, seen, response };
 }
@@ -194,6 +196,11 @@ Deno.test("refusals of the database are told apart, with a reason only from the 
       error: "forbidden",
       reason: "terms_version_mismatch",
     }],
+    [database("CHARA_FORBIDDEN", "42501", "plan_not_for_org_type"), 403, {
+      error: "forbidden",
+      reason: "plan_not_for_org_type",
+    }],
+    [database("CHARA_FORBIDDEN", "42501", "release_off"), 403, { error: "forbidden", reason: null }],
     [database("CHARA_FORBIDDEN", "P0001", "provider_mismatch"), 403, { error: "forbidden", reason: null }],
     [database("CHARA_FORBIDDEN", "P0001", "something internal"), 403, { error: "forbidden", reason: null }],
     [database("CHARA_FORBIDDEN", "P0001"), 403, { error: "forbidden", reason: null }],
@@ -260,7 +267,7 @@ Deno.test("optional fields may be absent: the identifiers and the disclosed tria
 Deno.test("FR-G2 AC10: the portal runs with the caller's token and goes to the customer the database names", async () => {
   const body = { action: "portal", orgId: ORG, customerRef: "cus_attacker", returnUrl: "https://evil.example/" };
   const { database, spy, seen, response } = run(body, {
-    [PORTAL]: reply(200, [{ customer_ref: "cus_linked", slug: "acme" }]),
+    [PORTAL]: reply(200, [{ customer_ref: "cus_linked", slug: "acme", organization_type: "employer" }]),
   });
   const result = await response;
   assert.equal(result.status, 200);
@@ -272,6 +279,53 @@ Deno.test("FR-G2 AC10: the portal runs with the caller's token and goes to the c
   assert.deepEqual(spy.portals, [{ customerRef: "cus_linked", returnUrl: `${SITE}/en/org/acme/billing` }]);
 });
 
+const CONFIGURATIONS: PortalConfigurations = {
+  employer: "bpc_employer",
+  recruitment_company: "bpc_recruitment",
+  staffing_company: "bpc_staffing",
+};
+const portalRow = (type: string) => reply(200, [{ customer_ref: "cus_linked", slug: "acme", organization_type: type }]);
+const openPortal = (type: string, configurations: PortalConfigurations, spy = providerSpy()) =>
+  run(
+    { action: "portal", orgId: ORG },
+    { [PORTAL]: portalRow(type) },
+    bearer(SIGNED_IN),
+    spy,
+    "POST",
+    reply(200, true),
+    configurations,
+  );
+
+Deno.test("FR-R1: the portal opens the configuration of the organisation's type, so it lists only that type's plans", async () => {
+  for (const [type, configuration] of Object.entries(CONFIGURATIONS)) {
+    const { spy, response } = openPortal(type, CONFIGURATIONS);
+    assert.equal((await response).status, 200);
+    assert.deepEqual(spy.portals, [{
+      customerRef: "cus_linked",
+      returnUrl: `${SITE}/en/org/acme/billing`,
+      configuration,
+    }]);
+  }
+});
+
+Deno.test("FR-R1: a partner type without its configuration gets no portal at Stripe, never the default one", async () => {
+  for (const type of ["recruitment_company", "staffing_company", "unknown_type"]) {
+    const { spy, response } = openPortal(type, { employer: "bpc_employer" });
+    const result = await response;
+    assert.equal(result.status, 503);
+    assert.deepEqual(await result.json(), { error: "unavailable", reason: "portal_not_configured" });
+    assert.equal(spy.portals.length, 0);
+  }
+
+  const employer = openPortal("employer", {});
+  assert.equal((await employer.response).status, 200);
+  assert.deepEqual(employer.spy.portals, [{ customerRef: "cus_linked", returnUrl: `${SITE}/en/org/acme/billing` }]);
+
+  const local = openPortal("staffing_company", {}, providerSpy({ name: "null" }));
+  assert.equal((await local.response).status, 200);
+  assert.equal(local.spy.portals[0].configuration, undefined);
+});
+
 Deno.test("a portal without a customer is refused with its reason, and a provider failure is generic", async () => {
   const none = run({ action: "portal", orgId: ORG }, { [PORTAL]: database("CHARA_FORBIDDEN", "P0001", "no_customer") });
   const refused = await none.response;
@@ -281,7 +335,7 @@ Deno.test("a portal without a customer is refused with its reason, and a provide
 
   const failing = run(
     { action: "portal", orgId: ORG },
-    { [PORTAL]: reply(200, [{ customer_ref: "cus_linked", slug: "acme" }]) },
+    { [PORTAL]: reply(200, [{ customer_ref: "cus_linked", slug: "acme", organization_type: "employer" }]) },
     bearer(SIGNED_IN),
     providerSpy({ fail: true }),
   );

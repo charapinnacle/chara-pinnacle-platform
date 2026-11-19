@@ -15,7 +15,7 @@ type OrganizationType = Database["public"]["Enums"]["organization_type"];
 
 export const roleRank = { member: 1, admin: 2, owner: 3 } as const satisfies Record<MemberRole, number>;
 
-type CurrentUser = {
+export type CurrentUser = {
   id: string;
   email: string | null;
   aal: "aal1" | "aal2";

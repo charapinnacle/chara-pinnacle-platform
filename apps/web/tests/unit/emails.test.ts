@@ -2,7 +2,21 @@ import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { isNotificationKind, renderEmail, type NotificationKind } from "@/emails/index";
 import { BRAND_NAME } from "@/lib/brand";
-import { applicantPath, applicantsPath, applicationPath, billingPath, jobPath, settingsPath } from "@/lib/routes";
+import {
+  appealPath,
+  applicantPath,
+  applicantsPath,
+  applicationPath,
+  billingPath,
+  dataExportPath,
+  invitationPath,
+  jobOrderPath,
+  jobPath,
+  requirementPath,
+  requirementResponsesPath,
+  responsePath,
+  settingsPath,
+} from "@/lib/routes";
 
 const SITE = "https://chara.example";
 const APP = "11111111-1111-4111-8111-111111111111";
@@ -67,6 +81,57 @@ const SAMPLES: Record<NotificationKind, Record<string, unknown>> = {
       { listing_id: JOB, occupation: "Sheet-metal workers", country_name: "Nepal", confirmed_at: "2026-10-27T08:00:00+00:00" },
     ],
   },
+  followed_company_activity: {
+    organization_id: ACCOUNT,
+    org_name: "Acme Bau",
+    org_slug: "acme-bau",
+    total: 2,
+    vacancies: [
+      { job_id: JOB, job_title: "Welder MIG/MAG" },
+      { job_id: APP, job_title: "Crane operator" },
+    ],
+  },
+  moderation_decision: {
+    target_type: "partner_profile",
+    target_id: ACCOUNT,
+    title: "Manila Recruit",
+    org_slug: "manila-recruit",
+    decision: "hide",
+    reasons: "The profile claims placements that were never made.",
+    moderation_action_id: 42,
+  },
+  data_export_ready: { export_id: ACCOUNT, expires_at: "2026-12-17T08:00:00+00:00" },
+  requirement_closing_soon: { requirement_id: JOB, title: "Welders for Hamburg", closes_on: "2027-04-10", org_slug: "acme-bau" },
+  job_order_match: {
+    requirement_id: JOB,
+    title: "Germany, 100 Welders and flame cutters",
+    country_code: "DE",
+    country_name: "Germany",
+    org_slug: "manila-recruit",
+  },
+  invitation_received: {
+    invitation_id: APP,
+    title: "Hamburg yard welders",
+    country_code: "DE",
+    country_name: "Germany",
+    workers_needed: 10,
+    start_date: "2027-03-01",
+    employer_name: "Acme Bau",
+    org_slug: "manila-recruit",
+  },
+  invitation_withdrawn: { invitation_id: APP, title: "Hamburg yard welders", employer_name: "Acme Bau", org_slug: "manila-recruit" },
+  requirement_changed: {
+    invitation_id: APP,
+    title: "Hamburg yard welders",
+    employer_name: "Acme Bau",
+    changed_fields: ["workers_needed", "occupations", "salary_max"],
+    from_version: 1,
+    to_version: 2,
+    org_slug: "manila-recruit",
+  },
+  requirement_closed: { invitation_id: APP, title: "Hamburg yard welders", employer_name: "Acme Bau", close_reason: "filled", org_slug: "manila-recruit" },
+  response_received: { response_id: APP, requirement_id: JOB, title: "Hamburg yard welders", partner_name: "Manila Recruit", org_slug: "acme-bau" },
+  response_withdrawn: { response_id: APP, requirement_id: JOB, title: "Hamburg yard welders", partner_name: "Manila Recruit", org_slug: "acme-bau" },
 };
 
 const LEAKS = {
@@ -77,6 +142,9 @@ const LEAKS = {
   password: "SECRET-PASSWORD",
   token: "SECRET-TOKEN",
   email: "secret@example.test",
+  fee_amount: "SECRET-FEE-1500",
+  withdrawal_reason: "SECRET-WITHDRAWAL",
+  experience_note: "SECRET-EXPERIENCE",
 };
 
 const KINDS = Object.keys(SAMPLES) as NotificationKind[];
@@ -166,11 +234,143 @@ describe("notification templates", () => {
       licence_expiring: "/en/org/manila-recruit/workforce-profile#licences-heading",
       partner_licence_expired: "/en/org/manila-recruit/workforce-profile#licences-heading",
       listing_confirmation_due: "/en/org/manila-recruit/workforce-profile#availability-heading",
+      followed_company_activity: "/en/companies/acme-bau",
+      moderation_decision: appealPath("en", 42),
+      data_export_ready: dataExportPath("en"),
+      requirement_closing_soon: requirementPath("en", "acme-bau", JOB),
+      job_order_match: jobOrderPath("en", "manila-recruit", JOB),
+      invitation_received: invitationPath("en", "manila-recruit", APP),
+      invitation_withdrawn: invitationPath("en", "manila-recruit", APP),
+      requirement_changed: `${invitationPath("en", "manila-recruit", APP)}#changes`,
+      requirement_closed: invitationPath("en", "manila-recruit", APP),
+      response_received: requirementResponsesPath("en", "acme-bau", JOB),
+      response_withdrawn: requirementResponsesPath("en", "acme-bau", JOB),
     };
     for (const [kind, path] of Object.entries(links)) {
       const email = await renderEmail(kind as NotificationKind, SAMPLES[kind as NotificationKind], SITE);
       expect(email.html, kind).toContain(`href="${SITE}${path}"`);
       expect(email.text, kind).toContain(`${SITE}${path}`);
+    }
+  });
+
+  it("requirement_closing_soon names the requirement and its closing date and offers the extension (FR-M2 AC6)", async () => {
+    const email = await renderEmail("requirement_closing_soon", SAMPLES.requirement_closing_soon, SITE);
+    expect(email.subject).toBe('"Welders for Hamburg" closes on 10 April 2027');
+    expect(email.text).toContain("partners can no longer respond to it");
+    expect(email.text).toContain("Extend the requirement https://chara.example/en/org/acme-bau/requirements/");
+    const foreign = await renderEmail("requirement_closing_soon", { ...SAMPLES.requirement_closing_soon, requirement_id: "../billing" }, SITE);
+    expect(foreign.html).not.toContain("billing");
+  });
+
+  it("job_order_match names the generated title and the destination, links the recipient's own job order page and names no employer (FR-N1 AC10, NFR-S11)", async () => {
+    const email = await renderEmail("job_order_match", { ...SAMPLES.job_order_match, employer_name: "Acme Bau", org_name: "Acme Bau" }, SITE);
+    expect(email.subject).toBe("New job order: Germany, 100 Welders and flame cutters");
+    expect(email.text).toContain('"Germany, 100 Welders and flame cutters" was published for Germany.');
+    expect(email.text).toContain(`See the job order ${SITE}/en/org/manila-recruit/job-orders/${JOB}`);
+    expect(email.text).toContain("notification settings");
+    for (const part of [email.subject, email.text, email.html]) expect(part).not.toContain("Acme");
+    const foreign = await renderEmail("job_order_match", { ...SAMPLES.job_order_match, requirement_id: "../billing" }, SITE);
+    expect(foreign.html).not.toContain("billing");
+  });
+
+  it("invitation_received names the requirement, the employer the invitation reveals, destination, workers and start date (FR-O1 AC7, AC11)", async () => {
+    const email = await renderEmail("invitation_received", { ...SAMPLES.invitation_received, member_name: "Jana Acme", member_email: "jana@acme.test" }, SITE);
+    expect(email.subject).toBe("Invitation to a workforce requirement: Hamburg yard welders");
+    expect(email.text).toContain('Acme Bau invited your company to "Hamburg yard welders" in Germany.');
+    expect(email.text).toContain("Workers needed: 10. Start: 1 March 2027.");
+    expect(email.text).toContain(`See the invitation ${SITE}/en/org/manila-recruit/invitations/${APP}`);
+    for (const part of [email.subject, email.text, email.html]) {
+      expect(part).not.toContain("Jana");
+      expect(part).not.toContain("jana@acme.test");
+    }
+    const unnamed = await renderEmail("invitation_received", { ...SAMPLES.invitation_received, employer_name: undefined }, SITE);
+    expect(unnamed.text).toContain('An employer invited your company to "Hamburg yard welders" in Germany.');
+    const foreign = await renderEmail("invitation_received", { ...SAMPLES.invitation_received, invitation_id: "../billing" }, SITE);
+    expect(foreign.html).not.toContain("billing");
+  });
+
+  it("invitation_withdrawn names the requirement and the employer and links the recipient's invitation page (FR-O1 AC10)", async () => {
+    const email = await renderEmail("invitation_withdrawn", SAMPLES.invitation_withdrawn, SITE);
+    expect(email.subject).toBe("Invitation withdrawn: Hamburg yard welders");
+    expect(email.text).toContain('Acme Bau withdrew the invitation of your company to "Hamburg yard welders".');
+    expect(email.text).toContain("You no longer need to answer it.");
+    expect(email.text).toContain(`${SITE}/en/org/manila-recruit/invitations/${APP}`);
+  });
+
+  it("requirement_closing_soon to a partner links its invitation, names no employer and offers no extension (FR-M2 AC6, V43)", async () => {
+    const payload = { ...SAMPLES.requirement_closing_soon, invitation_id: APP, org_slug: "manila-recruit", employer_name: "Acme Bau" };
+    const email = await renderEmail("requirement_closing_soon", payload, SITE);
+    expect(email.subject).toBe('"Welders for Hamburg" closes on 10 April 2027');
+    expect(email.text).toContain("unless the employer extends it");
+    expect(email.text).toContain(`See the invitation ${SITE}/en/org/manila-recruit/invitations/${APP}`);
+    expect(email.text).not.toContain("Extend the requirement");
+    for (const part of [email.subject, email.text, email.html]) expect(part).not.toContain("Acme");
+    const untitled = await renderEmail("requirement_closing_soon", { invitation_id: APP }, SITE);
+    expect(untitled.subject).toBe("A workforce requirement you are invited to closes soon");
+    const foreign = await renderEmail("requirement_closing_soon", { ...payload, invitation_id: "../billing" }, SITE);
+    expect(foreign.html).not.toContain("billing");
+  });
+
+  it("requirement_changed names the fields that changed, never their values, and links the changes (FR-M2 AC8, V43)", async () => {
+    const email = await renderEmail("requirement_changed", { ...SAMPLES.requirement_changed, salary_max: 3600, changed_by: "Jana Acme" }, SITE);
+    expect(email.subject).toBe("Workforce requirement changed: Hamburg yard welders");
+    expect(email.text).toContain('Acme Bau changed "Hamburg yard welders", which your company is invited to.');
+    expect(email.text).toContain("Changed: Number of workers, Occupations and Salary maximum.");
+    expect(email.text).toContain(`See what changed ${SITE}/en/org/manila-recruit/invitations/${APP}#changes`);
+    for (const part of [email.subject, email.text, email.html]) {
+      expect(part).not.toContain("3600");
+      expect(part).not.toContain("Jana");
+    }
+    const unknown = await renderEmail("requirement_changed", { ...SAMPLES.requirement_changed, changed_fields: ["<b>x</b>"] }, SITE);
+    expect(unknown.text).not.toContain("Changed:");
+    expect(unknown.html).not.toContain("<b>x</b>");
+  });
+
+  it("requirement_closed says why the requirement ended and that the invitation can no longer be answered (FR-M2 AC10, V43)", async () => {
+    const filled = await renderEmail("requirement_closed", SAMPLES.requirement_closed, SITE);
+    expect(filled.subject).toBe("Workforce requirement filled: Hamburg yard welders");
+    expect(filled.text).toContain('"Hamburg yard welders" of Acme Bau, which your company was invited to, no longer takes responses.');
+    expect(filled.text).toContain("The employer has filled it.");
+    expect(filled.text).toContain("can no longer answer or respond to the invitation");
+    const expired = await renderEmail("requirement_closed", { ...SAMPLES.requirement_closed, close_reason: "expired" }, SITE);
+    expect(expired.subject).toBe("Workforce requirement closed: Hamburg yard welders");
+    expect(expired.text).toContain("Its closing date has passed.");
+    const cancelled = await renderEmail("requirement_closed", { ...SAMPLES.requirement_closed, close_reason: "cancelled" }, SITE);
+    expect(cancelled.text).toContain("The employer closed it.");
+    const odd = await renderEmail("requirement_closed", { ...SAMPLES.requirement_closed, close_reason: "constructor" }, SITE);
+    expect(odd.text).not.toContain("function");
+  });
+
+  it("response_received and response_withdrawn name the partner and the requirement, never the proposal (FR-O2 AC1, FR-N2 AC8, FR-T1 AC2)", async () => {
+    const received = await renderEmail("response_received", SAMPLES.response_received, SITE);
+    expect(received.subject).toBe("New response to Hamburg yard welders");
+    expect(received.text).toContain('Manila Recruit responded to "Hamburg yard welders".');
+    expect(received.text).toContain("Chara Pinnacle is not a party to any agreement or payment between you and the partner.");
+    const withdrawn = await renderEmail("response_withdrawn", SAMPLES.response_withdrawn, SITE);
+    expect(withdrawn.subject).toBe("Response withdrawn: Hamburg yard welders");
+    expect(withdrawn.text).toContain('Manila Recruit withdrew its response to "Hamburg yard welders".');
+    const foreign = await renderEmail("response_received", { ...SAMPLES.response_received, requirement_id: "../billing" }, SITE);
+    expect(foreign.html).not.toContain("billing");
+    const untitled = await renderEmail("response_withdrawn", {}, SITE);
+    expect(untitled.subject).toBe("A partner withdrew its response to your workforce requirement");
+  });
+
+  it("the notices of V43 to a company that responded on the marketplace link its response and name no employer (FR-M2 AC6 P5, V44)", async () => {
+    const base = { response_id: APP, title: "Germany, 10 Welders and flame cutters", org_slug: "manila-recruit" };
+    const changed = await renderEmail("requirement_changed", { ...base, changed_fields: ["workers_needed"] }, SITE);
+    expect(changed.text).toContain('The employer changed "Germany, 10 Welders and flame cutters", which your company responded to.');
+    expect(changed.text).toContain(`See what changed ${SITE}${responsePath("en", "manila-recruit", APP)}#changes`);
+    expect(changed.text).toContain("Your response shows the old and the new values.");
+    const closed = await renderEmail("requirement_closed", { ...base, close_reason: "filled" }, SITE);
+    expect(closed.text).toContain("which your company responded to, no longer takes responses. The employer has filled it.");
+    expect(closed.text).toContain(`See your response ${SITE}${responsePath("en", "manila-recruit", APP)}`);
+    expect(closed.text).not.toContain("invitation");
+    const soon = await renderEmail("requirement_closing_soon", { ...base, requirement_id: JOB, closes_on: "2027-04-10" }, SITE);
+    expect(soon.text).toContain(`See your response ${SITE}${responsePath("en", "manila-recruit", APP)}`);
+    expect(soon.text).not.toContain("Extend the requirement");
+    for (const kind of ["requirement_changed", "requirement_closed", "requirement_closing_soon"] as const) {
+      const untitled = await renderEmail(kind, { response_id: APP }, SITE);
+      expect(untitled.subject, kind).toContain("you responded to");
     }
   });
 
@@ -351,6 +551,17 @@ describe("notification templates", () => {
     expect(email.text).toMatch(/if you were not expecting this invitation, ignore\s+this email/i);
     const admin = await renderEmail("member_invitation", { ...SAMPLES.member_invitation, role: "admin" }, SITE);
     expect(admin.text).toContain("as an administrator.");
+  });
+
+  it("member_invitation names the account of the inviting organisation's type, an employer account when none is given (FR-J1)", async () => {
+    const employer = await renderEmail("member_invitation", SAMPLES.member_invitation, SITE);
+    expect(employer.text).toMatch(/You need a Chara Pinnacle employer account with this email address/);
+    const recruitment = await renderEmail("member_invitation", { ...SAMPLES.member_invitation, org_type: "recruitment_company" }, SITE);
+    expect(recruitment.text).toMatch(/You need a Chara Pinnacle recruitment company account with this email address/);
+    const staffing = await renderEmail("member_invitation", { ...SAMPLES.member_invitation, org_type: "staffing_company" }, SITE);
+    expect(staffing.text).toMatch(/You need a Chara Pinnacle staffing company account with this email address/);
+    const unknown = await renderEmail("member_invitation", { ...SAMPLES.member_invitation, org_type: "<b>x</b>" }, SITE);
+    expect(unknown.text).toMatch(/employer account with this email address/);
   });
 
   it("member_invitation has no link when the token is missing or is not a token, and never shows the invitation id", async () => {

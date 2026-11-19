@@ -11,6 +11,7 @@ import { GuidedSteps } from "@/components/organization/guided-steps";
 import { getFirstSteps } from "@/lib/dal/dashboard";
 import { hasVerifiedTotpFactor } from "@/lib/dal/mfa";
 import { getMyOrganizations } from "@/lib/dal/organizations";
+import { isReleased } from "@/lib/dal/release";
 import { requireOrgRole } from "@/lib/dal/session";
 import { employerDashboardPath, mfaPath } from "@/lib/routes";
 import { BRAND_NAME } from "@/lib/brand";
@@ -69,10 +70,13 @@ export async function employerEntry(lang: string, user: { id: string; aal: strin
       <div className="grid gap-section">
         {header}
         <Notice tone="error" role="alert">
-          This organization is suspended, so its figures are not available.
+          This organisation is suspended, so its figures are not available.
         </Notice>
       </div>
     );
   }
-  return <EmployerDashboard lang={lang} organization={organization} twoStepDone={twoStepDone} />;
+  const [network, requirements] = await Promise.all([isReleased("release_partner_directories"), isReleased("release_job_orders")]);
+  return (
+    <EmployerDashboard lang={lang} organization={organization} twoStepDone={twoStepDone} network={network} requirements={requirements} />
+  );
 }

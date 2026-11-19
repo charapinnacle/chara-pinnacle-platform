@@ -316,7 +316,7 @@ select is(
 -- Seven partner plans are left: the free recruitment plan was removed above.
 select pg_temp.new_org(:'own1', 'employer') as emp \gset
 select is(
-  (select count(*) filter (where r = 'P0001|CHARA_FORBIDDEN|plan_not_sold') || '/' || count(*)
+  (select count(*) filter (where r = '42501|CHARA_FORBIDDEN|plan_not_for_org_type') || '/' || count(*)
    from (select pg_temp.call_as(:'own1', 'authenticated', format(
        $f$select * from public.billing_checkout_start(%L, %L, 'DE', null, 'HRB12345', %s)$f$,
        :'emp', p.code, private.current_legal_version('subscription-and-billing-terms'))) as r

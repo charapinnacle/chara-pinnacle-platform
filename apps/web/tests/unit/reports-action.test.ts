@@ -39,6 +39,7 @@ describe("submitReport", () => {
       p_job: ID,
       p_application: undefined,
       p_path: undefined,
+      p_partner: undefined,
       p_category: "misleading_or_fraud",
       p_details: DETAILS,
       p_good_faith: true,
@@ -58,6 +59,26 @@ describe("submitReport", () => {
       ["profile", undefined, ID, undefined],
       ["content", undefined, undefined, "/en/pricing"],
     ]);
+  });
+
+  it("FR-S1, FR-K4 AC10: sends the slug of a partner profile as the target partner_profile", async () => {
+    expect(await submitReport({ ...base, type: "partner_profile", target: "manila-skills", category: "fee_demanded_from_worker" })).toEqual({ reference: "R-000042" });
+    const [, args] = rpcMock.mock.calls[0];
+    expect([args.p_target_type, args.p_partner, args.p_job, args.p_path, args.p_category]).toEqual([
+      "partner_profile",
+      "manila-skills",
+      undefined,
+      undefined,
+      "fee_demanded_from_worker",
+    ]);
+  });
+
+  it("says a partner profile that is not public cannot be reported, without a field error and whatever the slug", async () => {
+    rpcMock.mockResolvedValue(failure("CHARA_NOT_FOUND"));
+    const notPublic = { message: "This company profile cannot be reported: it is not public." };
+    expect(await submitReport({ ...base, type: "partner_profile", target: "gone-partner" })).toEqual(notPublic);
+    expect(await submitReport({ ...base, type: "partner_profile", target: "Not A Slug!" })).toEqual(notPublic);
+    expect(rpcMock).toHaveBeenCalledTimes(1);
   });
 
   it("returns the field errors of an invalid report without calling the database", async () => {

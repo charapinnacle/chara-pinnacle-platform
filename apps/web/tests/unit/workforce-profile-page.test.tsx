@@ -8,6 +8,8 @@ const licencesMock = vi.hoisted(() => vi.fn());
 const listingsMock = vi.hoisted(() => vi.fn());
 const promptsMock = vi.hoisted(() => vi.fn());
 const countsMock = vi.hoisted(() => vi.fn());
+const moderationMock = vi.hoisted(() => vi.fn());
+const appealMock = vi.hoisted(() => vi.fn());
 const notFoundMock = vi.hoisted(() =>
   vi.fn(() => {
     throw new Error("NOT_FOUND");
@@ -22,7 +24,7 @@ vi.mock("@/lib/dal/organizations", () => ({ getOrganizationProfile: async () => 
 vi.mock("@/lib/dal/geographies", () => ({
   getOrganizationGeographies: async () => ({ sourcesFrom: ["NP", "PH"], servesMarket: ["DE"] }),
 }));
-vi.mock("@/lib/dal/usage", () => ({ getUsagePrompts: promptsMock }));
+vi.mock("@/lib/dal/usage", () => ({ getUsagePrompts: promptsMock, getUnenforcedAllowances: async () => ({ markets: null }) }));
 vi.mock("@/lib/actions/limits", () => ({ recordLimitPrompt: vi.fn() }));
 vi.mock("@/lib/dal/reference", () => ({
   getCountries: async () => [
@@ -58,6 +60,9 @@ vi.mock("@/lib/dal/workforce-offer", async () => ({
 }));
 vi.mock("@/lib/actions/workforce-offer", () => ({ saveWorkforceOffer: vi.fn() }));
 vi.mock("@/lib/dal/commitment", () => ({ getCommitmentStatus: commitmentMock }));
+vi.mock("@/lib/dal/partner-profile", () => ({ getPartnerProfileModeration: moderationMock }));
+vi.mock("@/lib/dal/appeals", () => ({ listMyAppeals: appealMock }));
+vi.mock("@/lib/actions/appeals", () => ({ submitAppeal: vi.fn() }));
 vi.mock("@/lib/dal/licences", () => ({
   getPartnerLicences: licencesMock,
   getLicenceSettings: async () => ({ patterns: {}, maxYears: 20 }),
@@ -116,7 +121,30 @@ beforeEach(() => {
   listingsMock.mockResolvedValue([]);
   promptsMock.mockResolvedValue(prompts({ markets: 3, listed_occupations: 10, workforce_listings: null }));
   countsMock.mockResolvedValue({ occupations: {}, countries: {} });
+  moderationMock.mockResolvedValue({ state: "visible", decision: null });
+  appealMock.mockReset();
 });
+
+function decision(over: Record<string, unknown> = {}) {
+  return {
+    id: 4,
+    targetType: "partner_profile",
+    targetId: "org-1",
+    action: "content_hidden",
+    title: "Manila Skills",
+    organizationId: "org-1",
+    organizationName: "Manila Skills",
+    orgSlug: "manila-skills",
+    reasons: "Claims of placements never made.",
+    decidedAt: "2026-10-20T09:00:00+00:00",
+    appealUntil: "2099-04-20T09:00:00+00:00",
+    inEffect: true,
+    canAppeal: false,
+    targetDays: 7,
+    appeal: null,
+    ...over,
+  };
+}
 
 describe("the workforce profile page (FR-K1, FR-K2)", () => {
   it("does not exist while release 2a is off", async () => {
@@ -174,7 +202,34 @@ describe("the workforce profile page (FR-K1, FR-K2)", () => {
 
   it("says a suspended partner's details are not available", async () => {
     requireOrgRoleMock.mockResolvedValue(organization("owner", "staffing_company", true));
-    expect(await render()).toContain("This organization is suspended, so its details are not available.");
+    expect(await render()).toContain("This organisation is suspended, so its details are not available.");
+  });
+
+  it("FR-S1 AC12: shows every member the badge and the statement of reasons of a hidden profile, and nothing while it is visible", async () => {
+    expect(await render()).not.toContain("Hidden by moderation");
+    expect(moderationMock).toHaveBeenCalledWith("org-1");
+    moderationMock.mockResolvedValue({ state: "hidden", decision: { id: 4, reasons: "Claims of placements never made.", decidedAt: "2026-10-20T09:00:00+00:00" } });
+    for (const role of ["owner", "member"]) {
+      requireOrgRoleMock.mockResolvedValue(organization(role));
+      appealMock.mockResolvedValue(decision({ canAppeal: role === "owner" }));
+      const html = await render();
+      expect(html).toContain("Hidden by moderation");
+      expect(html).toContain("Claims of placements never made.");
+      expect(appealMock).toHaveBeenCalledWith(4);
+      expect(html.includes(">Appeal</button>")).toBe(role === "owner");
+      expect(html).not.toContain("complaints-and-dispute-process");
+    }
+  });
+
+  it("FR-S1 AC12: shows every member that an appeal is under review, without the Appeal button", async () => {
+    moderationMock.mockResolvedValue({ state: "hidden", decision: { id: 4, reasons: "Claims of placements never made.", decidedAt: "2026-10-20T09:00:00+00:00" } });
+    appealMock.mockResolvedValue(
+      decision({ appeal: { id: 9, status: "open", grounds: "Our placements are documented.", lodgedAt: "2026-10-21T09:00:00+00:00", dueAt: "2026-10-28T09:00:00+00:00", reasons: null, decidedAt: null } }),
+    );
+    const html = await render();
+    expect(html).toContain("Appeal under review");
+    expect(html).toContain("28 October 2026");
+    expect(html).not.toContain(">Appeal</button>");
   });
 
   it("says nothing about the commitment while the current version is accepted", async () => {
@@ -300,7 +355,7 @@ describe("the availability of the workforce profile page (FR-K3)", () => {
     expect(html).toContain('Delete<span class="sr-only"> the listing for Welders and flame cutters from Nepal</span>');
   });
 
-  it("AC3: shows the plan limit and, once it is reached, the upgrade prompt with the plans compared instead of the add button", async () => {
+  it("AC3: shows the plan limit and, once it is reached, the upgrade prompt with the plans compared and the billing link instead of the add button", async () => {
     promptsMock.mockResolvedValue(prompts({ markets: 3, listed_occupations: 10, workforce_listings: 10 }));
     listingsMock.mockResolvedValue([listing("a", "7212", "PH", daysAgo(0))]);
     let html = await render();
@@ -310,8 +365,8 @@ describe("the availability of the workforce profile page (FR-K3)", () => {
     html = await render();
     expect(html).toContain("1 of 1 workforce listing on your Basic plan.");
     expect(html).toContain("Professional includes 50 workforce listings; Enterprise has no limit.");
-    // The billing page does not sell partner plans before V15, so a partner gets no link that would send it elsewhere.
-    expect(html).not.toContain("/billing");
+    // The billing page sells the partner plans of the type (V15).
+    expect(html).toMatch(/<a [^>]*href="\/en\/org\/manila-skills\/billing"[^>]*>Upgrade your plan<\/a>/);
     expect(html).not.toContain("Add a listing");
   });
 

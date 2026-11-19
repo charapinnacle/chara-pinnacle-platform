@@ -36,6 +36,7 @@ const job: PublicJob = {
     website: "https://acme.example",
     description: null,
   },
+  employerCompanySlug: null,
 };
 
 const render = (value: PublicJob) =>
@@ -79,6 +80,14 @@ describe("VacancyView", () => {
     const html = render({ ...job, employer: { ...job.employer, website: "javascript:alert(1)" } });
     expect(html).not.toContain("javascript:");
     expect(html).not.toContain("<a ");
+  });
+
+  it("links the employer name to the company page only when the page gives its address (FR-K5 AC5)", () => {
+    const linked = renderToStaticMarkup(<VacancyView job={job} employer={job.employer} employerHref="/en/companies/acme" />);
+    expect(linked).toMatch(/<h2 id="job-employer-heading"[^>]*><a [^>]*href="\/en\/companies\/acme"[^>]*>Acme<\/a><\/h2>/);
+    const plain = renderToStaticMarkup(<VacancyView job={job} employer={job.employer} />);
+    expect(plain).toMatch(/<h2 id="job-employer-heading"[^>]*>Acme<\/h2>/);
+    expect(plain).not.toContain("/companies/");
   });
 
   it("shows no employer card, date or actions when the page gives none", () => {

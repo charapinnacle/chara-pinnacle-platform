@@ -155,6 +155,31 @@ Deno.test("the portal session is created for the customer with the billing page 
   assert.deepEqual(seen[0].params, { customer: "cus_Qa1B2c3D4e5F6g", return_url: BILLING });
 });
 
+Deno.test("the portal session names the configuration of the organisation's type, and refuses one of another form", async () => {
+  const { fetchFn, seen } = fetching(Response.json(portalSession));
+  const provider = stripeProvider({ secretKey: "sk_test_x", siteUrl: SITE }, fetchFn);
+  await provider.createPortal({
+    customerRef: "cus_Qa1B2c3D4e5F6g",
+    returnUrl: BILLING,
+    configuration: "bpc_1Staffing",
+  });
+  assert.deepEqual(seen[0].params, {
+    customer: "cus_Qa1B2c3D4e5F6g",
+    return_url: BILLING,
+    configuration: "bpc_1Staffing",
+  });
+
+  const error = await failureOf(() =>
+    provider.createPortal({
+      customerRef: "cus_Qa1B2c3D4e5F6g",
+      returnUrl: BILLING,
+      configuration: "bpc_x&customer=cus_other",
+    })
+  );
+  assert.equal(error?.code, "stripe_bad_configuration");
+  assert.equal(seen.length, 1);
+});
+
 Deno.test("Stripe failures become short codes that hold none of Stripe's text", async () => {
   const cases: [Response, string][] = [
     [Response.json(noSuchPrice, { status: 400 }), "stripe_http_400"],

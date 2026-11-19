@@ -1,7 +1,10 @@
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { JobModerationBadge } from "@/components/admin/job-moderation-badge";
-import { ReportDecision } from "@/components/admin/report-decision";
+import { ReportPartnerDetails } from "@/components/admin/partner-moderation-details";
+import { ReportDecision, type DecisionTarget } from "@/components/admin/report-decision";
 import { AccountStatusBadge } from "@/components/admin/account-status-badge";
+import { LoadingSkeleton } from "@/components/feedback/loading-skeleton";
 import { StatusBadge } from "@/components/feedback/status-badge";
 import { Notice } from "@/components/forms/notice";
 import { TextLink } from "@/components/forms/text-link";
@@ -9,12 +12,23 @@ import { DetailList } from "@/components/layout/detail-list";
 import { PageHeader } from "@/components/layout/page-header";
 import { Section } from "@/components/layout/section";
 import { getReport, type ReportDetail } from "@/lib/dal/admin-reports";
+import { isReleased } from "@/lib/dal/release";
 import { formatDateTime } from "@/lib/i18n/format";
 import { defaultLocale } from "@/lib/i18n/locale";
 import { statusLabels } from "@/lib/jobs/presentation";
-import { adminPath } from "@/lib/routes";
+import { adminPath, partnerProfilePath } from "@/lib/routes";
 import { isPrivatePath } from "@/lib/seo/private-routes";
-import { reportCategoryLabels, reportStatusLabels, reportStatusTones, reportTargetLabels } from "@/lib/validation/report";
+import {
+  closesWithNote,
+  FEE_DEMAND_LABEL,
+  isFeeDemand,
+  reportCategoryLabels,
+  reportDecisionLabels,
+  reportDecisionsFor,
+  reportStatusLabels,
+  reportStatusTones,
+  reportTargetLabels,
+} from "@/lib/validation/report";
 
 // The path was typed by a visitor, so it is a link only when it is a public page of the site: a staff member's click carries
 // their session, and it must never reach a page that acts (a checkout, an export) or one for signed-in people.
@@ -72,9 +86,17 @@ function Target({ lang, report, canAct }: { lang: string; report: ReportDetail; 
                 { label: "Organisation status", value: <AccountStatusBadge status={organization.status} /> },
               ]
             : []),
+          ...(organization?.moderationState
+            ? [{ label: "Partner profile", value: <JobModerationBadge state={organization.moderationState} /> }]
+            : []),
         ]}
       />
       <div className="flex flex-wrap gap-x-6">
+        {organization?.status === "active" && report.targetType === "partner_profile" ? (
+          <TextLink standalone href={partnerProfilePath(lang, organization.slug)}>
+            Open the public profile
+          </TextLink>
+        ) : null}
         {organization ? (
           <TextLink standalone href={adminPath(lang, `organizations/${organization.id}`)}>
             Open the organisation to suspend or reinstate it
@@ -86,12 +108,26 @@ function Target({ lang, report, canAct }: { lang: string; report: ReportDetail; 
           </TextLink>
         ) : null}
       </div>
+      {organization?.moderationState ? (
+        <Suspense fallback={<LoadingSkeleton rows={2} />}>
+          <ReportPartnerDetails lang={lang} organizationId={organization.id} />
+        </Suspense>
+      ) : null}
     </div>
   );
 }
 
+// What the decision dialog names: the kind and title of the target and the organisation it belongs to.
+function decisionTarget(report: ReportDetail): DecisionTarget {
+  const kind = reportTargetLabels[report.targetType];
+  const organization = report.organization?.name ?? null;
+  if (report.targetType === "job") return { kind, title: report.job?.title ?? "Not available", organization };
+  if (report.targetType === "content") return { kind, title: report.contentPath ?? "Not available", organization: null };
+  return { kind, title: report.targetType === "profile" ? "The candidate is not shown to staff" : (organization ?? "Not available"), organization };
+}
+
 export async function ReportView({ lang, id, canAct }: { lang: string; id: number; canAct: boolean }) {
-  const report = await getReport(id);
+  const [report, released] = await Promise.all([getReport(id), isReleased("release_partner_directories")]);
   if (!report) notFound();
 
   return (
@@ -105,9 +141,39 @@ export async function ReportView({ lang, id, canAct }: { lang: string; id: numbe
         <DetailList
           items={[
             { label: "About", value: reportTargetLabels[report.targetType] },
-            { label: "Category", value: reportCategoryLabels[report.category] },
+            {
+              label: "Category",
+              value: isFeeDemand(report.category) ? (
+                <>
+                  <StatusBadge status="danger" className="me-2">
+                    {FEE_DEMAND_LABEL}
+                  </StatusBadge>
+                  {reportCategoryLabels[report.category]}
+                </>
+              ) : (
+                reportCategoryLabels[report.category]
+              ),
+            },
             { label: "Status", value: <StatusBadge status={reportStatusTones[report.status]}>{reportStatusLabels[report.status]}</StatusBadge> },
             { label: "Reported", value: formatDateTime(report.createdAt) },
+            ...(report.status === "new" || report.status === "in_review"
+              ? [
+                  {
+                    label: "First look due",
+                    value: (
+                      <>
+                        {report.overdue ? (
+                          <StatusBadge status="danger" className="me-2">
+                            Overdue
+                          </StatusBadge>
+                        ) : null}
+                        <time dateTime={report.dueAt}>{formatDateTime(report.dueAt)}</time>
+                      </>
+                    ),
+                  },
+                  { label: "Decision due", value: <time dateTime={report.decisionDueAt}>{formatDateTime(report.decisionDueAt)}</time> },
+                ]
+              : []),
             {
               label: "Reporter",
               value:
@@ -127,11 +193,26 @@ export async function ReportView({ lang, id, canAct }: { lang: string; id: numbe
       <Section
         id="decision"
         title="Decision"
-        description={report.resolutionNote ? undefined : "Hiding a vacancy and suspending an organisation are done with their own controls, linked above. Close the report afterwards."}
+        description={
+          report.resolutionNote
+            ? undefined
+            : released
+              ? "Hide the item, suspend its organisation or dismiss the report, with a statement of reasons. The report is closed with the decision."
+              : "Hiding a vacancy and suspending an organisation are done with their own controls, linked above. Close the report afterwards."
+        }
       >
         {report.status === "new" || report.status === "in_review" ? (
           canAct ? (
-            <ReportDecision id={report.id} status={report.status} reference={report.reference} signedIn={report.reporterKind === "account"} />
+            <ReportDecision
+              id={report.id}
+              status={report.status}
+              reference={report.reference}
+              signedIn={report.reporterKind === "account"}
+              target={decisionTarget(report)}
+              decisions={released ? reportDecisionsFor(report) : []}
+              closeWithNote={!released || closesWithNote(report.targetType)}
+              dismissWithNote={!released}
+            />
           ) : (
             <Notice tone="info" role="status">
               Read only. Trust &amp; Safety decides on reports.
@@ -141,8 +222,9 @@ export async function ReportView({ lang, id, canAct }: { lang: string; id: numbe
           <DetailList
             items={[
               { label: "Outcome", value: reportStatusLabels[report.status] },
+              ...(report.decision ? [{ label: "Decision", value: reportDecisionLabels[report.decision] ?? report.decision }] : []),
               { label: "Closed", value: report.handledAt ? formatDateTime(report.handledAt) : "" },
-              { label: "Note to the reporter", value: <p className="whitespace-pre-line">{report.resolutionNote}</p> },
+              { label: "Statement of reasons", value: <p className="whitespace-pre-line">{report.resolutionNote}</p> },
             ]}
           />
         )}

@@ -10,6 +10,8 @@ import { employmentTypeLabels, recruitmentPreferenceLabels } from "@/lib/validat
 type VacancyViewProps = {
   job: VacancyDetails;
   employer?: Employer | null;
+  // The public company page of the employer while it is on (FR-K5 AC5); without it the name is plain text.
+  employerHref?: string | null;
   publishedAt?: string;
   actions?: React.ReactNode;
 };
@@ -20,7 +22,7 @@ function yesNo(value: boolean): string {
 
 // The public layout of a vacancy, shared by the public page and the employer's preview. The employer card, the date
 // of publication and the actions come from the pages that own them: a draft has no date, and the actions differ.
-export function VacancyView({ job, employer = null, publishedAt, actions }: VacancyViewProps) {
+export function VacancyView({ job, employer = null, employerHref = null, publishedAt, actions }: VacancyViewProps) {
   const salary = formatSalary(job);
   const details: (readonly [string, React.ReactNode])[] = [
     ["Occupation", job.occupation],
@@ -76,7 +78,13 @@ export function VacancyView({ job, employer = null, publishedAt, actions }: Vaca
           {employer ? (
             <Card as="section" aria-labelledby="job-employer-heading" padding="lg" className="gap-2">
               <h2 id="job-employer-heading" className="text-h2">
-                {employer.displayName}
+                {employerHref ? (
+                  <TextLink href={employerHref} className="break-words">
+                    {employer.displayName}
+                  </TextLink>
+                ) : (
+                  employer.displayName
+                )}
               </h2>
               <p className="text-body text-muted-foreground">Based in {employer.country}</p>
               {employer.industry ? <p className="text-body text-muted-foreground">Industry: {employer.industry}</p> : null}

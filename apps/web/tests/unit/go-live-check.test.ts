@@ -47,6 +47,8 @@ type Release = {
   current_legal_documents?: unknown;
   rate_limit_proof_key_set?: unknown;
   legal_release_gaps?: unknown;
+  edge_secrets?: unknown;
+  stray_organization_consents?: unknown;
 };
 
 const PUBLISHED: Release = {
@@ -133,9 +135,73 @@ describe("the go-live gate for the plans that are sold (FR-G1 AC11)", () => {
     expect(result.stderr).toBe("");
   });
 
-  it("does not require a Stripe price for a partner plan, which is not sold yet (FR-R1)", () => {
-    const partner = sold("recruitment_partner", 4900, { org_type: "recruitment_company", limits: {}, price_ref: null, stripe_amount: null });
-    const result = run(ENFORCED, [...MIRRORED, partner]);
+  const PARTNER_LIMITS = {
+    markets: 3,
+    listed_occupations: 10,
+    workforce_listings: 10,
+    members: 1,
+    job_order_responses_per_month: 10,
+    candidate_submissions_per_month: 25,
+    messages_per_month: 100,
+  };
+  const partner = (overrides: Plan = {}) =>
+    sold("staffing_partner", 5900, { org_type: "staffing_company", limits: PARTNER_LIMITS, ...overrides });
+  const PARTNER_CHECKOUT_ON = JSON.stringify({ entitlements_enforced: true, ...ENTITY, release_partner_directories: true });
+  const PORTAL_SECRETS = ["STRIPE_PORTAL_CONFIGURATION_RECRUITMENT_COMPANY", "STRIPE_PORTAL_CONFIGURATION_STAFFING_COMPANY"];
+  const NO_GAPS = {
+    ...PUBLISHED,
+    legal_release_gaps: { partner_accounts: [], job_orders: [], find_workers: [] },
+    edge_secrets: PORTAL_SECRETS,
+    stray_organization_consents: 0,
+  };
+
+  it("names a partner plan without a Stripe price but passes while the partner checkout is off (FR-R1, decision 7.3)", () => {
+    const result = run(ENFORCED, [...MIRRORED, partner({ price_ref: null, stripe_amount: null })]);
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe("");
+    expect(result.stdout).toContain(
+      "Partner plans not yet ready to sell (release_partner_directories off): plan staffing_partner has no stored price reference",
+    );
+  });
+
+  it("holds a partner plan to the employer rule once the partner checkout is on (FR-R1 AC2, AC4)", () => {
+    const unmirrored = run(PARTNER_CHECKOUT_ON, [...MIRRORED, partner({ price_ref: null, stripe_amount: null })], NO_GAPS);
+    expect(unmirrored.status).toBe(1);
+    expect(unmirrored.stderr).toContain("Go-live check failed: plan staffing_partner has no stored price reference");
+
+    const withoutMarkets = Object.fromEntries(Object.entries(PARTNER_LIMITS).filter(([key]) => key !== "markets"));
+    const missingRow = run(PARTNER_CHECKOUT_ON, [...MIRRORED, partner({ limits: withoutMarkets, stripe_amount: 5800 })], NO_GAPS);
+    expect(missingRow.status).toBe(1);
+    expect(missingRow.stderr).toContain("plan staffing_partner has no limit row for markets");
+    expect(missingRow.stderr).toContain("plan staffing_partner: Stripe holds 5800 but price_minor is 5900");
+    expect(missingRow.stderr).not.toContain("active_jobs");
+
+    const mirrored = run(PARTNER_CHECKOUT_ON, [...MIRRORED, partner()], NO_GAPS);
+    expect(mirrored.status).toBe(0);
+    expect(mirrored.stderr).toBe("");
+    expect(mirrored.stdout).not.toContain("not yet ready to sell");
+  });
+
+  it("requires the Stripe portal configuration of each partner type once the partner checkout is on", () => {
+    const missing = run(PARTNER_CHECKOUT_ON, [...MIRRORED, partner()], { ...NO_GAPS, edge_secrets: [PORTAL_SECRETS[0]] });
+    expect(missing.status).toBe(1);
+    expect(missing.stderr).toContain(
+      "Go-live check failed: the Edge Function secret STRIPE_PORTAL_CONFIGURATION_STAFFING_COMPANY is not set",
+    );
+    expect(missing.stderr).not.toContain("RECRUITMENT_COMPANY is not set");
+
+    const unexported = Object.fromEntries(Object.entries(NO_GAPS).filter(([key]) => key !== "edge_secrets"));
+    const absent = run(PARTNER_CHECKOUT_ON, [...MIRRORED, partner()], unexported);
+    expect(absent.status).toBe(1);
+    expect(absent.stderr).toContain("release_partner_directories is on but release.json has no edge_secrets");
+
+    expect(run(ENFORCED, [...MIRRORED, partner()]).status).toBe(0);
+  });
+
+  it("never asks a contact-sales or free partner plan for a Stripe price", () => {
+    const enterprise = partner({ code: "staffing_enterprise", price_minor: 24900, contact_sales: true, price_ref: null, stripe_amount: null });
+    const free = partner({ code: "free_staffing_company", price_minor: 0, is_public: false, price_ref: null, stripe_amount: null });
+    const result = run(PARTNER_CHECKOUT_ON, [...MIRRORED, partner(), enterprise, free], NO_GAPS);
     expect(result.status).toBe(0);
     expect(result.stderr).toBe("");
   });
@@ -304,7 +370,7 @@ describe("the Phase 2 legal gate (FR-S4 AC9)", () => {
     expect(result.stderr).toBe("");
     expect(result.stdout).toContain("Go-live check passed");
     expect(result.stdout).toContain(
-      "Phase 2 legal documents not yet approved (release switch off): partner_accounts: partner-terms (draft), employer-pays-commitment (draft); job_orders: partner-dpa (missing); find_workers: worker-visibility-consent (missing)",
+      "Phase 2 items not yet ready (release switch off): partner_accounts: partner-terms (draft), employer-pays-commitment (draft); job_orders: partner-dpa (missing); find_workers: worker-visibility-consent (missing)",
     );
   });
 
@@ -352,9 +418,15 @@ describe("the Phase 2 legal gate (FR-S4 AC9)", () => {
   });
 
   it("passes a switched-on release whose documents are approved", () => {
-    const result = run(released({ release_partner_directories: true }), MIRRORED, { ...PUBLISHED, legal_release_gaps: NO_GAPS });
+    const result = run(released({ release_partner_directories: true }), MIRRORED, {
+      ...PUBLISHED,
+      legal_release_gaps: NO_GAPS,
+      edge_secrets: ["STRIPE_PORTAL_CONFIGURATION_RECRUITMENT_COMPANY", "STRIPE_PORTAL_CONFIGURATION_STAFFING_COMPANY"],
+      stray_organization_consents: 0,
+    });
     expect(result.status).toBe(0);
     expect(result.stderr).toBe("");
+    expect(result.stdout).toContain("Release switches on: release_partner_directories\n");
   });
 
   it("fails a switched-on release when the export has no gate result for it", () => {
@@ -369,5 +441,53 @@ describe("the Phase 2 legal gate (FR-S4 AC9)", () => {
     expect(result.status).toBe(1);
     expect(result.stderr).toContain("Go-live check failed: entitlements_enforced must be true");
     expect(result.stderr).toContain("Phase 2 go-live check failed: partner_accounts is switched on");
+  });
+});
+
+describe("the release 2a items of the gate (V78)", () => {
+  const RELEASE_2A: Release = {
+    ...PUBLISHED,
+    legal_release_gaps: { partner_accounts: [], job_orders: [], find_workers: [] },
+    edge_secrets: ["STRIPE_PORTAL_CONFIGURATION_RECRUITMENT_COMPANY", "STRIPE_PORTAL_CONFIGURATION_STAFFING_COMPANY"],
+  };
+  const switched = (switches: Record<string, unknown>) => JSON.stringify({ entitlements_enforced: true, ...ENTITY, ...switches });
+
+  it("fails while release 2a is on and an acceptance did not come through the Commitments step", () => {
+    const result = run(switched({ release_partner_directories: true }), MIRRORED, { ...RELEASE_2A, stray_organization_consents: 2 });
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      "Phase 2 go-live check failed: 2 acceptance(s) of the employer-pays commitment or the partner DPA did not come through the Commitments step",
+    );
+  });
+
+  it("lists the stray acceptances as pending while release 2a is off, without saying it is on", () => {
+    const result = run(switched({}), MIRRORED, { ...RELEASE_2A, stray_organization_consents: 2 });
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe("");
+    expect(result.stdout).toContain(
+      "Phase 2 items not yet ready (release switch off): 2 acceptance(s) of the employer-pays commitment or the partner DPA",
+    );
+    const broken = run(switched({}), MIRRORED, { ...RELEASE_2A, stray_organization_consents: null });
+    expect(broken.status).toBe(0);
+    expect(broken.stdout).toContain("release.json has no count stray_organization_consents (found: null)");
+    expect(broken.stdout).not.toContain("release_partner_directories is on");
+  });
+
+  it("requires the count while release 2a is on, and not before", () => {
+    const on = run(switched({ release_partner_directories: true }), MIRRORED, RELEASE_2A);
+    expect(on.status).toBe(1);
+    expect(on.stderr).toContain("release_partner_directories is on but release.json has no count stray_organization_consents (found: null)");
+    const off = run(switched({}), MIRRORED, RELEASE_2A);
+    expect(off.status).toBe(0);
+    expect(off.stderr).toBe("");
+    expect(off.stdout).not.toContain("stray_organization_consents");
+  });
+
+  it("names every release switch that is on, the data export included, which has no legal gate", () => {
+    const result = run(switched({ release_data_export: "true", release_job_orders: false }), MIRRORED, RELEASE_2A);
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain("Release switches on: release_data_export\n");
+    const none = run(switched({}), MIRRORED, RELEASE_2A);
+    expect(none.stdout).toContain("Release switches on: none\n");
   });
 });

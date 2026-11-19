@@ -1,5 +1,5 @@
 begin;
-select plan(54);
+select plan(55);
 
 \ir organizations_fixture.inc
 
@@ -140,6 +140,11 @@ select is(
   'licence_expiring,listing_confirmation_due,partner_approved,partner_declined,partner_info_requested,partner_licence_expired;'
   || 'licence_expiring,listing_confirmation_due,partner_approved,partner_declined,partner_info_requested,partner_licence_expired;',
   'the preferences list the partner kinds to a partner owner and to a partner user without an organisation yet, not to an employer'
+);
+select is(
+  pg_temp.val_as(:'owb', 'aal1', $q$select count(*)::text from public.notification_kind_catalogue() where kind = 'requirement_closing_soon'$q$)
+    || ',' || pg_temp.val_as(:'emp', 'aal1', $q$select count(*)::text from public.notification_kind_catalogue() where kind = 'requirement_closing_soon'$q$),
+  '1,1', 'the requirement closing reminder is offered to an employer and, since V43 tells the invited partners too, a partner (FR-M2)'
 );
 select is(
   pg_temp.call_as(:'emp', 'authenticated', $$select public.set_notification_preferences('{"licence_expiring": false}'::jsonb)$$)

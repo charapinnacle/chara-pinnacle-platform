@@ -9,7 +9,13 @@ import { getCurrentUser, requireUser } from "@/lib/dal/session";
 import { getInvitationPreview } from "@/lib/dal/team";
 import { formatDate } from "@/lib/i18n/format";
 import { homePath } from "@/lib/routes";
-import { invitationTokenSchema, COMPANY_TYPE_CANNOT_JOIN, roleLabels, WORKER_CANNOT_JOIN } from "@/lib/validation/team";
+import {
+  COMPANY_TYPE_CANNOT_JOIN,
+  invitationAccounts,
+  invitationTokenSchema,
+  roleLabels,
+  workerCannotJoin,
+} from "@/lib/validation/team";
 
 export const metadata: Metadata = {
   title: "Team invitation",
@@ -23,12 +29,16 @@ export default async function InvitationPage({ params }: PageProps<"/[lang]/invi
   const preview = parsed.success ? await getInvitationPreview(parsed.data) : null;
   const signedIn = (await getCurrentUser()) !== null;
   const user = signedIn ? await requireUser(lang) : null;
+  // An account joins only an organisation of the type it registered as (FR-J1): an employer account an employer, a
+  // recruitment or staffing company account a company of its own type.
+  const wrongType =
+    user?.accountKind === "company" && preview !== null && (user.intendedOrganizationType ?? "employer") !== preview.organizationType;
 
-  if (user?.accountKind === "worker" || user?.intendedOrganizationType) {
+  if (user && (user.accountKind === "worker" || wrongType)) {
     return (
       <AuthCard icon={MailCheck} title="Team invitation">
         <Notice tone="error" role="alert">
-          {user.accountKind === "worker" ? WORKER_CANNOT_JOIN : COMPANY_TYPE_CANNOT_JOIN}
+          {user.accountKind === "worker" ? workerCannotJoin(preview?.organizationType ?? "employer") : COMPANY_TYPE_CANNOT_JOIN}
         </Notice>
         <TextLink standalone="center" href={homePath(lang, user.accountKind)}>
           Back to your dashboard
@@ -64,7 +74,7 @@ export default async function InvitationPage({ params }: PageProps<"/[lang]/invi
       ) : (
         <div className="grid gap-2">
           <TextLink standalone href={`/${lang}/signup?invitation=${parsed.data}`}>
-            Create an employer account
+            Create {invitationAccounts[preview.organizationType].label}
           </TextLink>
           <TextLink
             standalone

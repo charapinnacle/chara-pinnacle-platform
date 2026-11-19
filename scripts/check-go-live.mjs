@@ -13,14 +13,47 @@
 // --allow-draft-legal lets draft legal texts pass, for a launch that counsel has not cleared yet; the gate still names
 // them. The Auth settings that no export can show are checked by hand (security-checklist.md section 3).
 //
+// A partner plan (FR-R1) is held to the rule of a sold plan, with the partner limit keys, and the Stripe portal
+// configurations of the partner types must be set, only while release_partner_directories is on: until then no partner
+// can buy, and the gaps of the partner plans are only named.
+//
 // The Phase 2 gate (FR-S4 AC9) is separate: a release feature whose release switch is on in settings.json goes live only
 // while private.legal_release_gaps returns no row for it (release.json key legal_release_gaps, one list per feature).
 // --allow-draft-legal does not apply to it, and the Phase 2 documents are not part of the Phase 1 draft rule, so their
 // drafts never stop Phase 1 while every release switch is off; the gate then only names them.
+//
+// Release 2a (V78, docs/runbooks/release-2a-go-live.md): release.json key stray_organization_consents counts the
+// acceptances of an organisation-level document (employer-pays commitment, partner DPA) that did not come through the
+// owner's Commitments step and are still the user's latest row for that document; before V08 a user could accept them
+// for themselves, and such a row would count for an organisation its user later owns. Every granted partner DPA counts
+// until the DPA has an acceptance route (decision 6.3). While release_partner_directories is on any such row fails the
+// Phase 2 gate and the key is required; while it is off the count is listed with the pending items. The gate also prints every release switch that is on,
+// release_data_export (FR-S3) included: that switch needs no legal document, so it has no legal gate of its own.
 import { readFileSync } from "node:fs";
 import { isSold } from "./sync-stripe-plans.mjs";
 
-const LIMIT_KEYS = ["active_jobs", "members"];
+// The limit rows every sold plan needs, by organisation type: a missing row would mean unlimited (FR-C6, FR-R1 AC2).
+const PARTNER_LIMIT_KEYS = [
+  "markets",
+  "listed_occupations",
+  "workforce_listings",
+  "members",
+  "job_order_responses_per_month",
+  "candidate_submissions_per_month",
+  "messages_per_month",
+];
+const LIMIT_KEYS = {
+  employer: ["active_jobs", "members"],
+  recruitment_company: PARTNER_LIMIT_KEYS,
+  staffing_company: PARTNER_LIMIT_KEYS,
+};
+// The release switch that opens the checkout of each partner type (20261127100000_partner_checkout.sql). While it is off
+// no partner plan can be bought, so its missing Stripe price is named but does not stop the launch; once it is on, the
+// partner plans are held to the same rule as the employer plans.
+const PARTNER_CHECKOUT_SWITCH = "release_partner_directories";
+// The Stripe portal configuration of each partner type (billing-checkout refuses a partner's portal without it), required
+// once the partner checkout is on; release.json key edge_secrets holds the names of the Edge Function secrets.
+const PARTNER_PORTAL_SECRETS = ["STRIPE_PORTAL_CONFIGURATION_RECRUITMENT_COMPANY", "STRIPE_PORTAL_CONFIGURATION_STAFFING_COMPANY"];
 const LEGAL_ENTITY_KEYS = ["legal_entity_name", "legal_entity_address", "privacy_contact", "data_protection_contact"];
 const ALLOW_DRAFT_LEGAL = "--allow-draft-legal";
 const PHASE_2_LEGAL_SLUGS = new Set([
@@ -39,6 +72,14 @@ const RELEASE_FEATURES = {
   job_orders: ["release_job_orders", "release_candidate_submissions"],
   find_workers: ["release_find_workers", "release_messaging"],
 };
+const RELEASE_SWITCHES = [
+  "release_partner_directories",
+  "release_job_orders",
+  "release_candidate_submissions",
+  "release_find_workers",
+  "release_messaging",
+  "release_data_export",
+];
 const USAGE = `Usage: node scripts/check-go-live.mjs [${ALLOW_DRAFT_LEGAL}] <settings.json> <plans.json> <release.json>\n`;
 
 function unreadable(file) {
@@ -77,9 +118,25 @@ function phase2Results(settings, gaps) {
   return { failures, pending };
 }
 
+// While release 2a is off a stray acceptance cannot yet count for a listed partner: it is named with the pending items.
+// Once the switch is on it is a failure, and so is an export without the count.
+function strayConsentResults(settings, stray) {
+  const on = isTrue(settings?.[PARTNER_CHECKOUT_SWITCH]);
+  if (stray === undefined && !on) return { failures: [], pending: [] };
+  if (!Number.isInteger(stray) || stray < 0) {
+    const message = `release.json has no count stray_organization_consents (found: ${JSON.stringify(stray ?? null)})`;
+    return on
+      ? { failures: [`${PARTNER_CHECKOUT_SWITCH} is on but ${message}`], pending: [] }
+      : { failures: [], pending: [message] };
+  }
+  if (stray === 0) return { failures: [], pending: [] };
+  const message = `${stray} acceptance(s) of the employer-pays commitment or the partner DPA did not come through the Commitments step: cancel them before release 2a goes live (docs/runbooks/release-2a-go-live.md)`;
+  return on ? { failures: [message], pending: [] } : { failures: [], pending: [message] };
+}
+
 function planFailures(plan) {
   const failures = [];
-  for (const key of LIMIT_KEYS) {
+  for (const key of LIMIT_KEYS[plan.org_type] ?? LIMIT_KEYS.employer) {
     if (!Object.hasOwn(plan.limits ?? {}, key)) {
       failures.push(`plan ${plan.code} has no limit row for ${key}`);
     }
@@ -123,8 +180,24 @@ for (const key of LEGAL_ENTITY_KEYS) {
     failures.push(`${key} must not be empty: the Imprint, Contact and Privacy Policy pages show it`);
   }
 }
+const partnerCheckoutOn = isTrue(settings?.[PARTNER_CHECKOUT_SWITCH]);
+const partnerPending = [];
 for (const plan of plans.filter(isSold)) {
-  failures.push(...planFailures(plan));
+  if (plan.org_type === "employer" || partnerCheckoutOn) {
+    failures.push(...planFailures(plan));
+  } else {
+    partnerPending.push(...planFailures(plan));
+  }
+}
+if (partnerCheckoutOn) {
+  const secrets = release.edge_secrets;
+  if (!Array.isArray(secrets)) {
+    failures.push(`${PARTNER_CHECKOUT_SWITCH} is on but release.json has no edge_secrets (the names of the Edge Function secrets)`);
+  } else {
+    for (const name of PARTNER_PORTAL_SECRETS.filter((secret) => !secrets.includes(secret))) {
+      failures.push(`the Edge Function secret ${name} is not set: the customer portal of that partner type is refused`);
+    }
+  }
 }
 const administrators = release.active_administrators;
 if (!Number.isInteger(administrators) || administrators < 1) {
@@ -144,9 +217,17 @@ if (drafts.length > 0 && !allowDraftLegal) {
 }
 
 const phase2 = phase2Results(settings, release.legal_release_gaps);
+const stray = strayConsentResults(settings, release.stray_organization_consents);
+phase2.failures.push(...stray.failures);
+phase2.pending.push(...stray.pending);
 process.stderr.write(phase2.failures.map((failure) => `Phase 2 go-live check failed: ${failure}\n`).join(""));
+const switchesOn = RELEASE_SWITCHES.filter((key) => isTrue(settings?.[key]));
+process.stdout.write(`Release switches on: ${switchesOn.length > 0 ? switchesOn.join(", ") : "none"}\n`);
 if (phase2.pending.length > 0) {
-  process.stdout.write(`Phase 2 legal documents not yet approved (release switch off): ${phase2.pending.join("; ")}\n`);
+  process.stdout.write(`Phase 2 items not yet ready (release switch off): ${phase2.pending.join("; ")}\n`);
+}
+if (partnerPending.length > 0) {
+  process.stdout.write(`Partner plans not yet ready to sell (${PARTNER_CHECKOUT_SWITCH} off): ${partnerPending.join("; ")}\n`);
 }
 if (failures.length > 0) {
   process.stderr.write(failures.map((failure) => `Go-live check failed: ${failure}\n`).join(""));

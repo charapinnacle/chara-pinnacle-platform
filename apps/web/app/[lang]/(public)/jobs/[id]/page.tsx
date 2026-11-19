@@ -10,7 +10,7 @@ import { getSavedJobIds } from "@/lib/dal/saved-jobs";
 import { getCurrentUser } from "@/lib/dal/session";
 import { jobPostingJsonLd } from "@/lib/jobs/job-posting";
 import { logVacancy } from "@/lib/jobs/vacancy-log";
-import { reportPath } from "@/lib/routes";
+import { companyPagePath, reportPath } from "@/lib/routes";
 import { vacancyMetadata } from "@/lib/seo/metadata";
 import { viewerOf } from "@/lib/jobs/viewer";
 import { jobIdSchema } from "@/lib/validation/job";
@@ -49,6 +49,7 @@ export default async function PublicJobPage({ params }: PageProps<"/[lang]/jobs/
       <VacancyView
         job={job}
         employer={job.employer}
+        employerHref={job.employerCompanySlug ? companyPagePath(lang, job.employerCompanySlug) : null}
         publishedAt={job.publishedAt}
         actions={<VacancyActions job={job} lang={lang} viewer={viewer} saved={savedIds.has(job.id)} application={applications.get(job.id) ?? null} />}
       />

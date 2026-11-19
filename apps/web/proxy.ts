@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { buildCsp } from "@/lib/csp";
 import { env } from "@/lib/env";
 import { localeRedirectPath } from "@/lib/i18n/locale";
+import { signedInLoginTarget } from "@/lib/safe-next";
 import { isPrivatePath } from "@/lib/seo/private-routes";
 import { updateSession } from "@/lib/supabase/proxy";
 import { consumeWelcome } from "@/lib/welcome-cookie";
@@ -34,7 +35,36 @@ export async function proxy(request: NextRequest) {
   );
   requestHeaders.set("content-security-policy", csp);
 
-  const response = await updateSession(request, requestHeaders);
+  const { response, supabase, userId } = await updateSession(request, requestHeaders);
+  // A signed-in person who opens the login page goes on at once, with a real redirect: the page itself renders inside the
+  // loading boundary of (auth), where a redirect comes after the 200 has been sent. A sign-in error is still shown.
+  const login = /^\/([^/]+)\/login\/?$/.exec(request.nextUrl.pathname);
+  if (login && userId && !request.nextUrl.searchParams.has("error")) {
+    const { data: profile } = await supabase.from("profiles").select("account_kind, status").eq("id", userId).maybeSingle();
+    if (profile && profile.status !== "suspended") {
+      const { data: membership } =
+        profile.account_kind === "company"
+          ? await supabase
+              .from("organization_members")
+              .select("organizations(slug, type)")
+              .eq("user_id", userId)
+              .not("accepted_at", "is", null)
+              .order("accepted_at")
+              .limit(1)
+              .maybeSingle()
+          : { data: null };
+      const target = signedInLoginTarget(
+        login[1],
+        request.nextUrl.searchParams.get("next"),
+        profile.account_kind,
+        membership?.organizations,
+      );
+      const redirect = NextResponse.redirect(new URL(target, request.url));
+      response.cookies.getAll().forEach((cookie) => redirect.cookies.set(cookie));
+      redirect.headers.set("x-robots-tag", "noindex, nofollow");
+      return redirect;
+    }
+  }
   response.headers.set("content-security-policy", csp);
   response.headers.set("x-request-id", requestId);
   if (isPrivatePath(request.nextUrl.pathname)) response.headers.set("x-robots-tag", "noindex, nofollow");

@@ -1,5 +1,5 @@
 import { graceEnd } from "@/lib/dashboard/plan-status";
-import { formatShortDate } from "@/lib/i18n/format";
+import { formatDate, formatShortDate } from "@/lib/i18n/format";
 import type { StatusTone } from "@/lib/status-tone";
 
 export type SoldPlan = {
@@ -93,7 +93,7 @@ export function planFacts(subscription: PlanFactsInput, plan: SoldPlan | undefin
   } else if (status === "trialing" && trialEndsAt && plan) {
     facts.push(`First payment of ${formatPrice(plan.priceMinor, plan.currency)} excl. VAT on ${formatShortDate(trialEndsAt)}`);
   } else if (status === "active" && currentPeriodEnd) {
-    facts.push(`Next invoice ${formatShortDate(currentPeriodEnd)}`);
+    facts.push(`Next invoice ${formatDate(currentPeriodEnd)}`);
     if (plan) facts.push(shortPriceLine(plan));
   }
   return facts;
@@ -108,9 +108,10 @@ export function trialConversion(planName: string): string {
 
 type Disclosure = { title: string; text: string };
 
-// The five things the person is told before the redirect (FR-G2): the trial period, the price after it, the billing
-// frequency, the automatic conversion and how to cancel. trialUsed says that the legal entity already had its trial,
-// so that the first payment is due at once and no trial period is shown.
+// The six things the person is told before the redirect (FR-G2, FR-R1 AC6): the trial period, the price after it, the
+// billing frequency, the automatic conversion, how to cancel, and that a card is needed with no long-term commitment.
+// trialUsed says that the legal entity already had its trial, so that the first payment is due at once and no trial
+// period is shown.
 export function checkoutDisclosures(plan: SoldPlan, trialUsed: boolean): Disclosure[] {
   const trialDays = trialUsed ? 0 : plan.trialDays;
   return [
@@ -136,6 +137,10 @@ export function checkoutDisclosures(plan: SoldPlan, trialUsed: boolean): Disclos
         trialDays > 0
           ? "Open Manage billing on the billing page and cancel before the trial ends, and you are not charged."
           : "Open Manage billing on the billing page to cancel at any time.",
+    },
+    {
+      title: "No long-term commitment",
+      text: `A card is needed to start. There is no long-term commitment: the subscription runs from ${plan.interval} to ${plan.interval} until you cancel.`,
     },
   ];
 }

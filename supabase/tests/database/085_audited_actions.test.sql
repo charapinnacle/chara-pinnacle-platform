@@ -1,5 +1,5 @@
 begin;
-select plan(41);
+select plan(42);
 
 -- FR-F2 AC1 to AC4 and AC8: the audit row of every administrative function. moderate_job (FR-C7) is covered by 088; the guard of AC8
 -- covers it too.
@@ -289,7 +289,11 @@ drop function public.audit_test_fail();
 -- AC8: the coverage guard. It reads the source of the functions, so a comment or an audit call on one branch would
 -- satisfy it; the proof that each of the eight writes its row is the matrix of AC1 above, and the guard is the tripwire
 -- for the function that comes next. A function that only writes platform_staff counts as audited when it is one of the two
--- whose change the always-on trigger records (an insert, or a revocation); any other function must call the audit itself.
+-- whose change the always-on trigger records (an insert, or a revocation), and a plan editor function that writes a plan,
+-- limit, feature or override row, itself or through the private.plan_editor_set_* helpers, counts as audited when it
+-- hands its reason to the row trigger of those tables (private.plan_editor_reason, FR-R2); moderate_job,
+-- suspend_organization and reinstate_organization count as audited when they hand the change to the private body that
+-- records it (private.record_moderation, V27); any other function must call the audit itself.
 create function pg_temp.unaudited() returns setof name
 language sql as $$
   select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
@@ -299,23 +303,29 @@ language sql as $$
       'admin_application_counts', 'admin_search_audit', 'admin_list_moderation_actions', 'admin_list_legal_documents',
       'admin_export_legal_documents', 'list_platform_staff', 'admin_search_jobs', 'admin_get_job', 'admin_staff_count',
       'admin_moderation_counts', 'admin_list_reports', 'admin_get_report', 'admin_legal_acceptance', 'admin_list_partner_licences',
-      'admin_list_partner_reviews', 'admin_get_partner_review')
-    and p.prosrc !~ 'audit\.record|private\.audit_admin|private\.record_moderation'
+      'admin_list_partner_reviews', 'admin_get_partner_review', 'admin_list_plans', 'admin_list_plan_history',
+      'admin_list_limit_overrides', 'admin_list_enterprise_organizations', 'admin_list_settings', 'admin_get_plan_price',
+      'admin_list_retention_policies', 'admin_partner_search_stats', 'admin_get_partner_moderation', 'admin_list_appeals',
+      'admin_get_appeal', 'admin_appeal_stats', 'admin_network_counts', 'admin_network_kpis', 'admin_list_direct_hiring_rules',
+      'admin_list_direct_hiring_rule_history')
+    and p.prosrc !~ 'audit\.record|private\.audit_admin|private\.record_moderation|private\.(set_job_moderation|suspend_organization_with|reinstate_organization_with)\('
     and not (p.proname in ('grant_platform_role', 'revoke_platform_role') and p.prosrc ~ '(insert into|update) public\.platform_staff')
+    and not (p.prosrc ~ 'private\.plan_editor_reason' and p.prosrc ~ '(insert into|update|delete from) billing\.(plans|plan_limits|plan_features|organization_limit_overrides)|private\.plan_editor_set_(plan|limit|feature)\(')
   order by p.proname
 $$;
 create function pg_temp.audited() returns name[]
 language sql as $$
   select array_agg(p.proname order by p.proname) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
   where n.nspname = 'public' and p.prosrc ~ 'has_platform_role|assert_staff|assert_platform_admin'
-    and (p.prosrc ~ 'audit\.record|private\.audit_admin|private\.record_moderation'
-      or (p.proname in ('grant_platform_role', 'revoke_platform_role') and p.prosrc ~ '(insert into|update) public\.platform_staff'))
+    and (p.prosrc ~ 'audit\.record|private\.audit_admin|private\.record_moderation|private\.(set_job_moderation|suspend_organization_with|reinstate_organization_with)\('
+      or (p.proname in ('grant_platform_role', 'revoke_platform_role') and p.prosrc ~ '(insert into|update) public\.platform_staff')
+      or (p.prosrc ~ 'private\.plan_editor_reason' and p.prosrc ~ '(insert into|update|delete from) billing\.(plans|plan_limits|plan_features|organization_limit_overrides)|private\.plan_editor_set_(plan|limit|feature)\('))
 $$;
 select is_empty($$select * from pg_temp.unaudited()$$, 'AC8: every staff-gated function that is not read-only calls the audit function');
 select is(
   pg_temp.audited(),
-  array['admin_decide_partner', 'admin_set_organization_type', 'admin_set_report_status', 'grant_platform_role', 'moderate_job', 'publish_legal_document', 'reinstate_organization', 'reinstate_user', 'reset_mfa', 'revoke_platform_role', 'suspend_organization', 'suspend_user']::name[],
-  'AC8: the audited functions are the 12 that exist; the allowlist holds the read-only ones'
+  array['admin_decide_partner', 'admin_delete_direct_hiring_rule', 'admin_record_plan_price', 'admin_remove_limit_override', 'admin_set_limit_override', 'admin_set_organization_type', 'admin_set_plan_feature', 'admin_set_plan_limit', 'admin_set_report_status', 'admin_set_retention_policy', 'admin_set_setting', 'admin_update_plan', 'admin_update_plan_bundle', 'admin_upsert_direct_hiring_rule', 'decide_appeal', 'grant_platform_role', 'moderate_job', 'moderation_decide', 'publish_legal_document', 'reinstate_organization', 'reinstate_user', 'reset_mfa', 'revoke_platform_role', 'suspend_organization', 'suspend_user']::name[],
+  'AC8: the audited functions are the 25 that exist; the allowlist holds the read-only ones'
 );
 create function public.unaudited_admin_function() returns void
 language plpgsql security definer set search_path = ''
@@ -363,6 +373,12 @@ select is(
   (select format('%s|%s', t.tgenabled, pg_get_functiondef(t.tgfoid) ~ 'private\.audit_admin')
    from pg_trigger t where t.tgrelid = 'public.platform_staff'::regclass and t.tgname = 'platform_staff_audit'),
   'A|t', 'AC8: the trigger of platform_staff is ENABLE ALWAYS and writes through the audit function'
+);
+select is(
+  (select string_agg(format('%s:%s', t.tgrelid::regclass, t.tgenabled <> 'D'), ',' order by t.tgrelid::regclass::text)
+   from pg_trigger t where t.tgfoid = 'private.billing_plan_audit()'::regprocedure),
+  'billing.organization_limit_overrides:t,billing.plan_features:t,billing.plan_limits:t,billing.plan_provider_refs:t,billing.plans:t',
+  'AC8: the plan editor functions rely on the enabled row trigger of every billing table they write'
 );
 select is(
   (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace

@@ -5,19 +5,30 @@ import { accountExists } from "./templates/account-exists.tsx";
 import { accountReinstated } from "./templates/account-reinstated.tsx";
 import { accountSuspended } from "./templates/account-suspended.tsx";
 import { applicationReceived } from "./templates/application-received.tsx";
+import { dataExportReady } from "./templates/data-export-ready.tsx";
 import { deletionCompleted } from "./templates/deletion-completed.tsx";
 import { deletionRequested } from "./templates/deletion-requested.tsx";
 import { erasurePaused } from "./templates/erasure-paused.tsx";
+import { followedCompanyActivity } from "./templates/followed-company-activity.tsx";
+import { invitationReceived } from "./templates/invitation-received.tsx";
+import { invitationWithdrawn } from "./templates/invitation-withdrawn.tsx";
+import { jobOrderMatch } from "./templates/job-order-match.tsx";
 import { legalVersion } from "./templates/legal-version.tsx";
 import { licenceExpiring } from "./templates/licence-expiring.tsx";
 import { listingConfirmationDue } from "./templates/listing-confirmation-due.tsx";
 import { memberInvitation } from "./templates/member-invitation.tsx";
 import { mfaReset } from "./templates/mfa-reset.tsx";
+import { moderationDecision } from "./templates/moderation-decision.tsx";
 import { partnerApproved } from "./templates/partner-approved.tsx";
 import { partnerDeclined } from "./templates/partner-declined.tsx";
 import { partnerInfoRequested } from "./templates/partner-info-requested.tsx";
 import { partnerLicenceExpired } from "./templates/partner-licence-expired.tsx";
 import { paymentFailed } from "./templates/payment-failed.tsx";
+import { requirementChanged } from "./templates/requirement-changed.tsx";
+import { requirementClosed } from "./templates/requirement-closed.tsx";
+import { requirementClosingSoon } from "./templates/requirement-closing-soon.tsx";
+import { responseReceived } from "./templates/response-received.tsx";
+import { responseWithdrawn } from "./templates/response-withdrawn.tsx";
 import { statusChanged } from "./templates/status-changed.tsx";
 import { trialEnding } from "./templates/trial-ending.tsx";
 import { vacancyHidden } from "./templates/vacancy-hidden.tsx";
@@ -43,6 +54,17 @@ const TEMPLATES = {
   licence_expiring: licenceExpiring,
   partner_licence_expired: partnerLicenceExpired,
   listing_confirmation_due: listingConfirmationDue,
+  followed_company_activity: followedCompanyActivity,
+  moderation_decision: moderationDecision,
+  data_export_ready: dataExportReady,
+  requirement_closing_soon: requirementClosingSoon,
+  job_order_match: jobOrderMatch,
+  invitation_received: invitationReceived,
+  invitation_withdrawn: invitationWithdrawn,
+  requirement_changed: requirementChanged,
+  requirement_closed: requirementClosed,
+  response_received: responseReceived,
+  response_withdrawn: responseWithdrawn,
 } as const satisfies Record<string, Template>;
 
 export type NotificationKind = keyof typeof TEMPLATES;

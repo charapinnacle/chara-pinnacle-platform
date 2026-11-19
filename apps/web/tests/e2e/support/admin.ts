@@ -8,6 +8,22 @@ import type { TestUser } from "./test-user";
 
 export type StaffRole = "admin" | "verification_reviewer" | "trust_safety";
 
+// The console entries of the Platform Administrator while every release switch is off.
+export const ADMIN_ENTRIES = [
+  "Users",
+  "Organisations",
+  "Statistics",
+  "Plans and limits",
+  "Platform settings",
+  "Retention periods",
+  "Direct-hiring rules",
+  "Legal documents",
+  "Audit log",
+  "Staff",
+  "MFA reset",
+  "Reports",
+];
+
 // A short lower-case token that makes the rows of one test distinct from those of every other test in the database.
 export function uniqueTag(): string {
   return randomBytes(4).toString("hex");

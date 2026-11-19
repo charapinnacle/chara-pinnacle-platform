@@ -398,13 +398,14 @@ select pg_temp.seed(:'basic_override', 'open', 2);
 select (pg_temp.seed(:'basic_override', 'draft'))[1] as basic_override_job \gset
 select pg_temp.set_enforced('true');
 insert into billing.organization_limit_overrides (organization_id, limit_key, limit_value) values (:'basic_override', 'active_jobs', 2);
-select is(pg_temp.set_status(:'own1', :'basic_override_job', 'open'), 'P0001|CHARA_LIMIT_REACHED|active_jobs', 'an override of 2 on Basic refuses the third vacancy that the plan alone would allow');
+select is(pg_temp.set_status(:'own1', :'basic_override_job', 'open'), 'ok', 'an override on Basic is ignored (overrides apply on Enterprise plans only, FR-R2): the plan allows the third vacancy');
 
 -- Order and scope of the checks.
 select is(
   (select array_agg(t.tgname::text order by t.tgname) from pg_trigger t
    where t.tgrelid = 'public.jobs'::regclass and not t.tgisinternal and t.tgtype & 2 = 2),
-  array['jobs_employer_only', 'jobs_guard_filled', 'jobs_guard_transition', 'jobs_limit_check', 'jobs_quota', 'jobs_touch_updated_at'],
+  array['jobs_employer_only', 'jobs_guard_filled', 'jobs_guard_transition', 'jobs_limit_check', 'jobs_quota', 'jobs_require_city',
+    'jobs_require_city_insert', 'jobs_touch_updated_at'],
   'the limit trigger is a BEFORE trigger that sorts after the transition guard (and before the stamp of updated_at)'
 );
 select pg_temp.org_on('employer_starter') as order_org \gset

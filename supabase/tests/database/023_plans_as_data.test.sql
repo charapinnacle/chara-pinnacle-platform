@@ -163,13 +163,18 @@ create function pg_temp.plan_writers() returns setof text
 language sql as $$
   select p.proname::text
   from pg_proc p
-  where p.pronamespace = 'public'::regnamespace
+  where p.pronamespace in ('public'::regnamespace, 'private'::regnamespace)
     and p.prosrc ~* '(insert\s+into|update|delete\s+from|truncate)\s+(table\s+)?billing\.(plans|plan_limits|plan_features|organization_limit_overrides)'
 $$;
-select is_empty($$select * from pg_temp.plan_writers()$$, 'no public function edits plans, limits, features or overrides');
+select results_eq(
+  $$select * from pg_temp.plan_writers() order by 1$$,
+  $$values ('admin_record_plan_price'), ('admin_remove_limit_override'), ('admin_set_limit_override'), ('plan_editor_set_feature'), ('plan_editor_set_limit'), ('plan_editor_set_plan')$$,
+  'only the audited plan editor functions of FR-R2 and their private helpers edit plans, limits, features or overrides'
+);
 create function public.plan_writer_probe() returns void language sql as 'update billing.plans set trial_days = 1';
 select results_eq(
-  $$select * from pg_temp.plan_writers()$$, $$values ('plan_writer_probe')$$, 'detector: a function that updates plans is reported'
+  $$select x from pg_temp.plan_writers() x where x !~ '^(admin_|plan_editor_)' order by 1$$, $$values ('plan_writer_probe')$$,
+  'detector: a function that updates plans is reported'
 );
 drop function public.plan_writer_probe();
 

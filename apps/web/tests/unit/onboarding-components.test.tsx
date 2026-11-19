@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { OnboardingPanel } from "@/components/onboarding/onboarding-panel";
 import { OnboardingSteps } from "@/components/onboarding/onboarding-steps";
 import { WelcomeTiles } from "@/components/onboarding/welcome-tiles";
+import { infoStepIndexes } from "@/lib/validation/partner-review";
 
 const html = renderToStaticMarkup;
 
@@ -34,15 +35,30 @@ describe("OnboardingSteps", () => {
     expect(markup.match(/aria-current="step"/g)).toHaveLength(1);
   });
 
-  it("shows a step staff reopened as not done again, and says so to screen readers (FR-J4)", () => {
-    const [company, where, commitments, security, ready] = items(html(<OnboardingSteps kind="partner" current={4} reopened={1} />));
+  it("shows the steps staff reopened as not done again, and says so to screen readers (FR-J4)", () => {
+    const [company, where, offer, commitments, security, ready] = items(
+      html(<OnboardingSteps kind="partner" current={5} reopened={infoStepIndexes.where_you_serve} />),
+    );
     expect(company).toContain("(done)");
-    expect(where).toContain("Step 2 of 5: </span>Where you serve<span class=\"sr-only\"> (more information requested)</span>");
+    expect(where).toContain("Step 2 of 6: </span>Where you serve<span class=\"sr-only\"> (more information requested)</span>");
     expect(where).not.toContain("(done)");
     expect(where).not.toContain("<svg");
+    expect(offer).toContain("Step 3 of 6: </span>What you offer<span class=\"sr-only\"> (more information requested)</span>");
     expect(commitments).toContain("(done)");
     expect(security).toContain("(done)");
     expect(ready).toMatch(/^<li aria-current="step"/);
+  });
+
+  it("gives What you offer its own step, so the indicator names the page that is shown (FR-J1)", () => {
+    const markup = html(<OnboardingSteps kind="partner" current={2} />);
+    expect(markup).toMatch(/<p aria-hidden="true"[^>]*>Step 3 of 6: What you offer<\/p>/);
+    expect(markup).toMatch(/<li aria-current="step"[^>]*>.*Step 3 of 6: <\/span>What you offer/);
+  });
+
+  it("names only the current step of the six beside the circles at every width, so they fit the panel (FR-J1)", () => {
+    const [company, , offer] = items(html(<OnboardingSteps kind="partner" current={2} />));
+    expect(company).toMatch(/<span class="[^"]*text-muted-foreground sr-only"><span class="sr-only">Step 1 of 6: /);
+    expect(offer).toMatch(/<span class="[^"]*font-semibold text-foreground max-sm:sr-only"><span class="sr-only">Step 3 of 6: /);
   });
 
   it("says which step it is in words for phones, hidden from screen readers that read the list", () => {

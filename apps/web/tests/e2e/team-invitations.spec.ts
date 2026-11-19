@@ -193,6 +193,10 @@ test.describe("team membership: invitations", () => {
     await page.getByRole("button", { name: "Invite member" }).focus();
     await page.keyboard.press("Enter");
     await expect(page.getByRole("dialog", { name: "Invite a team member" })).toBeVisible();
+    // Enter straight after Escape opens the dialog again: the press lands before the native close event.
+    await page.keyboard.press("Escape");
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("dialog", { name: "Invite a team member" })).toBeVisible();
     await page.getByLabel("Email address").fill(email);
     await page.keyboard.press("Enter");
     await expect(page.getByRole("dialog", { name: "Invitation link" })).toBeVisible();

@@ -1,7 +1,9 @@
 import "server-only";
+import { cache } from "react";
 import type { Database, Json } from "@chara-pinnacle/db-types";
 import { headers } from "next/headers";
 import * as z from "zod";
+import type { NetworkStatistics } from "@/lib/admin/network-statistics";
 import { serverEnv } from "@/lib/env.server";
 import { createClient } from "@/lib/supabase/server";
 import { clientAddress } from "@/lib/visitor-address";
@@ -9,6 +11,7 @@ import {
   ADMIN_PAGE_SIZE,
   type AuditFilter,
   type NameCursor,
+  type NetworkStatisticsQuery,
   type PlatformRole,
   type TimeCursor,
 } from "@/lib/validation/admin";
@@ -210,7 +213,8 @@ export async function searchAudit(filter: AuditFilter, after: TimeCursor): Promi
   return paged(rows, (row) => ({ at: row.createdAt, id: row.id }));
 }
 
-export async function getUser(id: string): Promise<UserDetail | null> {
+// Cached per request: the page reads it to answer 404 before its Suspense boundary, and the view reads it again.
+export const getUser = cache(async (id: string): Promise<UserDetail | null> => {
   const supabase = await adminClient();
   const { data, error } = await supabase.rpc("admin_get_user", { p_user_id: id });
   if (error) {
@@ -231,9 +235,10 @@ export async function getUser(id: string): Promise<UserDetail | null> {
     applicationsSubmitted: row.applications_submitted,
     vacanciesCreated: row.vacancies_created,
   };
-}
+});
 
-export async function getOrganization(id: string): Promise<OrganizationDetail | null> {
+// Cached per request: the page reads it to answer 404 before its Suspense boundary, and the view reads it again.
+export const getOrganization = cache(async (id: string): Promise<OrganizationDetail | null> => {
   const supabase = await adminClient();
   const { data, error } = await supabase.rpc("admin_get_organization", { p_org: id });
   if (error) {
@@ -254,13 +259,84 @@ export async function getOrganization(id: string): Promise<OrganizationDetail | 
       .parse(row.vacancies)
       .map((vacancy) => ({ id: vacancy.id, title: vacancy.title, status: vacancy.status, moderationState: vacancy.moderation_state })),
   };
-}
+});
 
 export async function applicationCounts(from: string, to: string): Promise<StageCount[]> {
   const supabase = await adminClient();
   const { data, error } = await supabase.rpc("admin_application_counts", { p_from: from, p_to: to });
   if (error) throw failure("The statistics", error);
   return data;
+}
+
+const zeroByDestinationSchema = z.array(z.object({ code: z.string(), name: z.string(), searches: z.number() }));
+
+// A count below minCount is null (the database suppresses it, FR-S2 AC9).
+export type PartnerSearchCounts = {
+  searches: number | null;
+  withResults: number | null;
+  zeroResults: number | null;
+  zeroByDestination: z.infer<typeof zeroByDestinationSchema>;
+  minCount: number;
+};
+
+const partnerSearchRowSchema = z.object({
+  searches: z.number().nullable(),
+  with_results: z.number().nullable(),
+  zero_results: z.number().nullable(),
+  zero_by_destination: zeroByDestinationSchema,
+  min_count: z.number().int(),
+});
+
+export type PartnerSearchKind = "recruitment" | "staffing" | "available_workforce";
+
+// The searches of one directory, or of the available workforce, of the days (FR-L1, FR-L2, FR-K3 KPIs); answered only
+// while release 2a is on.
+export async function partnerSearchCounts(kind: PartnerSearchKind, from: string, to: string): Promise<PartnerSearchCounts> {
+  const supabase = await adminClient();
+  const { data, error } = await supabase.rpc("admin_partner_search_stats", { p_kind: kind, p_from: from, p_to: to });
+  if (error) throw failure("The partner search statistics", error);
+  const [row] = z.array(partnerSearchRowSchema).length(1).parse(data);
+  return {
+    searches: row.searches,
+    withResults: row.with_results,
+    zeroResults: row.zero_results,
+    zeroByDestination: row.zero_by_destination,
+    minCount: row.min_count,
+  };
+}
+
+const networkCountsSchema = z.array(z.object({ metric: z.string(), period_start: z.string(), count: z.number().int().nullable() }));
+const networkFiguresSchema = z.array(
+  z.object({
+    metric: z.string(),
+    label: z.string().nullable(),
+    unit: z.enum(["count", "percent", "hours", "ratio", "date"]),
+    range_figure: z.boolean(),
+    value: z.number().nullable(),
+    base: z.number().int().nullable(),
+  }),
+);
+
+// The partner network counts per period and the key figures of the range (FR-S2, release 2a parts); answered only to a
+// Platform Administrator while release 2a is on. The first figure is the threshold below which a value is hidden, the
+// second names in its label the first day of the daily partner states.
+export async function networkStatistics(query: NetworkStatisticsQuery): Promise<NetworkStatistics> {
+  const supabase = await adminClient();
+  const [counts, figures] = await Promise.all([
+    supabase.rpc("admin_network_counts", { p_from: query.from, p_to: query.to, p_period: query.period }),
+    supabase.rpc("admin_network_kpis", { p_from: query.from, p_to: query.to }),
+  ]);
+  if (counts.error) throw failure("The partner network counts", counts.error);
+  if (figures.error) throw failure("The partner network figures", figures.error);
+  const rows = networkFiguresSchema.parse(figures.data);
+  return {
+    counts: networkCountsSchema.parse(counts.data).map((row) => ({ metric: row.metric, periodStart: row.period_start, count: row.count })),
+    figures: rows
+      .filter((row) => row.metric !== "stats_min_count" && row.metric !== "states_recorded_from")
+      .map((row) => ({ metric: row.metric, label: row.label, unit: row.unit, rangeFigure: row.range_figure, value: row.value, base: row.base })),
+    minCount: rows.find((row) => row.metric === "stats_min_count")?.value ?? 5,
+    statesFrom: rows.find((row) => row.metric === "states_recorded_from")?.label ?? null,
+  };
 }
 
 export async function listModerationActions(after: number | null): Promise<Page<ModerationRow, number>> {

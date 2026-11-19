@@ -9,21 +9,23 @@ import { PageHeader } from "@/components/layout/page-header";
 import { SuspendedOrganization } from "@/components/layout/suspended-organization";
 import { AvailabilitySection } from "@/components/organization/availability-section";
 import { LicencesSection } from "@/components/organization/licences-section";
+import { ModerationNotice } from "@/components/organization/moderation-notice";
 import { WhereYouServeForm } from "@/components/organization/where-you-serve-form";
 import { WorkforceOfferForm } from "@/components/organization/workforce-offer-form";
-import { upgradeHref } from "@/lib/billing/limits";
 import { getCommitmentStatus } from "@/lib/dal/commitment";
 import { getOrganizationGeographies } from "@/lib/dal/geographies";
 import { getLicenceSettings, getPartnerLicences } from "@/lib/dal/licences";
 import { getOrganizationProfile } from "@/lib/dal/organizations";
+import { listMyAppeals } from "@/lib/dal/appeals";
+import { getPartnerProfileModeration } from "@/lib/dal/partner-profile";
 import { formatCount } from "@/lib/i18n/format";
 import { getCountries, getIndustries, getLanguages, getOccupations, type ReferenceItem } from "@/lib/dal/reference";
 import { isReleased } from "@/lib/dal/release";
 import { requireOrgRole } from "@/lib/dal/session";
-import { getUsagePrompts } from "@/lib/dal/usage";
+import { getUnenforcedAllowances, getUsagePrompts } from "@/lib/dal/usage";
 import { getAvailabilityRules, getListingCounts, getWorkforceListings } from "@/lib/dal/workforce-availability";
 import { getWorkforceOffer, workforceOfferDefaults } from "@/lib/dal/workforce-offer";
-import { onboardingPath } from "@/lib/routes";
+import { billingPath, onboardingPath, workforceProfilePreviewPath } from "@/lib/routes";
 import { commitmentOutdated } from "@/lib/validation/commitment";
 import { servedQuestion } from "@/lib/validation/geographies";
 import { LICENCE_STAFF_ONLY } from "@/lib/validation/licences";
@@ -101,7 +103,7 @@ async function Availability({
   occupations: ReferenceItem[];
   countries: ReferenceItem[];
   rules: AvailabilityRules;
-  billingHref: string | null;
+  billingHref: string;
 }) {
   const [listings, prompts] = await Promise.all([
     getWorkforceListings(organizationId),
@@ -145,6 +147,8 @@ export default async function WorkforceProfilePage({ params }: PageProps<"/[lang
     languages,
     commitment,
     availabilityRules,
+    moderation,
+    allowances,
   ] =
     await Promise.all([
       getOrganizationGeographies(organization.id),
@@ -157,8 +161,11 @@ export default async function WorkforceProfilePage({ params }: PageProps<"/[lang
       getLanguages(),
       getCommitmentStatus(organization.id),
       getAvailabilityRules(),
+      getPartnerProfileModeration(organization.id),
+      getUnenforcedAllowances(organization.id, ["markets"]),
     ]);
-  const billingHref = upgradeHref(lang, slug, partnerType);
+  const appeal = moderation.decision ? await listMyAppeals(moderation.decision.id) : null;
+  const billingHref = billingPath(lang, slug);
   const nameOf = (code: string) => countries.find((country) => country.code === code)?.name ?? code;
   // Not awaited: the profile forms show the warning about listings once the counts arrive.
   const listingCounts = organization.role === "member" ? null : getListingCounts(organization.id);
@@ -187,7 +194,12 @@ export default async function WorkforceProfilePage({ params }: PageProps<"/[lang
         title="Workforce profile"
         description="Employers and job orders reach you through the countries where you serve and what you offer. Once your company is listed, everyone can see them on your profile."
         breadcrumb={<Breadcrumbs items={[{ label: organization.displayName }, { label: "Workforce profile" }]} />}
-      />
+      >
+        <TextLink standalone href={workforceProfilePreviewPath(lang, slug)}>
+          Preview your public profile
+        </TextLink>
+      </PageHeader>
+      <ModerationNotice lang={lang} moderation={moderation} appeal={appeal} />
       {commitment.accepted ? null : (
         <CommitmentNotice lang={lang} owner={organization.role === "owner"} outdated={commitmentOutdated(commitment)} />
       )}
@@ -217,6 +229,7 @@ export default async function WorkforceProfilePage({ params }: PageProps<"/[lang
             countries={countries}
             defaults={geographies}
             marketsPrompt={prompts.markets}
+            marketsAllowance={allowances.markets}
             billingHref={billingHref}
             onboarding={false}
             listingCounts={listingCounts?.then((counts) => counts.countries)}

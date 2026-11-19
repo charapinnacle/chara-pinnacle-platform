@@ -44,7 +44,10 @@ export async function startGoogleFlow(page: Page): Promise<URL> {
   );
   const request = page.waitForRequest((candidate) => candidate.url().includes("/auth/v1/authorize"));
   await page.getByRole("button", { name: BUTTON }).click();
-  return new URL((await request).url());
+  const url = new URL((await request).url());
+  // The request leaves before the navigation commits: a goto issued in between is interrupted by it.
+  await page.waitForURL((current) => current.pathname === "/auth/v1/authorize");
+  return url;
 }
 
 // What Auth stores when Google has sent the person back: a one-time code bound to the PKCE challenge of the browser

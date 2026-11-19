@@ -12,11 +12,12 @@ import { CompletenessCard } from "@/components/passport/completeness-card";
 import { getMyStageCounts, getRecentApplications } from "@/lib/dal/applications";
 import type { DocumentReminder } from "@/lib/dal/documents";
 import type { Passport } from "@/lib/dal/passport";
+import { countFollowedCompanies } from "@/lib/dal/connections";
 import { countSavedJobs } from "@/lib/dal/saved-jobs";
 import { sumOf } from "@/lib/dashboard/stage-counts";
 import { savedPath } from "@/lib/jobs/saved";
 import type { Completeness } from "@/lib/passport/completeness";
-import { applicationsPath } from "@/lib/routes";
+import { applicationsPath, followingPath } from "@/lib/routes";
 
 type WorkerDashboardProps = {
   lang: string;
@@ -25,6 +26,8 @@ type WorkerDashboardProps = {
   availableFrom: Passport["availableFrom"];
   reminders: DocumentReminder[];
   today: string;
+  // Release 2a is on: the companies the candidate follows are counted (FR-L4 AC10).
+  network: boolean;
 };
 
 // The first step of a candidate who has not applied yet: the occupation when it is missing (an application needs it),
@@ -76,7 +79,7 @@ function WorkerApplications({ lang, completeness, stages }: { lang: string; comp
 
 // The candidate's dashboard (UX-03): the passport and its next step, when they can start, the saved jobs and the latest
 // applications with their stages. Each read shows its own skeleton or error; nothing here is stored.
-export function WorkerDashboard({ lang, completeness, availability, availableFrom, reminders, today }: WorkerDashboardProps) {
+export function WorkerDashboard({ lang, completeness, availability, availableFrom, reminders, today, network }: WorkerDashboardProps) {
   const stages = getMyStageCounts();
 
   return (
@@ -106,6 +109,11 @@ export function WorkerDashboard({ lang, completeness, availability, availableFro
           <Panel promise={countSavedJobs()} errorTitle="Your saved jobs could not be counted">
             {(count) => <SummaryCard label="Saved jobs" value={count} href={savedPath(lang)} />}
           </Panel>
+          {network ? (
+            <Panel promise={countFollowedCompanies()} errorTitle="Your followed companies could not be counted">
+              {(count) => <SummaryCard label="Followed companies" value={count} href={followingPath(lang)} />}
+            </Panel>
+          ) : null}
           <DocumentReminders lang={lang} reminders={reminders} today={today} />
         </div>
       </div>

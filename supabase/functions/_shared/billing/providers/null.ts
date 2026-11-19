@@ -1,8 +1,8 @@
+import { isObject } from "../../http.ts";
 import {
   assertAppOrigin,
   type BillingProvider,
   EVENT_KINDS,
-  isObject,
   type NormalizedEvent,
   type WebhookVerification,
 } from "../provider.ts";
@@ -53,9 +53,13 @@ export function nullProvider(siteUrl: string, webhookSecret?: string): BillingPr
       return Promise.resolve().then(() => {
         assertAppOrigin(siteUrl, input.returnUrl);
         const query = new URLSearchParams({ return_url: input.returnUrl });
+        if (input.configuration !== undefined) {
+          query.set("configuration", input.configuration);
+        }
         return { url: `${HOSTED}/portal/${encodeURIComponent(input.customerRef)}?${query}` };
       });
     },
+    createPrice: () => Promise.resolve({ priceRef: null }),
     verifyWebhook: (req, rawBody) => verify(req, rawBody, webhookSecret),
     normalize(payload) {
       const valid = isObject(payload) && EVENT_KINDS.includes(payload.kind as NormalizedEvent["kind"]) &&

@@ -85,7 +85,15 @@ describe("getAllowance and getInvitationPreview", () => {
     rpcMock.mockResolvedValue({ data: [], error: null });
     await expect(getInvitationPreview("t")).resolves.toBeNull();
     rpcMock.mockResolvedValue({
-      data: [{ organization_name: "Acme", role: "member", email: "bea@example.test", expires_at: "2026-10-12T00:00:00Z" }],
+      data: [
+        {
+          organization_name: "Acme",
+          role: "member",
+          email: "bea@example.test",
+          expires_at: "2026-10-12T00:00:00Z",
+          organization_type: "staffing_company",
+        },
+      ],
       error: null,
     });
     await expect(getInvitationPreview("t")).resolves.toEqual({
@@ -93,6 +101,15 @@ describe("getAllowance and getInvitationPreview", () => {
       role: "member",
       email: "bea@example.test",
       expiresAt: "2026-10-12T00:00:00Z",
+      organizationType: "staffing_company",
     });
+  });
+
+  it("refuses a preview with an organisation type it does not know", async () => {
+    rpcMock.mockResolvedValue({
+      data: [{ organization_name: "Acme", role: "member", email: "b@x.test", expires_at: "2026-10-12T00:00:00Z", organization_type: "agency" }],
+      error: null,
+    });
+    await expect(getInvitationPreview("t")).rejects.toThrow();
   });
 });

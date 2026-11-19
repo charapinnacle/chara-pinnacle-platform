@@ -1,3 +1,4 @@
+import type { Database } from "@chara-pinnacle/db-types";
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { env } from "@/lib/env";
@@ -8,7 +9,7 @@ export async function updateSession(
   requestHeaders: Headers,
 ) {
   let response = NextResponse.next({ request: { headers: requestHeaders } });
-  const supabase = createServerClient(
+  const supabase = createServerClient<Database>(
     env.NEXT_PUBLIC_SUPABASE_URL,
     env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
     {
@@ -34,6 +35,6 @@ export async function updateSession(
   );
   // Nothing may run between client creation and this call: it verifies the JWT
   // against the JWKS and refreshes an expired session into the cookies above.
-  await supabase.auth.getClaims();
-  return response;
+  const { data } = await supabase.auth.getClaims();
+  return { response, supabase, userId: data?.claims.sub ?? null };
 }

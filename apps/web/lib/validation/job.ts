@@ -30,7 +30,7 @@ type JobUpdate = Omit<JobInsert, "organization_id">;
 
 export const employmentTypes = ["full_time", "part_time", "contract", "temporary", "seasonal"] as const;
 export const salaryPeriods = ["hour", "month", "year"] as const;
-const recruitmentPreferences = ["local", "international", "both"] as const;
+export const recruitmentPreferences = ["local", "international", "both"] as const;
 
 export const employmentTypeLabels: Record<(typeof employmentTypes)[number], string> = {
   full_time: "Full time",
@@ -62,12 +62,12 @@ export const recruitmentPreferenceOptions = recruitmentPreferences.map((value) =
 const MAX_AMOUNT = 9_999_999.99;
 const AMOUNT_FORMAT = "Enter an amount of 0 or more, for example 2800 or 2800.50.";
 
-const CONTROL_CHARACTER = /[\p{Cc}\p{Zl}\p{Zp}]/u;
-const LINE_BREAKS_AND_TABS = /[\t\n\r]/g;
+export const CONTROL_CHARACTER = /[\p{Cc}\p{Zl}\p{Zp}]/u;
+export const LINE_BREAKS_AND_TABS = /[\t\n\r]/g;
 
-const NO_CONTROL_CHARACTERS = "Remove the special characters.";
+export const NO_CONTROL_CHARACTERS = "Remove the special characters.";
 
-function amountField(label: string) {
+export function amountField(label: string) {
   return z
     .string()
     .trim()
@@ -140,17 +140,25 @@ export const jobFormSchema = z
       .string({ error: "Select a recruitment preference." })
       .pipe(z.enum(recruitmentPreferences, { error: "Select a recruitment preference." })),
   })
-  .check((context) => {
-    const { salaryMin, salaryMax, salaryCurrency, salaryPeriod } = context.value;
-    const issue = (path: string, message: string) =>
-      context.issues.push({ code: "custom", input: context.value, path: [path], message });
-    if (salaryMin === "" && salaryMax === "") return;
-    if (salaryMin !== "" && salaryMax !== "" && Number(salaryMin) > Number(salaryMax)) {
-      issue("salaryMin", "The minimum salary cannot be higher than the maximum.");
-    }
-    if (salaryCurrency === "") issue("salaryCurrency", "Select a currency when you enter a salary.");
-    if (salaryPeriod === "") issue("salaryPeriod", "Select a pay period when you enter a salary.");
-  });
+  .check((context) => salaryIssues(context.value, (path, message) =>
+    context.issues.push({ code: "custom", input: context.value, path: [path], message }),
+  ));
+
+type SalaryValues = { salaryMin: string; salaryMax: string; salaryCurrency: string; salaryPeriod: string };
+
+// The salary rules of FR-C1, shared with the workforce requirement form (FR-M1): an amount needs a currency and a pay
+// period, and the minimum is not above the maximum.
+export function salaryIssues(
+  { salaryMin, salaryMax, salaryCurrency, salaryPeriod }: SalaryValues,
+  issue: (path: keyof SalaryValues, message: string) => void,
+): void {
+  if (salaryMin === "" && salaryMax === "") return;
+  if (salaryMin !== "" && salaryMax !== "" && Number(salaryMin) > Number(salaryMax)) {
+    issue("salaryMin", "The minimum salary cannot be higher than the maximum.");
+  }
+  if (salaryCurrency === "") issue("salaryCurrency", "Select a currency when you enter a salary.");
+  if (salaryPeriod === "") issue("salaryPeriod", "Select a pay period when you enter a salary.");
+}
 
 export type JobFormInput = z.input<typeof jobFormSchema>;
 export type JobFormValues = z.output<typeof jobFormSchema>;

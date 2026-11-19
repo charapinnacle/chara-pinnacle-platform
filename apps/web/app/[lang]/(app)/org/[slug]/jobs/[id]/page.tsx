@@ -3,15 +3,16 @@ import { notFound } from "next/navigation";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { LinkButton } from "@/components/layout/link-button";
 import { SuspendedOrganization } from "@/components/layout/suspended-organization";
-import { COMPLAINTS_SLUG, LegalLink } from "@/components/forms/text-link";
+import { COMPLAINTS_SLUG, LegalLink, TextLink } from "@/components/forms/text-link";
 import { Notice } from "@/components/forms/notice";
 import { JobStatusActions } from "@/components/jobs/job-status-actions";
 import { VacancyView } from "@/components/jobs/vacancy-view";
 import { organizationCrumb } from "@/lib/app/navigation";
+import { vacancyDecisionId } from "@/lib/dal/appeals";
 import { countApplicationsInProgress, getJob } from "@/lib/dal/hiring";
 import { requireOrgRole } from "@/lib/dal/session";
-import { isEditable, STALE_OPEN_TEXT, statusActions } from "@/lib/jobs/lifecycle";
-import { applicantsPath, billingPath, jobPath, jobsPath } from "@/lib/routes";
+import { CITY_BEFORE_PUBLISHING, CITY_PLACEHOLDER, isEditable, STALE_OPEN_TEXT, statusActions } from "@/lib/jobs/lifecycle";
+import { appealPath, applicantsPath, billingPath, jobPath, jobsPath } from "@/lib/routes";
 import { jobDateText, jobStatusText } from "@/lib/jobs/presentation";
 import { jobIdSchema } from "@/lib/validation/job";
 
@@ -32,6 +33,7 @@ export default async function JobPage({ params }: PageProps<"/[lang]/org/[slug]/
       ? await countApplicationsInProgress(job.id)
       : 0;
   const applicantsHref = applicantsPath(lang, slug, { job: job.id });
+  const decisionId = job.moderationState === "hidden" ? await vacancyDecisionId(job.id) : null;
 
   return (
     <div className="grid w-full max-w-3xl gap-page">
@@ -45,11 +47,24 @@ export default async function JobPage({ params }: PageProps<"/[lang]/org/[slug]/
       </Notice>
       {job.moderationState === "hidden" ? (
         <Notice tone="info" role="status">
-          Our moderators hid this vacancy, so it is not public. The owner and the administrators were emailed the reasons. To appeal, follow the route on the{" "}
-          <LegalLink slug={COMPLAINTS_SLUG} newTabLabel="(opens in a new tab)">
-            Complaints and Dispute Process
-          </LegalLink>{" "}
-          page.
+          Our moderators hid this vacancy, so it is not public. The owner and the administrators were emailed the reasons.{" "}
+          {decisionId === null ? (
+            <>
+              To appeal, follow the route on the{" "}
+              <LegalLink slug={COMPLAINTS_SLUG} newTabLabel="(opens in a new tab)">
+                Complaints and Dispute Process
+              </LegalLink>{" "}
+              page.
+            </>
+          ) : (
+            <TextLink href={appealPath(lang, decisionId)}>See the decision and appeal</TextLink>
+          )}
+        </Notice>
+      ) : null}
+      {manager && job.status === "draft" && job.city === CITY_PLACEHOLDER ? (
+        <Notice tone="warning" role="status">
+          {CITY_BEFORE_PUBLISHING}{" "}
+          <TextLink href={`${jobPath(lang, slug, job.id)}/edit`}>Edit the vacancy</TextLink>
         </Notice>
       ) : null}
       {manager ? (

@@ -9,6 +9,7 @@ import { contentPathFrom, vacancyIdFrom } from "@/lib/reports/target";
 import { mfaPath } from "@/lib/routes";
 import { PAGE_LINK, VACANCY_LINK, reportInputSchema, type ReportInput } from "@/lib/validation/report";
 import { fieldErrors, type FieldErrors } from "@/lib/validation/sign-up";
+import { slugSchema } from "@/lib/validation/team";
 
 type ReportResult = { errors?: FieldErrors; message?: string; reference?: string };
 
@@ -16,6 +17,7 @@ const RATE_LIMITED = "You have sent several reports in a short time. Try again i
 const VACANCY_NOT_PUBLIC = "This vacancy cannot be reported: it is not public. Check the address.";
 const APPLICANT_NOT_FOUND = "This applicant could not be found.";
 const MEMBERS_ONLY = "Only members of a company can report an applicant of that company.";
+const PARTNER_NOT_PUBLIC = "This company profile cannot be reported: it is not public.";
 
 const fieldByDetail: Record<string, string> = {
   details: "details",
@@ -27,6 +29,10 @@ const fieldByDetail: Record<string, string> = {
 };
 
 function resolveTarget(type: ReportInput["type"], target: string) {
+  if (type === "partner_profile") {
+    const partner = slugSchema.safeParse(target);
+    return partner.success ? ({ type, partner: partner.data } as const) : null;
+  }
   if (type === "profile") {
     const application = z.uuid().safeParse(target);
     return application.success ? ({ type, application: application.data } as const) : null;
@@ -40,14 +46,17 @@ function resolveTarget(type: ReportInput["type"], target: string) {
 }
 
 // Anyone may report: a visitor, a candidate, a member of a company. The database decides what can be reported by whom
-// (a public vacancy, a company through one, a page, or an applicant of the caller's own organisation) and counts the
+// (a public vacancy, a company through one, a page, a public partner profile, or an applicant of the caller's own
+// organisation) and counts the
 // attempt against the visitor throttle, so nothing here repeats those rules.
 export async function submitReport(input: ReportInput): Promise<ReportResult> {
   const parsed = reportInputSchema.safeParse(input);
   if (!parsed.success) return { errors: fieldErrors(parsed.error) };
   const { type, target, category, details, email } = parsed.data;
   const resolved = resolveTarget(type, target);
-  if (!resolved) return { errors: { link: type === "content" ? PAGE_LINK : VACANCY_LINK } };
+  if (!resolved) {
+    return type === "partner_profile" ? { message: PARTNER_NOT_PUBLIC } : { errors: { link: type === "content" ? PAGE_LINK : VACANCY_LINK } };
+  }
 
   const stored = await storeReport(resolved, { category, details, email });
   if (stored.ok) return { reference: stored.reference };
@@ -55,6 +64,7 @@ export async function submitReport(input: ReportInput): Promise<ReportResult> {
 
   if (error.message === "CHARA_RATE_LIMITED") return { message: RATE_LIMITED };
   if (error.message === "CHARA_NOT_FOUND") {
+    if (type === "partner_profile") return { message: PARTNER_NOT_PUBLIC };
     return type === "profile" ? { message: APPLICANT_NOT_FOUND } : { errors: { link: VACANCY_NOT_PUBLIC } };
   }
   if (error.message === "CHARA_FORBIDDEN") {

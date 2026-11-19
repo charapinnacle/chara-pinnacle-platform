@@ -63,3 +63,9 @@ export type LimitPrompt = { planName: string; limit: number; used: number };
 export function inProgressText(count: number): string {
   return count === 1 ? "1 application is still in progress" : `${count} applications are still in progress`;
 }
+
+// The city '-' of a draft copied from an anonymous job order (V39): the database refuses it on an open vacancy, so the
+// employer enters the city the vacancy shows before publishing it.
+export const CITY_PLACEHOLDER = "-";
+export const CITY_BEFORE_PUBLISHING = "Enter the city before publishing.";
+export const CITY_OF_VACANCY = "Enter the city of the vacancy.";

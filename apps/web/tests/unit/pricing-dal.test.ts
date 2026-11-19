@@ -5,7 +5,7 @@ type Call = [method: string, ...args: unknown[]];
 const calls: Call[] = [];
 let result: { data: unknown; error: unknown } = { data: null, error: null };
 let user: { id: string; accountKind: string | null } | null = null;
-let organizations: { slug: string; role: "owner" | "admin" | "member" }[] = [];
+let organizations: { slug: string; role: "owner" | "admin" | "member"; type?: string }[] = [];
 let organizationsFailure = false;
 
 function builder() {
@@ -117,6 +117,12 @@ describe("the plans that can be bought (FR-G2, read through the pricing reader)"
     expect((await listSoldPlans()).map((plan) => plan.code)).toEqual(["employer_starter"]);
     expect(calls).toContainEqual(["from", "v_plans"]);
   });
+
+  it("reads the plans of the organisation's type (FR-R1)", async () => {
+    result = { data: [row({ code: "staffing_partner", price_minor: 5900 })], error: null };
+    expect((await listSoldPlans("staffing_company")).map((plan) => plan.code)).toEqual(["staffing_partner"]);
+    expect(calls).toContainEqual(["eq", "org_type", "staffing_company"]);
+  });
 });
 
 describe("who reads the page (FR-H2 AC12)", () => {
@@ -140,16 +146,16 @@ describe("who reads the page (FR-H2 AC12)", () => {
     user = { id: "u1", accountKind: "company" };
     organizations = [
       { slug: "joined", role: "member" },
-      { slug: "administered", role: "admin" },
-      { slug: "owned", role: "owner" },
+      { slug: "administered", role: "admin", type: "staffing_company" },
+      { slug: "owned", role: "owner", type: "employer" },
     ];
-    expect(await getPricingViewer()).toEqual({ kind: "manager", slug: "administered" });
+    expect(await getPricingViewer()).toEqual({ kind: "manager", slug: "administered", type: "staffing_company" });
   });
 
-  it("is a member when the person has no more than the member role anywhere", async () => {
+  it("is a member of the type of the organisation when the person has no more than the member role anywhere", async () => {
     user = { id: "u1", accountKind: "company" };
-    organizations = [{ slug: "joined", role: "member" }];
-    expect(await getPricingViewer()).toEqual({ kind: "member" });
+    organizations = [{ slug: "joined", role: "member", type: "recruitment_company" }];
+    expect(await getPricingViewer()).toEqual({ kind: "member", type: "recruitment_company" });
   });
 
   it("is unknown when the organisations cannot be read, so that the plans still show and no link is promised", async () => {

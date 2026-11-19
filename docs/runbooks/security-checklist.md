@@ -17,13 +17,13 @@ What each control does is in D79 of `OPEN_QUESTIONS.md` and the header of its mi
 | SA-14 | pgTAP `101` |
 | SA-18 | review of `.github/` |
 
-Change a quota or a period with a ticketed `update private.settings ...` or `update private.retention_policies ...`. How often the quotas are hit is the count of the web log lines `{"alert":"quota_refused",...}` (item 7); the database rolls a refusal back with its count.
+Change a quota with a ticketed `update private.settings ...`, and a retention period at `/en/admin/retention` (the audit log and inactive candidate account periods with a ticketed `update private.retention_policies ...`). How often the quotas are hit is the count of the web log lines `{"alert":"quota_refused",...}` (item 7); the database rolls a refusal back with its count.
 
 ## 2. The automated gate
 
-Export the three files from production as the database owner and run the gate; it exits non-zero and names every failure: entitlements off, a sold plan not mirrored at Stripe, an empty legal-entity detail, no active platform administrator, no published legal document, a current legal document that is still a draft, or no Vault secret `rate_limit_proof_key` (item 10). `--allow-draft-legal` lets draft texts pass (and still prints them) for a launch that counsel has not cleared; it changes nothing else. Delete the files afterwards.
+Export the three files from production as the database owner and run the gate; it exits non-zero and names every failure: entitlements off, a sold plan not mirrored at Stripe (a partner plan only while `release_partner_directories` is on, which also requires the partner Stripe portal secrets), an empty legal-entity detail, no active platform administrator, no published legal document, a current legal document that is still a draft, or no Vault secret `rate_limit_proof_key` (item 10). Delete `secrets.json` with the others. `--allow-draft-legal` lets draft texts pass (and still prints them) for a launch that counsel has not cleared; it changes nothing else. Delete the files afterwards.
 
-The Phase 2 gate (FR-S4 AC9) runs in the same call and reports on its own lines (`Phase 2 go-live check failed: ...`): a release feature (`partner_accounts`, `job_orders`, `find_workers`) whose release switch is on in `settings.json` (`release_partner_directories`; `release_job_orders` or `release_candidate_submissions`; `release_find_workers` or `release_messaging`) fails while `private.legal_release_gaps` names one of its documents as missing or as a draft. Any such row is a stop; `--allow-draft-legal` does not apply. The partner documents are not part of the Phase 1 draft rule, so while every switch is off they never fail the gate and are only listed as not yet approved. Which documents each feature needs is the setting `legal_release_documents`; `partner_dpa_required` (false until counsel decides, decision 6.3) adds `partner-dpa` to `job_orders` and `find_workers`.
+The Phase 2 gate (FR-S4 AC9) runs in the same call and reports on its own lines (`Phase 2 go-live check failed: ...`): a release feature (`partner_accounts`, `job_orders`, `find_workers`) whose release switch is on in `settings.json` (`release_partner_directories`; `release_job_orders` or `release_candidate_submissions`; `release_find_workers` or `release_messaging`) fails while `private.legal_release_gaps` names one of its documents as missing or as a draft. Any such row is a stop; `--allow-draft-legal` does not apply. The partner documents are not part of the Phase 1 draft rule, so while every switch is off they never fail the gate and are only listed as not yet approved. Which documents each feature needs is the setting `legal_release_documents`; `partner_dpa_required` (false until counsel decides, decision 6.3) adds `partner-dpa` to `job_orders` and `find_workers`. While `release_partner_directories` is on, the same Phase 2 lines fail when `stray_organization_consents` is not zero, and when the export has no such count: it counts the acceptances of the employer-pays commitment or the partner DPA that did not come through the owner's Commitments step (possible before V08) and are still the user's latest row for that document. Every granted partner DPA counts, because the DPA has no acceptance route yet (decision 6.3). While the switch is off a non-zero count is listed with the pending items and does not fail. `docs/runbooks/release-2a-go-live.md` item 9 says how to cancel such rows. The gate also prints every release switch that is on, `release_data_export` included (it needs no legal document, so it has no legal gate).
 
 ```sh
 psql "$PRODUCTION_DATABASE_URL" -Atc "select jsonb_object_agg(key, value) from private.settings" > settings.json
@@ -36,7 +36,18 @@ psql "$PRODUCTION_DATABASE_URL" -Atc "select jsonb_build_object(
                               from public.v_legal_current c),
   'legal_release_gaps', (select jsonb_object_agg(f, (select coalesce(jsonb_agg(jsonb_build_object('slug', g.slug, 'state', g.state)), '[]')
                                                      from private.legal_release_gaps(f) g))
-                         from jsonb_object_keys((select value from private.settings where key = 'legal_release_documents')) f))" > release.json
+                         from jsonb_object_keys((select value from private.settings where key = 'legal_release_documents')) f),
+  'stray_organization_consents', (select count(*) from public.consents c
+                                  where c.action = 'granted' and (c.purpose = 'partner-dpa'
+                                    or (c.purpose = 'employer-pays-commitment' and not exists (
+                                      select 1 from audit.log a where a.action = 'partner.commitment_accepted'
+                                        and a.actor_id = c.user_id and (a.metadata ->> 'version')::integer = c.version)))
+                                    and not exists (select 1 from public.consents w where w.user_id = c.user_id
+                                      and w.purpose = c.purpose and w.id > c.id)))" > release.json
+# The names (never the values) of the Edge Function secrets: required while release_partner_directories is on, for the
+# Stripe portal configurations of the partner types (docs/runbooks/checkout.md section 1).
+npx supabase secrets list --project-ref "$PROJECT_REF" -o json | jq '[.[].name]' > secrets.json
+jq --slurpfile names secrets.json '. + {edge_secrets: $names[0]}' release.json > release.tmp && mv release.tmp release.json
 npm run go-live:check -- settings.json plans.json release.json
 ```
 

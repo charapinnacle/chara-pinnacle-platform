@@ -65,7 +65,7 @@ Release 2b: workforce requirements, job orders, invitations, responses, submissi
 | V37 | `feat/db-direct-hiring-rules` | FR-Q5 data: rules table, admin RPCs, `hiring_rule_notice` | V01 |
 | V38 | `feat/direct-hiring-rules-console` | FR-Q5: admin page | V37 |
 | V39 | `feat/db-job-orders` | FR-N1: `list_job_orders`, `get_job_order`, eligibility, reveals, free-plan titles-only rule | V33, V11, V06, V07 |
-| V40 | `feat/job-orders-pages` | FR-N1: marketplace and detail pages, new job order alert | V39 |
+| V40 | `feat/job-orders-pages` | FR-N1: marketplace and detail pages, new job order alert; FR-L5 AC3/AC10 (Menu link, sitemap entry, axe check for this page) and AC9 (the job orders text of How it works links the page) | V39 |
 | V41 | `feat/db-invitations` | FR-O1: invitations, limits, daily cap, expiry on close | V39, V34 |
 | V42 | `feat/invitations-pages` | FR-O1: employer list, partner inbox, invite from suggestions and profiles | V41, V36 |
 | V43 | `feat/requirement-change-notices` | FR-M2: versions, change notices, closing reminders to partners | V33, V41 |
@@ -78,7 +78,7 @@ Release 2b: workforce requirements, job orders, invitations, responses, submissi
 | V50 | `feat/submission-pipeline` | FR-O5: stages, notes, bulk, share expiry, journey tracker, applicants page source filter | V49 |
 | V51 | `feat/partner-action-limits` | FR-R1: response and submission limits at boundaries and after a lapse | V13, V44, V48 |
 | V52 | `feat/commitment-reconsent` | FR-S4: outdated commitment blocks responses and submissions | V04, V44, V48 |
-| V53 | `feat/find-employers` | FR-L3: `search_employers`, saved searches | V23, V39 |
+| V53 | `feat/find-employers` | FR-L3: `search_employers`, saved searches; FR-L5 AC3/AC10 (Menu link, sitemap entry, axe check for this page) | V23, V39 |
 | V54 | `feat/job-order-follow-and-page` | FR-L4, FR-K5, FR-J3 (2b parts): job orders on company pages and in follower digests | V24, V23, V39, V48 |
 | V55 | `feat/partner-dashboards-job-orders` | FR-R3, FR-R4 (2b parts) | V30, V32, V41, V44, V48 |
 | V56 | `feat/employer-network-dashboard` | FR-R5 (2b parts) | V32, V41, V47, V24 |
@@ -100,9 +100,9 @@ Release 2c: messaging and Find Workers
 | V66 | `feat/messaging-limits-safety` | FR-P3: monthly limit, throttle, report message, block | V65, V13 |
 | V67 | `feat/message-notifications` | FR-P4, FR-T1: unread badge, delayed `new_message` email | V64, V02 |
 | V68 | `feat/worker-visibility` | FR-Q1: opt-in, card, yearly confirmation | V61 |
-| V69 | `feat/find-workers-search` | FR-Q2: `search_workers`, rule shaping, search log | V68, V37, V24 |
+| V69 | `feat/find-workers-search` | FR-Q2: `search_workers`, rule shaping, search log; FR-L5 AC3/AC10 (Menu link, sitemap entry, axe check for this page) | V68, V37, V24 |
 | V70 | `feat/contact-requests` | FR-Q3: contact requests, notices | V69, V63 |
-| V71 | `feat/connection-actions` | FR-P2: inquiry, request workforce, invite to job, submit candidate entry | V63, V41, V70, V24 |
+| V71 | `feat/connection-actions` | FR-P2: inquiry, request workforce, invite to job, submit candidate entry; FR-L5 AC3/AC10 (Menu link, sitemap entry, axe check for this page; no sitemap entry if Request Workers is behind sign-in) | V63, V41, V70, V24 |
 | V72 | `feat/direct-hiring-enforcement` | FR-Q5, FR-K1 AC8: rules in search, contact, invite and `apply_to_job` (risky) | V37, V70 |
 | V73 | `feat/moderation-messages` | FR-S1, FR-J3 (2c parts): message and contact request targets, reported message context | V57, V63, V70 |
 | V74 | `feat/messaging-retention-erasure` | FR-P3, FR-S3, FR-S2 (2c parts): conversation purge, erasure, export, metrics | V58, V63, V68, V70 |

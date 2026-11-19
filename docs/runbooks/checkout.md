@@ -1,6 +1,6 @@
 # Runbook: subscription checkout and customer portal
 
-FR-G2, design points D4, D36, D67 (OPEN_QUESTIONS.md). An owner or admin at the second step chooses Basic or Professional on `/[lang]/org/[slug]/billing`, reads the five disclosures on the confirmation page, enters the billing country and a VAT ID or a company registration number, accepts the Subscription and Billing Terms and is sent to the hosted checkout of the payment provider. CHARA never receives card data. Manage billing opens the hosted customer portal (card, plan change, cancellation, invoices). The webhook (FR-G3) activates the subscription.
+FR-G2, design points D4, D36, D67 (OPEN_QUESTIONS.md). An owner or admin at the second step chooses Basic or Professional among the plans of the organisation's type on `/[lang]/org/[slug]/billing` (employer plans for an employer; since V15, while `release_partner_directories` is on, the partner plans of a recruitment or staffing company), reads the six disclosures on the confirmation page, enters the billing country and a VAT ID or a company registration number, accepts the Subscription and Billing Terms and is sent to the hosted checkout of the payment provider. CHARA never receives card data. Manage billing opens the hosted customer portal (card, plan change, cancellation, invoices). The webhook (FR-G3) activates the subscription.
 
 ## 1. Configuration
 
@@ -8,6 +8,7 @@ FR-G2, design points D4, D36, D67 (OPEN_QUESTIONS.md). An owner or admin at the 
 |---|---|---|
 | Function secrets of `billing-checkout` | `BILLING_PROVIDER` | `stripe` in production, `null` for the local stack and CI. There is no default: a deployment without it fails to start. |
 | | `STRIPE_SECRET_KEY` | The restricted or secret key of the Stripe account, only when the provider is `stripe`. Never in `apps/web`. |
+| | `STRIPE_PORTAL_CONFIGURATION_EMPLOYER`, `STRIPE_PORTAL_CONFIGURATION_RECRUITMENT_COMPANY`, `STRIPE_PORTAL_CONFIGURATION_STAFFING_COMPANY` | The Customer Portal configuration (`bpc_...`) of each organisation type (section 2, step 3). Manage billing opens the configuration of the organisation's type. With `stripe`, a partner type without its configuration gets no portal (reason `portal_not_configured`, the page asks the person to contact us); the employer portal uses Stripe's default configuration while its own is not set. The go-live check requires the two partner names while `release_partner_directories` is on. |
 | | `SITE_URL` | The origin of the web application. The return addresses of Checkout and the portal are this origin plus `/en/org/<slug>/billing`; no address from a request is used. |
 | Web environment (optional) | `BILLING_CHECKOUT_ENDPOINT` | The address of the function when it is not the project's functions address plus `/billing-checkout`. |
 
@@ -20,14 +21,15 @@ Deploy with `npx supabase functions deploy billing-checkout --use-api` (`verify_
 No Stripe account existed when this was built. The adapter was tested with response fixtures that follow the API reference, not with recordings, so everything below is to be checked in Stripe test mode before launch (acceptance criterion AC12 of FR-G2 is a manual check):
 
 1. Enable Stripe Tax, enter the tax registrations of the CHARA legal entity and a preset product tax code (the mirror script does not set one).
-2. Configure the Customer Portal: update payment method, view invoice history, cancel subscription, and switch plans between the Basic and Professional products.
-3. Run the mirror (section 3) so that every sold plan has a product and a monthly EUR price, exclusive of VAT.
-4. Check the full path in test mode: a customer in the home country without a VAT ID (VAT at the standard rate), a business in another EU country with a valid VAT ID (reverse charge), the trial (30 days, card required, automatic conversion) and a customer who already had a trial (charged at once).
-5. Confirm that the redirect to `checkout.stripe.com` and `billing.stripe.com` works in the production build (the content security policy has `form-action 'self'`; the redirect is made by the browser after a fetch, not by a form post, and the browser test checks that it is not blocked).
+2. Payment methods: enable cards only, as the checkout states that a card is needed to start.
+3. Configure the Customer Portal once per organisation type (update payment method, view invoice history, cancel subscription, switch plans): the employer configuration lists only the employer Basic and Professional products, the recruitment one only "Basic (recruitment companies)" and "Professional (recruitment companies)", the staffing one only the staffing products. Set each `bpc_...` identifier as its `STRIPE_PORTAL_CONFIGURATION_<TYPE>` secret (section 1). A shared or default configuration would offer a company the plans of another type.
+4. Run the mirror (section 3) so that every sold plan has a product and a monthly EUR price, exclusive of VAT.
+5. Check the full path in test mode: a customer in the home country without a VAT ID (VAT at the standard rate), a business in another EU country with a valid VAT ID (reverse charge), the trial (30 days, card required, automatic conversion) and a customer who already had a trial (charged at once).
+6. Confirm that the redirect to `checkout.stripe.com` and `billing.stripe.com` works in the production build (the content security policy has `form-action 'self'`; the redirect is made by the browser after a fetch, not by a form post, and the browser test checks that it is not blocked).
 
 ## 3. Mirroring the plans and the go-live check
 
-Plans are rows of `billing.plans` (FR-G1). The script creates the Stripe product and the monthly price of every sold plan (an employer plan that is public, priced and not contact-sales; the partner plans of FR-R1 are seeded but not mirrored until partner checkout exists) and stores the identifiers in `billing.plan_provider_refs`. It reads Stripe first, so it never creates an object twice, and a price is replaced (new price, old one archived) when `price_minor` changes. It needs `psql` and the direct connection of an operator who is a member of `billing_owner`.
+Plans are rows of `billing.plans` (FR-G1). The script creates the Stripe product and the monthly price of every sold plan (a plan that is public, priced and not contact-sales: the employer plans and, since V15 and only while `release_partner_directories` is on, the Basic and Professional partner plans of FR-R1; while it is off each partner plan is printed as `skipped <code>: release_partner_directories off`). A partner product is named with its type, for example "Basic (recruitment companies)", as the three types share their plan names and stores the identifiers in `billing.plan_provider_refs`. It reads Stripe first, so it never creates an object twice, and a price is replaced (new price, old one archived) when `price_minor` changes. It needs `psql` and the direct connection of an operator who is a member of `billing_owner`.
 
 ```sh
 DATABASE_URL="$PRODUCTION_DATABASE_URL" STRIPE_SECRET_KEY=... node scripts/sync-stripe-plans.mjs
@@ -41,11 +43,11 @@ DATABASE_URL="$PRODUCTION_DATABASE_URL" STRIPE_SECRET_KEY=... node scripts/sync-
 npm run go-live:check -- settings.json plans.json release.json
 ```
 
-`release.json` is the export of the release facts in `docs/runbooks/security-checklist.md` section 2. It exits non-zero and names the plan or the setting when a sold plan lacks a limit row, a stored price or a Stripe amount equal to `price_minor`, or when `entitlements_enforced` is not true (and for the failures of that section). Delete the three files afterwards.
+`release.json` is the export of the release facts in `docs/runbooks/security-checklist.md` section 2. It exits non-zero and names the plan or the setting when a sold plan lacks a limit row, a stored price or a Stripe amount equal to `price_minor`, or when `entitlements_enforced` is not true (and for the failures of that section). The limit rows required are `active_jobs` and `members` for an employer plan and every partner limit key for a partner plan. A partner plan counts only while `release_partner_directories` is on, since the checkout refuses partner plans otherwise; with the switch off its gaps are printed as "not yet ready to sell" and do not fail the gate. Partner payments stay blocked until CHARA's live Stripe account exists (decision 7.3). Order for opening them: (1) CHARA confirms the partner prices and names (decision 2.1) and they are in `billing.plans`; (2) the two partner portal configurations exist and their secrets are set (section 2, step 3); (3) `release_partner_directories` is switched on; (4) the mirror runs and creates the partner products and prices (until then the checkout of a partner plan through Stripe answers `plan_not_synced`); (5) the go-live check passes. Delete the three files afterwards.
 
 ## 4. The free-trial rule
 
-One free trial per legal entity. At checkout the trial is refused (the plan starts without a trial and the first payment is due at once) when:
+One free trial per legal entity, whatever the organisation type (an employer, a recruitment or a staffing company; decision 2.3). At checkout the trial is refused (the plan starts without a trial and the first payment is due at once) when:
 
 - a `billing.trial_grants` row names the organisation, or one of the identifiers submitted (`vat:<VAT ID>`, `reg:<country>:<registration number>`, upper case, without spaces, dots, hyphens and slashes); the webhook writes that row when the first trialing subscription is applied;
 - a subscription of the organisation ever had a trial;
@@ -94,7 +96,7 @@ group by 1 order by 1 desc;
 
 - `billing.checkout_started` (entity: the organisation; metadata: plan code, trial days, whether the legal entity had used its trial) and `billing.portal_opened` are written by the two RPCs, with the person as actor; neither holds a VAT ID, a registration number or card data. The tax data is in `billing.customers`, which no API role can read.
 - The acceptance of the Subscription and Billing Terms is a `granted` row in `public.consents` (purpose `subscription-and-billing-terms`, the version shown). A new version of the terms is published as a legal document; the page and the check use the current version at once.
-- Changing the trial length or a price is a reviewed migration of `billing.plans` (FR-G1); run the mirror afterwards for a price.
+- The trial length is changed in the plan editor (FR-R2, V16) and a price with "Change price" (section 8); a price changed by a migration needs the mirror afterwards.
 
 ## 7. Workers never pay (FR-G6)
 
@@ -120,3 +122,19 @@ group by 1 order by 1 desc;
 Hosted check after each deploy of `billing-checkout`: post a checkout with the token of a candidate, expect `403` with `{"error":"forbidden","reason":null}` and one new `billing.worker_checkout_refused` row for that person. No row means the function's service-role key or the RPC is missing on the project.
 
 Policy text (AC8): migration `20261104110000_platform_rules_worker_statement.sql` publishes a DRAFT version 1 of `platform-rules` that states that a worker never pays and tells users to report a fee request to the Trust & Safety Administrator; pgTAP `089_workers_never_pay` fails if the current version loses either statement. Launch gate (not a build check): legal counsel approves the text, which is published as the next version through the administration console. The contact address for such reports belongs to the legal-entity settings of the public pages (FR-H1), not to this requirement.
+
+## 8. Price changes (FR-R2, V17)
+
+A Platform Administrator at aal2 changes a paid plan's price in the console (Plans and limits, "Change price"): amount in euros (1.00 to 100,000.00, exclusive of VAT) and a reason of 10 to 500 characters. The Server Action posts `{plan_code, price_minor, reason}` with the administrator's token to the Edge Function `billing-plan-price` (`verify_jwt = true`; address `BILLING_PLAN_PRICE_ENDPOINT` or the project's functions address). The function:
+
+1. checks the body (the same bounds as the database, so a refusal never follows a created price);
+2. calls `admin_get_plan_price` with the caller's token: anyone but an active admin at aal2 gets `403` (`aal2_required` for aal1), and nothing else is called;
+3. refuses the current amount, a free plan, and with Stripe a plan without a product (`409 plan_not_synced`: run the mirror first);
+4. creates a new monthly price on the plan's product (`POST /v1/prices`, exclusive of VAT, `metadata[plan_code]`, idempotency key of its parameters and the current five minutes); a provider failure is `502 unavailable` and nothing is recorded;
+5. calls `admin_record_plan_price` with the caller's token: `plans.price_minor` and `plan_provider_refs.provider_price_ref` change together and one `billing.plan_changed` row holds the old and new amount, both price references and the reason (the row triggers are silenced for these two writes only).
+
+No subscription is read or written. New checkouts use the new price at once; existing subscriptions keep their price until they are moved in the Stripe dashboard, and the move arrives through the webhook. The old price stays active at Stripe until the next mirror run archives it, which does not change the subscriptions on it.
+
+With the null provider (local stack and CI) no price exists anywhere: the amount alone is recorded, and a plan that already has a Stripe price refuses a change without one (`price_ref`). Live price creation needs CHARA's Stripe account (decision 7.3) and `BILLING_PROVIDER=stripe` with `STRIPE_SECRET_KEY` on `billing-plan-price`.
+
+When the record fails after the provider created the price (a lapsed second factor, a concurrent change), the function logs `billing-plan-price price not recorded` with the plan code and the price reference: archive that price in the Stripe dashboard (or run the mirror, which archives every live price of the plan that is not the stored one) and repeat the change. Hosted check after a deploy: post a change with an organisation owner's token and expect `403` with no new price in Stripe.

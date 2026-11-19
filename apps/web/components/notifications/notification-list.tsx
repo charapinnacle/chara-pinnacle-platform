@@ -29,7 +29,7 @@ type RowProps = {
 };
 
 function NotificationRow({ item, read, lang, accountKind, now, onRead }: RowProps) {
-  const { title, kindLabel, href } = presentNotification(item, { lang, accountKind });
+  const { title, kindLabel, href, secondary } = presentNotification(item, { lang, accountKind });
   const { pending, run } = useActionCall(FAILURE);
 
   // Opening the item marks it read; the page it opens does not wait for that.
@@ -76,6 +76,13 @@ function NotificationRow({ item, read, lang, accountKind, now, onRead }: RowProp
           title
         )}
       </p>
+      {secondary ? (
+        <p className="text-small text-muted-foreground">
+          {secondary.lead}{" "}
+          <TextLink href={secondary.href}>{secondary.label}</TextLink>
+          .
+        </p>
+      ) : null}
       {!href && !read ? (
         <div>
           <FormButton type="button" variant="secondary" className="w-auto" busy={pending} onClick={markRead}>

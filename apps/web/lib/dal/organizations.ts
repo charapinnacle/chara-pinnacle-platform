@@ -44,6 +44,14 @@ export const getMyOrganizations = cache(async (userId: string): Promise<Organiza
   );
 });
 
+// Whether the signed-in user belongs to an employer that is not suspended: only an employer searches the available
+// workforce (FR-K3); the database checks the plan again.
+export const isEmployerMember = cache(async (): Promise<boolean> => {
+  const user = await getCurrentUser();
+  if (!user || user.accountKind !== "company") return false;
+  return (await getMyOrganizations(user.id)).some(({ type, suspended }) => type === "employer" && !suspended);
+});
+
 // The organization in which the user may publish vacancies: an owner or an admin of an employer that is not suspended
 // (a partner organisation has no vacancies, FR-J1).
 export function publishingOrganization(organizations: Organization[]): Organization | undefined {

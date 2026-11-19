@@ -11,10 +11,17 @@ const requireUserMock = vi.hoisted(() => vi.fn());
 const allowanceMock = vi.hoisted(() => vi.fn());
 const forgetMock = vi.hoisted(() => vi.fn());
 const slugMock = vi.hoisted(() => vi.fn());
+const releasedMock = vi.hoisted(() => vi.fn());
+const notFoundMock = vi.hoisted(() =>
+  vi.fn(() => {
+    throw new Error("NOT_FOUND");
+  }),
+);
 const rpcMock = vi.fn();
 
 vi.mock("server-only", () => ({}));
-vi.mock("next/navigation", () => ({ redirect: redirectMock }));
+vi.mock("next/navigation", () => ({ redirect: redirectMock, notFound: notFoundMock }));
+vi.mock("@/lib/dal/release", () => ({ isReleased: releasedMock }));
 vi.mock("next/cache", () => ({ revalidatePath: revalidateMock }));
 vi.mock("@/lib/dal/session", () => ({ requireOrgRole: requireOrgRoleMock, requireUser: requireUserMock }));
 vi.mock("@/lib/dal/team", () => ({ getAllowance: allowanceMock }));
@@ -44,7 +51,11 @@ function refusal(message: string, details: string | null = null) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  requireOrgRoleMock.mockResolvedValue({ user: { id: "u" }, organization: { id: orgId, slug: "acme", role: "owner" } });
+  requireOrgRoleMock.mockResolvedValue({
+    user: { id: "u" },
+    organization: { id: orgId, slug: "acme", role: "owner", type: "employer" },
+  });
+  releasedMock.mockResolvedValue(false);
   rpcMock.mockResolvedValue({ data: null, error: null });
 });
 
@@ -56,7 +67,7 @@ describe("inviteMember", () => {
     await expect(inviteMember(input)).resolves.toEqual({
       invitation: { path: `/en/invitations/${token}`, expiresAt: "2026-10-12T10:00:00Z" },
     });
-    expect(requireOrgRoleMock).toHaveBeenCalledWith("en", "acme", "admin");
+    expect(requireOrgRoleMock).toHaveBeenCalledWith("en", "acme", "admin", { partner: "either" });
     expect(rpcMock).toHaveBeenCalledWith("invite_member", { p_org: orgId, p_email: "bea@example.com", p_role: "member" });
     expect(revalidateMock).not.toHaveBeenCalled();
   });
@@ -107,7 +118,7 @@ describe("inviteMember", () => {
 describe("member management", () => {
   it("changes a role as an admin or owner", async () => {
     await expect(changeMemberRole({ slug: "acme", userId, role: "admin" })).resolves.toEqual({});
-    expect(requireOrgRoleMock).toHaveBeenCalledWith("en", "acme", "admin");
+    expect(requireOrgRoleMock).toHaveBeenCalledWith("en", "acme", "admin", { partner: "either" });
     expect(rpcMock).toHaveBeenCalledWith("change_member_role", { p_org: orgId, p_user: userId, p_role: "admin" });
   });
 
@@ -127,16 +138,16 @@ describe("member management", () => {
 
   it("starts and cancels a transfer as the owner only", async () => {
     await transferOwnership({ slug: "acme", userId });
-    expect(requireOrgRoleMock).toHaveBeenLastCalledWith("en", "acme", "owner");
+    expect(requireOrgRoleMock).toHaveBeenLastCalledWith("en", "acme", "owner", { partner: "either" });
     expect(rpcMock).toHaveBeenLastCalledWith("transfer_ownership", { p_org: orgId, p_new_owner: userId });
     await cancelOwnershipTransfer("acme");
-    expect(requireOrgRoleMock).toHaveBeenLastCalledWith("en", "acme", "owner");
+    expect(requireOrgRoleMock).toHaveBeenLastCalledWith("en", "acme", "owner", { partner: "either" });
     expect(rpcMock).toHaveBeenLastCalledWith("cancel_ownership_transfer", { p_org: orgId });
   });
 
   it("lets any member confirm a transfer, and sends one at aal1 to two-step verification", async () => {
     await acceptOwnershipTransfer("acme");
-    expect(requireOrgRoleMock).toHaveBeenLastCalledWith("en", "acme", "member");
+    expect(requireOrgRoleMock).toHaveBeenLastCalledWith("en", "acme", "member", { partner: "either" });
     expect(rpcMock).toHaveBeenLastCalledWith("accept_ownership_transfer", { p_org: orgId });
     rpcMock.mockResolvedValue(refusal("CHARA_FORBIDDEN", "aal2_required"));
     await expect(acceptOwnershipTransfer("acme")).rejects.toThrow("REDIRECT:/en/mfa?next=");
@@ -159,6 +170,41 @@ describe("member management", () => {
   });
 });
 
+describe("the team of a recruitment or staffing company (FR-J1)", () => {
+  const partner = { user: { id: "u" }, organization: { id: orgId, slug: "acme", role: "owner", type: "recruitment_company" } };
+
+  it("invites to a partner while release 2a is on", async () => {
+    requireOrgRoleMock.mockResolvedValue(partner);
+    releasedMock.mockResolvedValue(true);
+    rpcMock.mockResolvedValue({ data: [{ token, expires_at: "2026-10-12T10:00:00Z" }], error: null });
+    await expect(inviteMember({ slug: "acme", email: "bea@example.com", role: "admin" })).resolves.toMatchObject({
+      invitation: { path: `/en/invitations/${token}` },
+    });
+    expect(releasedMock).toHaveBeenCalledWith("release_partner_directories");
+  });
+
+  it("answers every team action of a partner as not found while release 2a is off, without calling the database", async () => {
+    requireOrgRoleMock.mockResolvedValue(partner);
+    await expect(inviteMember({ slug: "acme", email: "bea@example.com", role: "member" })).rejects.toThrow("NOT_FOUND");
+    await expect(changeMemberRole({ slug: "acme", userId, role: "admin" })).rejects.toThrow("NOT_FOUND");
+    await expect(removeMember({ slug: "acme", userId })).rejects.toThrow("NOT_FOUND");
+    await expect(transferOwnership({ slug: "acme", userId })).rejects.toThrow("NOT_FOUND");
+    expect(rpcMock).not.toHaveBeenCalled();
+  });
+
+  it("changes a role in a partner and asks the release switch only for partners", async () => {
+    requireOrgRoleMock.mockResolvedValue(partner);
+    releasedMock.mockResolvedValue(true);
+    await expect(changeMemberRole({ slug: "acme", userId, role: "admin" })).resolves.toEqual({});
+    expect(rpcMock).toHaveBeenCalledWith("change_member_role", { p_org: orgId, p_user: userId, p_role: "admin" });
+    vi.clearAllMocks();
+    requireOrgRoleMock.mockResolvedValue({ user: { id: "u" }, organization: { id: orgId, slug: "acme", role: "owner", type: "employer" } });
+    rpcMock.mockResolvedValue({ data: null, error: null });
+    await changeMemberRole({ slug: "acme", userId, role: "admin" });
+    expect(releasedMock).not.toHaveBeenCalled();
+  });
+});
+
 describe("acceptInvitation", () => {
   beforeEach(() => {
     rpcMock.mockResolvedValue({ data: orgId, error: null });
@@ -169,14 +215,20 @@ describe("acceptInvitation", () => {
   const typeMessage = "This invitation is for a different type of company account than yours. Use a different email address.";
 
   it.each(["recruitment_company", "staffing_company"])(
-    "FR-J1: refuses a %s account without calling the database and keeps the link",
+    "FR-J1: lets the database decide for a %s account, which joins a company of its own type",
     async (type) => {
       requireUserMock.mockResolvedValue({ id: "user-1", accountKind: "company", intendedOrganizationType: type });
-      await expect(acceptInvitation(token)).resolves.toEqual({ message: typeMessage });
-      expect(rpcMock).not.toHaveBeenCalled();
-      expect(forgetMock).not.toHaveBeenCalled();
+      await expect(acceptInvitation(token)).rejects.toThrow("REDIRECT:/en/org/acme");
+      expect(rpcMock).toHaveBeenCalledWith("accept_invitation", { p_token: token });
+      expect(forgetMock).toHaveBeenCalled();
     },
   );
+
+  it("FR-J1: answers an invitation to a partner while release 2a is off as an invalid one and keeps the link", async () => {
+    rpcMock.mockResolvedValue(refusal("CHARA_FORBIDDEN", "release_off"));
+    await expect(acceptInvitation(token)).resolves.toEqual({ message: expect.stringContaining("not valid for your account") });
+    expect(forgetMock).not.toHaveBeenCalled();
+  });
 
   it("FR-J1: names the type mismatch the database reports (an employer invited to a partner)", async () => {
     rpcMock.mockResolvedValue(refusal("CHARA_FORBIDDEN", "organization_type_mismatch"));

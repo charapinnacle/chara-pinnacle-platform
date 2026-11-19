@@ -4,6 +4,12 @@ import type { Template } from "../template.ts";
 import { BRAND_NAME } from "../../lib/brand.ts";
 
 const ROLES: Record<string, string> = { admin: "an administrator", member: "a member" };
+// The account that can accept: one of the type of the inviting organisation (FR-J1).
+const ACCOUNTS: Record<string, string> = {
+  employer: "employer account",
+  recruitment_company: "recruitment company account",
+  staffing_company: "staffing company account",
+};
 const TOKEN = /^[A-Za-z0-9_-]{43}$/;
 
 function expiry(value: string | undefined): string {
@@ -17,6 +23,7 @@ export const memberInvitation: Template = {
     const organisation = field(payload, "org_name") ?? "An organisation";
     const role = ROLES[field(payload, "role") ?? ""] ?? "a member";
     const token = field(payload, "token");
+    const account = ACCOUNTS[field(payload, "org_type") ?? ""] ?? ACCOUNTS.employer;
     return (
       <Layout preview={`${organisation} invited you to join its team`} heading={`You are invited to a team on ${BRAND_NAME}`}>
         <Paragraph>
@@ -24,7 +31,7 @@ export const memberInvitation: Template = {
         </Paragraph>
         {token && TOKEN.test(token) ? <Action href={url(siteUrl, `/invitations/${token}`)}>View the invitation</Action> : null}
         <Paragraph>
-          You need a {BRAND_NAME} employer account with this email address to accept. If you were not expecting this invitation, ignore
+          You need a {BRAND_NAME} {account} with this email address to accept. If you were not expecting this invitation, ignore
           this email: nothing happens unless you accept.
         </Paragraph>
       </Layout>

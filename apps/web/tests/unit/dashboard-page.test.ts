@@ -1,7 +1,6 @@
 import { prerender } from "react-dom/static";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { MemberRole } from "@/lib/validation/team";
-import type { ReviewOutcome } from "@/lib/dal/partner-review";
 
 const requireUserMock = vi.hoisted(() => vi.fn());
 const requireOrgRoleMock = vi.hoisted(() => vi.fn());
@@ -27,12 +26,9 @@ vi.mock("@/lib/dal/organizations", () => ({
 }));
 vi.mock("@/lib/dal/mfa", () => ({ hasVerifiedTotpFactor: twoStepMock }));
 const reviewMock = vi.hoisted(() => vi.fn());
-const outcomeMock = vi.hoisted(() => vi.fn<() => Promise<ReviewOutcome | null>>(async () => null));
 const releasedMock = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/dal/partner-review", () => ({
   getPartnerReview: reviewMock,
-  getReviewOutcome: outcomeMock,
-  getReviewTargetDays: async () => 1,
 }));
 vi.mock("@/lib/dal/release", () => ({ isReleased: releasedMock }));
 const firstStepsMock = vi.hoisted(() => vi.fn());
@@ -45,6 +41,10 @@ vi.mock("@/components/dashboard/worker-dashboard", () => ({
   WorkerDashboard: (props: { availability: string | null; availableFrom: string | null; completeness: { percent: number } }) =>
     `WORKER ${props.availability} ${props.availableFrom} ${props.completeness.percent}`,
 }));
+vi.mock("@/components/dashboard/partner-dashboard", () => ({
+  PartnerDashboard: (props: { organization: { slug: string; role: string; type: string } }) =>
+    `PARTNER ${props.organization.slug} ${props.organization.role} ${props.organization.type}`,
+}));
 vi.mock("@/components/dashboard/employer-dashboard", () => ({
   EmployerDashboard: (props: { organization: { slug: string; role: string } }) =>
     `FIGURES ${props.organization.slug} ${props.organization.role}`,
@@ -52,8 +52,16 @@ vi.mock("@/components/dashboard/employer-dashboard", () => ({
 
 const { default: DashboardPage } = await import("@/app/[lang]/(app)/dashboard/[kind]/page");
 
-const acme = { id: "org-a", slug: "acme-bau", displayName: "Acme Bau", role: "owner" as MemberRole };
-const beta = { id: "org-b", slug: "beta-works", displayName: "Beta Works", role: "member" as MemberRole };
+const acme = { id: "org-a", slug: "acme-bau", displayName: "Acme Bau", type: "employer", role: "owner" as MemberRole };
+const beta = { id: "org-b", slug: "beta-works", displayName: "Beta Works", type: "employer", role: "member" as MemberRole };
+const manila = {
+  id: "org-9",
+  slug: "manila-skills",
+  displayName: "Manila Skills",
+  type: "recruitment_company",
+  role: "member" as MemberRole,
+  suspended: false,
+};
 const props = (kind: string, query: Record<string, string> = {}) =>
   ({ params: Promise.resolve({ lang: "en", kind }), searchParams: Promise.resolve(query) }) as Parameters<typeof DashboardPage>[0];
 // prerender waits for the async parts (Panel) as the server does; the comments it puts between text nodes are dropped.
@@ -97,66 +105,77 @@ describe("the access rules of the employer dashboard (FR-E5 AC9)", () => {
     expect(requireOrgRoleMock).not.toHaveBeenCalled();
   });
 
-  it("FR-J1 AC11: shows a submitted partner that it is waiting for review, never as approved or verified", async () => {
+  it("FR-R3 AC2, FR-R4 AC2: sends a submitted partner from the employer dashboard to the dashboard of its type", async () => {
     releasedMock.mockResolvedValue(true);
-    requireUserMock.mockResolvedValue({ id: "user-1", accountKind: "company", aal: "aal1", intendedOrganizationType: "recruitment_company" });
-    organizationsMock.mockResolvedValue([
-      { id: "org-9", slug: "manila-skills", displayName: "Manila Skills", type: "recruitment_company", role: "member", suspended: false },
-    ]);
-    for (const status of ["pending_review", "re_review"]) {
-      reviewMock.mockResolvedValue({ status, submittedAt: "2026-11-21T10:00:00Z", infoStep: null });
-      const html = await render("employer");
-      expect(html).toContain(">Your company is waiting for review</h2>");
-      expect(html).toContain("A review usually takes one working day.");
-      expect(html).toContain("Your company name and registration number");
-      expect(html).toContain("The licences you declare");
-      expect(html).toMatch(/<a[^>]*href="\/en\/org\/manila-skills\/workforce-profile"[^>]*>Complete your workforce profile/);
-      expect(html).not.toMatch(/approved|verified/i);
+    for (const [type, segment] of [["recruitment_company", "recruitment"], ["staffing_company", "staffing"]] as const) {
+      requireUserMock.mockResolvedValue({ id: "user-1", accountKind: "company", aal: "aal1", intendedOrganizationType: type });
+      organizationsMock.mockResolvedValue([{ ...manila, type }]);
+      for (const status of ["pending_review", "re_review", "info_requested", "listed", "declined"]) {
+        reviewMock.mockResolvedValue({ status, submittedAt: null, infoStep: null, listedAt: null });
+        await expect(render("employer"), status).rejects.toThrow(`REDIRECT:/en/dashboard/${segment}?org=manila-skills`);
+        await expect(render("employer", { org: "manila-skills" }), status).rejects.toThrow(
+          `REDIRECT:/en/dashboard/${segment}?org=manila-skills`,
+        );
+      }
     }
-    reviewMock.mockResolvedValue({ status: "info_requested", submittedAt: null, infoStep: "where_you_serve" });
-    let html = await render("employer");
-    expect(html).toContain(">Our team asked for more information</h2>");
-    expect(html).toMatch(/<a[^>]*href="\/en\/onboarding"[^>]*>Review and submit again/);
-    reviewMock.mockResolvedValue({ status: "listed", submittedAt: null, infoStep: null });
-    html = await render("employer");
-    expect(html).toContain(">Your company is listed</h2>");
-    expect(html).not.toMatch(/approved|verified/i);
     expect(requireOrgRoleMock).not.toHaveBeenCalled();
   });
 
-  it("FR-J4 AC7, AC10, NFR-C7: shows the message of our team, the statement of reasons and the listing, never approved", async () => {
+  it("FR-R3 AC2: renders the dashboard of the company's type for its members, after checking the membership as a partner page", async () => {
     releasedMock.mockResolvedValue(true);
-    requireUserMock.mockResolvedValue({ id: "user-1", accountKind: "company", aal: "aal1", intendedOrganizationType: "recruitment_company" });
-    organizationsMock.mockResolvedValue([
-      { id: "org-9", slug: "manila-skills", displayName: "Manila Skills", type: "recruitment_company", role: "owner", suspended: false },
-    ]);
-    reviewMock.mockResolvedValue({ status: "info_requested", submittedAt: null, infoStep: "where_you_serve", listedAt: null });
-    outcomeMock.mockResolvedValue({ decision: "request_info", reason: "Please add the countries you source from.", infoStep: "where_you_serve", decidedAt: "2026-11-22T10:00:00Z" });
-    let html = await render("employer");
-    expect(html).toContain("Check where you serve and what you offer, then submit your company again.");
-    expect(html).toContain(">Message from our team</h3>");
-    expect(html).toContain("Please add the countries you source from.");
-    expect(outcomeMock).toHaveBeenCalledWith("org-9");
-
-    reviewMock.mockResolvedValue({ status: "declined", submittedAt: null, infoStep: null, listedAt: null });
-    outcomeMock.mockResolvedValue({ decision: "decline", reason: "The registry has no entry for this number.", infoStep: null, decidedAt: "2026-11-22T10:00:00Z" });
-    html = await render("employer");
-    expect(html).toContain(">Your company is not listed</h2>");
-    expect(html).toContain(">Reason</h3>");
-    expect(html).toContain("The registry has no entry for this number.");
-    expect(html).toMatch(/<a[^>]*href="\/en\/contact"[^>]*>Contact us about this decision/);
-
     reviewMock.mockResolvedValue({ status: "listed", submittedAt: null, infoStep: null, listedAt: "2026-11-22T10:00:00Z" });
-    outcomeMock.mockResolvedValue({ decision: "approve", reason: null, infoStep: null, decidedAt: "2026-11-22T10:00:00Z" });
-    html = await render("employer");
-    expect(html).toContain(">Your company is listed</h2>");
-    expect(html).toMatch(/<a[^>]*href="\/en\/org\/manila-skills\/workforce-profile"[^>]*>Complete your workforce profile/);
-    expect(html).not.toMatch(/approved|verified/i);
+    requireUserMock.mockResolvedValue({ id: "user-1", accountKind: "company", aal: "aal1", intendedOrganizationType: "recruitment_company" });
+    organizationsMock.mockResolvedValue([manila]);
+    requireOrgRoleMock.mockResolvedValue({ user: { id: "user-1" }, organization: { ...manila, suspended: false } });
+    expect(await render("recruitment", { org: "manila-skills" })).toBe("PARTNER manila-skills member recruitment_company");
+    expect(await render("recruitment")).toBe("PARTNER manila-skills member recruitment_company");
+    expect(requireOrgRoleMock).toHaveBeenLastCalledWith("en", "manila-skills", "member", { mfa: false, partner: true, hideFromOutsiders: true });
 
-    reviewMock.mockResolvedValue({ status: "re_review", submittedAt: "2026-11-23T10:00:00Z", infoStep: null, listedAt: "2026-11-22T10:00:00Z" });
-    html = await render("employer");
-    expect(html).toContain("Your company stays listed while our team reviews the change.");
-    expect(html).not.toContain("not shown to employers");
+    requireOrgRoleMock.mockResolvedValue({ user: { id: "user-1" }, organization: { ...manila, suspended: true } });
+    const html = await render("recruitment");
+    expect(html).toContain("This organisation is suspended, so its figures are not available.");
+    expect(html).not.toContain("PARTNER");
+  });
+
+  it("FR-R3 AC2: a user of an employer and of R sees each organisation under its own dashboard", async () => {
+    releasedMock.mockResolvedValue(true);
+    reviewMock.mockResolvedValue({ status: "listed", submittedAt: null, infoStep: null, listedAt: "2026-11-22T10:00:00Z" });
+    organizationsMock.mockResolvedValue([acme, manila]);
+    requireOrgRoleMock.mockResolvedValue({ user: { id: "user-1" }, organization: { ...manila, suspended: false } });
+    await expect(render("recruitment", { org: "acme-bau" })).rejects.toThrow("REDIRECT:/en/dashboard/employer?org=acme-bau");
+    await expect(render("employer", { org: "manila-skills" })).rejects.toThrow("REDIRECT:/en/dashboard/recruitment?org=manila-skills");
+    expect(await render("recruitment", { org: "manila-skills" })).toBe("PARTNER manila-skills member recruitment_company");
+    // No ?org: the employer dashboard keeps the first organisation (the employer), the recruitment one its company.
+    requireOrgRoleMock.mockResolvedValue(access());
+    expect(await render("employer")).toContain("FIGURES acme-bau owner");
+    requireOrgRoleMock.mockResolvedValue({ user: { id: "user-1" }, organization: { ...manila, suspended: false } });
+    expect(await render("recruitment")).toBe("PARTNER manila-skills member recruitment_company");
+  });
+
+  it("FR-R4 AC2: a member of R, an employer and an outsider of the named company go back to their own dashboard", async () => {
+    releasedMock.mockResolvedValue(true);
+    reviewMock.mockResolvedValue({ status: "listed", submittedAt: null, infoStep: null, listedAt: "2026-11-22T10:00:00Z" });
+    organizationsMock.mockResolvedValue([manila]);
+    await expect(render("staffing", { org: "manila-skills" })).rejects.toThrow("REDIRECT:/en/dashboard/recruitment?org=manila-skills");
+    await expect(render("staffing")).rejects.toThrow("REDIRECT:/en/dashboard/employer");
+    await expect(render("staffing", { org: "other-staffing" })).rejects.toThrow("REDIRECT:/en/dashboard/employer");
+    organizationsMock.mockResolvedValue([acme]);
+    await expect(render("staffing", { org: "acme-bau" })).rejects.toThrow("REDIRECT:/en/dashboard/employer?org=acme-bau");
+    await expect(render("recruitment")).rejects.toThrow("REDIRECT:/en/dashboard/employer");
+    requireUserMock.mockResolvedValue({ id: "user-1", accountKind: "worker", aal: "aal1" });
+    await expect(render("staffing", { org: "manila-skills" })).rejects.toThrow("REDIRECT:/en/dashboard/worker");
+    await expect(render("recruitment")).rejects.toThrow("REDIRECT:/en/dashboard/worker");
+    expect(requireOrgRoleMock).not.toHaveBeenCalled();
+  });
+
+  it("keeps the partner dashboards behind release 2a and after the submission, as the other partner pages", async () => {
+    organizationsMock.mockResolvedValue([manila]);
+    releasedMock.mockResolvedValue(false);
+    await expect(render("recruitment", { org: "manila-skills" })).rejects.toThrow("NOT_FOUND");
+    releasedMock.mockResolvedValue(true);
+    reviewMock.mockResolvedValue({ status: "onboarding", submittedAt: null, infoStep: null, listedAt: null });
+    await expect(render("recruitment", { org: "manila-skills" })).rejects.toThrow("REDIRECT:/en/onboarding");
+    expect(requireOrgRoleMock).not.toHaveBeenCalled();
   });
 
   it("FR-J1: sends a submitted partner to its onboarding while release 2a is off", async () => {
@@ -260,7 +279,7 @@ describe("what each role sees", () => {
   it("shows no figure of a suspended organization", async () => {
     requireOrgRoleMock.mockResolvedValue(access({ suspended: true }));
     const html = await render();
-    expect(html).toContain("This organization is suspended, so its figures are not available.");
+    expect(html).toContain("This organisation is suspended, so its figures are not available.");
     expect(html).not.toContain("FIGURES");
   });
 

@@ -78,6 +78,14 @@ describe("partner notification emails (FR-T1)", () => {
     expect(hrefs(unknown.html)).toEqual([`${SITE}/en/onboarding`]);
   });
 
+  it("partner_info_requested about the licences leads to the Licences section of the workforce profile (FR-J4)", async () => {
+    const email = await renderEmail("partner_info_requested", { ...decision, info_step: "licences", org_slug: "manila-recruit" }, SITE);
+    expect(email.text).toContain("needs more information about your licences before it can be listed.");
+    expect(hrefs(email.html)).toEqual([`${SITE}/en/org/manila-recruit/workforce-profile#licences-heading`]);
+    const noSlug = await renderEmail("partner_info_requested", { ...decision, info_step: "licences", org_slug: "" }, SITE);
+    expect(hrefs(noSlug.html)).toEqual([`${SITE}/en/onboarding`]);
+  });
+
   it("the licence emails name the country and the date and fall back when they are missing", async () => {
     const expiring = await renderEmail("licence_expiring", { ...licence, valid_until: "2026-12-26" }, SITE);
     expect(expiring.text).toContain("The licence Manila Recruit recorded for Philippines is valid until 26 December 2026.");

@@ -44,7 +44,7 @@ beforeEach(() => {
 describe("startCheckout", () => {
   it("checks the role in the database, sends the shown terms and trial to the function and goes to the hosted page", async () => {
     await expect(startCheckout(input)).rejects.toThrow("REDIRECT:https://checkout.stripe.com/c/pay/cs_1");
-    expect(requireOrgRoleMock).toHaveBeenCalledWith("en", "acme", "admin");
+    expect(requireOrgRoleMock).toHaveBeenCalledWith("en", "acme", "admin", { partner: "either" });
     expect(requestMock).toHaveBeenCalledWith({
       action: "checkout",
       orgId: ORG,
@@ -67,9 +67,10 @@ describe("startCheckout", () => {
   it.each([
     [refusal(403, "terms_version_mismatch"), "The Subscription and Billing Terms changed. Reload this page to read the current version."],
     [refusal(409, "trial_changed"), "The free trial that applies to your company changed. Read the updated terms above, accept them again and continue."],
-    [refusal(403, "already_subscribed"), "Your organization already has a subscription. Use Manage billing to change it."],
+    [refusal(403, "already_subscribed"), "Your organisation already has a subscription. Use Manage billing to change it."],
     [refusal(403, "plan_not_sold"), "This plan cannot be bought online."],
-    [refusal(403, "organization_suspended"), "This organization is suspended, so it cannot start a subscription."],
+    [refusal(403, "plan_not_for_org_type"), "This plan is for another type of company. Choose one of the plans on your billing page."],
+    [refusal(403, "organization_suspended"), "This organisation is suspended, so it cannot start a subscription."],
     [refusal(502), "We could not start the checkout. Nothing was charged. Try again."],
     [refusal(0), "We could not start the checkout. Nothing was charged. Try again."],
     [refusal(403, "something the page does not know"), "We could not start the checkout. Nothing was charged. Try again."],
@@ -118,6 +119,7 @@ describe("openPortal", () => {
   it("opens the portal of the organization the role was checked for", async () => {
     requestMock.mockResolvedValue({ url: "https://billing.stripe.com/p/session/s_1" });
     await expect(openPortal("acme")).rejects.toThrow("REDIRECT:https://billing.stripe.com/p/session/s_1");
+    expect(requireOrgRoleMock).toHaveBeenCalledWith("en", "acme", "admin", { partner: "either" });
     expect(requestMock).toHaveBeenCalledWith({ action: "portal", orgId: ORG });
   });
 
@@ -126,15 +128,23 @@ describe("openPortal", () => {
     expect(requestMock).not.toHaveBeenCalled();
     requestMock.mockResolvedValue(refusal(403, "no_customer"));
     await expect(openPortal("acme")).resolves.toEqual({ message: "There is no billing account to manage yet." });
+    requestMock.mockResolvedValue(refusal(503, "portal_not_configured"));
+    await expect(openPortal("acme")).resolves.toEqual({
+      message: "Managing billing online is not available for your type of company yet. Contact us to change or cancel your plan.",
+    });
   });
 });
 
 describe("saveLegalEntityIdentifier", () => {
   const values = { identifier: "de 123 456 789", identifierKind: "vat_number" };
 
+  beforeEach(() => {
+    requireOrgRoleMock.mockResolvedValue({ organization: { id: ORG, type: "employer" } });
+  });
+
   it("is the owner's: the role is checked, and the database normalises and locks", async () => {
     await expect(saveLegalEntityIdentifier("acme", values)).resolves.toEqual({});
-    expect(requireOrgRoleMock).toHaveBeenCalledWith("en", "acme", "owner");
+    expect(requireOrgRoleMock).toHaveBeenCalledWith("en", "acme", "owner", { partner: "either" });
     expect(rpcMock).toHaveBeenCalledWith("set_legal_entity_identifier", {
       p_org: ORG,
       p_identifier: "de 123 456 789",
@@ -161,5 +171,13 @@ describe("saveLegalEntityIdentifier", () => {
   it("sends a lapsed second step to confirm it", async () => {
     rpcMock.mockResolvedValue({ error: { message: "CHARA_FORBIDDEN", details: "aal2_required", code: "P0001" } });
     await expect(saveLegalEntityIdentifier("acme", values)).rejects.toThrow("REDIRECT:/en/mfa?next=%2Fen%2Forg%2Facme%2Fbilling");
+  });
+
+  it("serves a recruitment or staffing company on its company profile page (FR-J1, FR-J4 AC9)", async () => {
+    requireOrgRoleMock.mockResolvedValue({ organization: { id: ORG, type: "staffing_company" } });
+    await expect(saveLegalEntityIdentifier("acme", values)).resolves.toEqual({});
+    expect(revalidateMock).toHaveBeenCalledWith("/en/org/acme/profile");
+    rpcMock.mockResolvedValue({ error: { message: "CHARA_FORBIDDEN", details: "aal2_required", code: "P0001" } });
+    await expect(saveLegalEntityIdentifier("acme", values)).rejects.toThrow("REDIRECT:/en/mfa?next=%2Fen%2Forg%2Facme%2Fprofile");
   });
 });

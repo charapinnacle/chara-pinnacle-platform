@@ -1,7 +1,6 @@
 import { GENERIC_FAILURE } from "@/lib/auth-errors";
 import type { PublicPlan } from "@/lib/billing/pricing";
 import { formatCount, formatDate } from "@/lib/i18n/format";
-import { billingPath } from "@/lib/routes";
 
 export type OrganizationType = "employer" | "recruitment_company" | "staffing_company";
 
@@ -32,7 +31,8 @@ const nouns: Record<string, Noun> = {
   workforce_listings: { one: "workforce listing", other: "workforce listings" },
   candidate_submissions_per_month: { one: "candidate submission this month", other: "candidate submissions this month" },
   messages_per_month: { one: "message this month", other: "messages this month" },
-  active_requirements: { one: "active workforce requirement", other: "active workforce requirements" },
+  active_requirements: { one: "open workforce requirement", other: "open workforce requirements" },
+  partner_invitations_per_requirement: { one: "invitation", other: "invitations" },
 };
 
 const responseNouns: Record<OrganizationType, Noun> = {
@@ -86,10 +86,11 @@ export function planComparison(plans: PublicPlan[], key: string, type: Organizat
   return `${parts.join("; ")}.`;
 }
 
-// The billing page sells employer plans only until partner checkout opens (V15); until then a partner's prompt compares
-// the plans instead of linking to a page that would send it elsewhere.
-export function upgradeHref(lang: string, slug: string, type: OrganizationType): string | null {
-  return type === "employer" ? billingPath(lang, slug) : null;
+// The team size counts the owner (FR-R1 AC8), who cannot leave, so a members limit below 1 (the free partner plans carry
+// 0, AC2) allows the owner alone, as the database does when it refuses an invitation: the pages say "1 of 1", never
+// "1 of 0", and a team beyond the owner on such a plan is still over the limit.
+export function shownLimit(key: string, limit: number | null): number | null {
+  return key === "members" && limit !== null ? Math.max(limit, 1) : limit;
 }
 
 // The limit the database refuses at, or null when it does not apply (not enforced, or the plan has none).
@@ -98,8 +99,18 @@ export function appliedLimit(usage: OrgUsage, key: string): number | null {
   return item?.applies ? item.limit : null;
 }
 
+// The plan's limit while the limits are not enforced yet (entitlements_enforced off): a form warns beyond it instead of
+// refusing, so the partner knows what it will have to upgrade for. Null when the limit applies or the plan has none.
+export type PlanAllowance = { limit: number; planName: string | null };
+
+export function unenforcedAllowance(usage: OrgUsage, key: string): PlanAllowance | null {
+  const item = usage.items[key];
+  if (!item || item.applies || item.limit === null) return null;
+  return { limit: item.limit, planName: usage.planName };
+}
+
 // The prompt for a limit that applies, null when it does not. The plans of the organisation's type are compared when
-// they are given (the prompt has no billing link to offer).
+// they are given, next to the link to the billing page.
 export function limitPrompt(
   usage: OrgUsage,
   key: string,
@@ -117,4 +128,10 @@ export function limitPrompt(
     planName: usage.planName,
     comparison: plans ? planComparison(plans, key, type, limit) : null,
   };
+}
+
+// The first public plan of the type, in the order of billing.plans, that has the feature: "Professional" for further
+// destination countries. Null when no public plan has it.
+export function featurePlanName(plans: readonly PublicPlan[], feature: string): string | null {
+  return plans.find((plan) => plan.features.includes(feature))?.name ?? null;
 }

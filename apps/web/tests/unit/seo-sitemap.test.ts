@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { legalSlugs } from "@/lib/public/navigation";
+import { legalSlugs, networkMenu } from "@/lib/public/navigation";
 import { robotsDisallow } from "@/lib/seo/private-routes";
 import { sitemapEntries, vacancyCapacity } from "@/lib/seo/sitemap";
 
@@ -43,7 +43,47 @@ describe("the sitemap entries (FR-H5 AC3)", () => {
   });
 
   it("leaves room for the vacancies under the limit of the protocol", () => {
-    expect(vacancyCapacity(10) + 9 + 10).toBe(50_000);
+    expect(vacancyCapacity(10) + 8 + 10).toBe(50_000);
+  });
+});
+
+describe("the pages of the network in the sitemap (FR-L5 AC3)", () => {
+  const networkPaths = (released: Parameters<typeof networkMenu>[0]) => networkMenu(released).links.map(({ path }) => path);
+  const pathsOf = (released: Parameters<typeof networkMenu>[0]) =>
+    sitemapEntries({ siteUrl: SITE, lang: "en", legalSlugs: [], networkPaths: networkPaths(released), vacancies: [] }).map(
+      (entry) => new URL(entry.url).pathname,
+    );
+
+  it("lists none of them while every release is off", () => {
+    expect(pathsOf([])).toHaveLength(8);
+    for (const path of ["/en/partners/recruitment", "/en/partners/staffing", "/en/job-orders", "/en/companies", "/en/find-workers", "/en/request-workers"]) {
+      expect(pathsOf([])).not.toContain(path);
+    }
+  });
+
+  it("lists the two partner directories after the static pages, without a date, once release 2a is on, the job orders page with release 2b, and no page of 2c", () => {
+    const entriesOn = sitemapEntries({ siteUrl: SITE, lang: "en", legalSlugs: [], networkPaths: networkPaths(["release_partner_directories"]), vacancies });
+    expect(entriesOn.map((entry) => new URL(entry.url).pathname).slice(8, 10)).toEqual(["/en/partners/recruitment", "/en/partners/staffing"]);
+    expect(entriesOn.slice(8, 10).every((entry) => entry.lastModified === undefined)).toBe(true);
+    const every = pathsOf(["release_partner_directories", "release_job_orders", "release_find_workers", "release_candidate_submissions", "release_messaging"]);
+    expect(every).toHaveLength(11);
+    expect(every.slice(8, 11)).toEqual(["/en/partners/recruitment", "/en/partners/staffing", "/en/job-orders"]);
+    for (const path of ["/en/companies", "/en/find-workers", "/en/request-workers"]) expect(every).not.toContain(path);
+    expect(pathsOf(["release_job_orders"]).slice(8)).toEqual(["/en/job-orders"]);
+    expect(pathsOf(["release_partner_directories"])).not.toContain("/en/job-orders");
+  });
+
+  it("keeps the vacancies, profiles and company pages within the file after the network pages", () => {
+    const network = networkPaths(["release_partner_directories"]);
+    const full = sitemapEntries({
+      siteUrl: SITE,
+      lang: "en",
+      legalSlugs: [],
+      networkPaths: network,
+      vacancies: [],
+      partners: Array.from({ length: vacancyCapacity(network.length) + 5 }, (_, index) => ({ slug: `p-${index}`, updatedAt: "2026-10-06T10:00:00Z" })),
+    });
+    expect(full).toHaveLength(50_000);
   });
 });
 

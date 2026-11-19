@@ -4,18 +4,20 @@ import { cn } from "@/lib/utils";
 // The steps that are left once the email is confirmed and the account type is committed: what the person did on an earlier
 // page (the account, the account type) is not a step here. An owner must set up two-step verification (FR-A4). Below
 // 640 px only the current step is named beside the circles, under "Step 2 of 3"; the other names stay for screen readers.
-// A recruitment or staffing company (FR-J1) has the five steps of its own journey: too many for a name beside the circles
-// at 360 px, so there the current name joins the "Step 2 of 5" line instead. A step that staff reopened with a request
-// for information (FR-J4) is shown as not done again, and says so to screen readers.
+// A recruitment or staffing company (FR-J1) has the six steps of its own journey, Where you serve and What you offer each
+// a page of its own: too many for a name beside the circles at 360 px, so there the current name joins the "Step 2 of 6"
+// line instead; at any width only the current one is named, as six names do not fit beside the circles in the 512 px
+// column either. The steps that staff reopened with a request for information (FR-J4) are shown as not done again, and
+// say so to screen readers.
 const onboardingJourneys = {
   company: ["Company", "Security", "Ready"],
-  partner: ["Company", "Where you serve", "Commitments", "Security", "Ready"],
+  partner: ["Company", "Where you serve", "What you offer", "Commitments", "Security", "Ready"],
   worker: ["Your profile", "Ready"],
 } as const;
 
-type OnboardingStepsProps = { kind: keyof typeof onboardingJourneys; current: number; reopened?: number };
+type OnboardingStepsProps = { kind: keyof typeof onboardingJourneys; current: number; reopened?: readonly number[] };
 
-export function OnboardingSteps({ kind, current, reopened }: OnboardingStepsProps) {
+export function OnboardingSteps({ kind, current, reopened = [] }: OnboardingStepsProps) {
   const steps = onboardingJourneys[kind];
   const long = steps.length > 3;
   return (
@@ -26,7 +28,7 @@ export function OnboardingSteps({ kind, current, reopened }: OnboardingStepsProp
       <ol aria-label="Setting up your account" className="flex items-center gap-2 sm:gap-3">
         {steps.map((label, index) => {
           const state =
-            index === current ? "current" : index === reopened ? "reopened" : index < current ? "done" : "upcoming";
+            index === current ? "current" : reopened.includes(index) ? "reopened" : index < current ? "done" : "upcoming";
           return (
             <li
               key={label}
@@ -47,8 +49,9 @@ export function OnboardingSteps({ kind, current, reopened }: OnboardingStepsProp
               <span
                 className={cn(
                   "text-small whitespace-nowrap",
-                  state === "current" ? "font-semibold text-foreground" : "text-muted-foreground max-sm:sr-only",
-                  long && "max-sm:sr-only",
+                  state === "current"
+                    ? cn("font-semibold text-foreground", long && "max-sm:sr-only")
+                    : cn("text-muted-foreground", long ? "sr-only" : "max-sm:sr-only"),
                 )}
               >
                 <span className="sr-only">{`Step ${index + 1} of ${steps.length}: `}</span>

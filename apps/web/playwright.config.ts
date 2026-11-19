@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { defineConfig, devices } from "@playwright/test";
+import { defineConfig, devices, type PlaywrightTestConfig } from "@playwright/test";
 
 const baseURL = "http://localhost:3100";
 const googleBaseURL = "http://localhost:3101";
@@ -39,6 +39,7 @@ process.env.DOCUMENT_URL_PORT ||= "54432";
 process.env.NOTIFY_PORT ||= "54433";
 process.env.BILLING_CHECKOUT_PORT ||= "54434";
 process.env.BILLING_WEBHOOK_PORT ||= "54435";
+process.env.BILLING_PLAN_PRICE_PORT ||= "54436";
 process.env.EDGE_SHARED_SECRET ||= "local-scheduler-secret";
 // Signs the deliveries that tests send to billing-webhook (the null billing provider).
 process.env.BILLING_WEBHOOK_SECRET ||= "local-billing-webhook-secret";
@@ -46,8 +47,46 @@ process.env.BILLING_WEBHOOK_SECRET ||= "local-billing-webhook-secret";
 process.env.RESEND_WEBHOOK_SECRET ||= "whsec_bG9jYWwtcmVzZW5kLXdlYmhvb2stc2VjcmV0LTAxMjM0NQ==";
 process.env.DOCUMENT_URL_ENDPOINT ||= `http://127.0.0.1:${process.env.DOCUMENT_URL_PORT}/`;
 process.env.BILLING_CHECKOUT_ENDPOINT ||= `http://127.0.0.1:${process.env.BILLING_CHECKOUT_PORT}/`;
+process.env.BILLING_PLAN_PRICE_ENDPOINT ||= `http://127.0.0.1:${process.env.BILLING_PLAN_PRICE_PORT}/`;
 
-export default defineConfig({
+// CI runs the projects in three jobs, each against its own database (E2E_GROUP): the projects chained after "versions"
+// and after "notifications-release" only wait for the earlier projects so as not to share a database with them. A
+// group keeps the order of its own projects and drops its dependencies on the other groups.
+const e2eGroupRoots = new Map([
+  ["chromium", "parallel"],
+  ["versions", "serial"],
+  ["notifications-release", "release"],
+]);
+const e2eGroupOrder = ["parallel", "serial", "release"];
+
+function inE2EGroup(config: PlaywrightTestConfig): PlaywrightTestConfig {
+  const group = process.env.E2E_GROUP;
+  if (!group) return config;
+  if (!e2eGroupOrder.includes(group)) {
+    throw new Error(`E2E_GROUP must be one of ${e2eGroupOrder.join(", ")}`);
+  }
+  const projects = config.projects ?? [];
+  const byName = new Map(projects.map((project) => [project.name, project]));
+  const groupOf = (name: string): number => {
+    const root = e2eGroupRoots.get(name);
+    if (root) return e2eGroupOrder.indexOf(root);
+    return Math.max(...(byName.get(name)?.dependencies ?? []).map(groupOf));
+  };
+  const index = e2eGroupOrder.indexOf(group);
+  return {
+    ...config,
+    projects: projects
+      .filter((project) => groupOf(project.name ?? "") === index)
+      .map((project) => ({
+        ...project,
+        dependencies: project.dependencies?.filter(
+          (name) => groupOf(name) === index,
+        ),
+      })),
+  };
+}
+
+const config = defineConfig({
   testDir: "tests/e2e",
   fullyParallel: true,
   // The CI runner is slower than a development machine and runs the tests in parallel: the 5 s default is too tight
@@ -99,6 +138,27 @@ export default defineConfig({
         "**/partner-availability.spec.ts",
         "**/partner-usage-limits.spec.ts",
         "**/partner-review-emails.spec.ts",
+        "**/partner-checkout.spec.ts",
+        "**/plan-editor-release.spec.ts",
+        "**/partner-profile.spec.ts",
+        "**/partner-search.spec.ts",
+        "**/staffing-directory.spec.ts",
+        "**/company-page.spec.ts",
+        "**/save-partner-follow.spec.ts",
+        "**/partner-network-pages.spec.ts",
+        "**/data-export.spec.ts",
+        "**/partner-dashboards.spec.ts",
+        "**/admin-network-statistics.spec.ts",
+        "**/partner-team.spec.ts",
+        "**/ranking-transparency.spec.ts",
+        "**/release-2a-journey.spec.ts",
+        "**/workforce-requirements.spec.ts",
+        "**/requirement-limits.spec.ts",
+        "**/requirement-vacancies.spec.ts",
+        "**/partner-suggestions.spec.ts",
+        "**/job-orders.spec.ts",
+        "**/invitations.spec.ts",
+        "**/requirement-changes.spec.ts",
       ],
     },
     {
@@ -352,13 +412,181 @@ export default defineConfig({
       testMatch: "**/partner-review-emails.spec.ts",
       dependencies: ["partner-usage-release"],
     },
+    // The same release switch is set for the partner pricing tabs and the partner checkout (FR-R1), so this spec follows
+    // the one above.
+    {
+      name: "partner-checkout-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/partner-checkout.spec.ts",
+      dependencies: ["partner-review-emails-release"],
+    },
+    // The same release switch is turned on through the settings editor, and a partner plan is renamed for the whole
+    // database (FR-R2), so this spec follows the one above.
+    {
+      name: "plan-editor-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/plan-editor-release.spec.ts",
+      dependencies: ["partner-checkout-release"],
+    },
+    // The same release switch is set for the public partner profiles (FR-K4), and the profile read limit is lowered for a
+    // moment, so this spec follows the one above.
+    {
+      name: "partner-profile-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/partner-profile.spec.ts",
+      dependencies: ["plan-editor-release"],
+    },
+    // The same release switch is set for the recruitment directory (FR-L1), the search function is withdrawn and the
+    // search limit lowered for a moment, so this spec follows the one above.
+    {
+      name: "partner-search-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/partner-search.spec.ts",
+      dependencies: ["partner-profile-release"],
+    },
+    // The same release switch is set for the staffing directory and the available workforce search (FR-L2, FR-K3), the
+    // two search functions are withdrawn, the search limit lowered and the entitlements enforced for a moment, so this
+    // spec follows the one above.
+    {
+      name: "staffing-directory-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/staffing-directory.spec.ts",
+      dependencies: ["partner-search-release"],
+    },
+    // The same release switch is set for the company pages (FR-K5) and the switch function is withdrawn for a moment, so
+    // this spec follows the one above.
+    {
+      name: "company-page-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/company-page.spec.ts",
+      dependencies: ["staffing-directory-release"],
+    },
+    // The same release switch is set for saved partners and follows (FR-L4), the save and list functions are withdrawn
+    // for a moment and the follower digest runs over the whole database, so this spec follows the one above.
+    {
+      name: "save-partner-follow-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/save-partner-follow.spec.ts",
+      dependencies: ["company-page-release"],
+    },
+    // The same release switch is set for the menu, sitemap and partner sections of the public pages, and the switches of
+    // releases 2b and 2c too (FR-L5), so this spec follows the one above.
+    {
+      name: "partner-network-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/partner-network-pages.spec.ts",
+      dependencies: ["save-partner-follow-release"],
+    },
+    // The switch of the data export (FR-S3) is set for the whole database, release 2a for a moment, and the spec runs
+    // account-ops, notify and the retention job over the whole database and withdraws the export functions for a moment,
+    // so it follows the one above.
+    {
+      name: "data-export-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/data-export.spec.ts",
+      dependencies: ["partner-network-release"],
+    },
+    // The partner dashboards (FR-R3, FR-R4) set release 2a for the whole database, lock a table and withdraw their
+    // function for a moment, so they follow the one above.
+    {
+      name: "partner-dashboards-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/partner-dashboards.spec.ts",
+      dependencies: ["data-export-release"],
+    },
+    // The network statistics (FR-S2) set release 2a for the whole database and withdraw their count function for a
+    // moment, so they follow the one above.
+    {
+      name: "admin-network-statistics-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/admin-network-statistics.spec.ts",
+      dependencies: ["partner-dashboards-release"],
+    },
+    // The partner team pages (FR-J1) set release 2a for the whole database and enforce the limits for a moment, so they
+    // follow the one above.
+    {
+      name: "partner-team-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/partner-team.spec.ts",
+      dependencies: ["admin-network-statistics-release"],
+    },
+    // The ranking page (NFR-C8) sets release 2a for the whole database, so it follows the one above.
+    {
+      name: "ranking-transparency-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/ranking-transparency.spec.ts",
+      dependencies: ["partner-team-release"],
+    },
+    // The journey of release 2a from sign-up to the public profile (NFR-O4) sets release 2a for the whole database and
+    // runs last of the release 2a projects.
+    {
+      name: "release-2a-journey",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/release-2a-journey.spec.ts",
+      dependencies: ["ranking-transparency-release"],
+    },
+    // The workforce requirements (FR-M1) set release 2b for the whole database, so they follow the release 2a projects.
+    {
+      name: "workforce-requirements-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/workforce-requirements.spec.ts",
+      dependencies: ["release-2a-journey"],
+    },
+    // The plan limits of workforce requirements (FR-M4) set release 2b and the entitlements for the whole database and
+    // change an employer plan row for a moment, so they follow the workforce requirements.
+    {
+      name: "requirement-limits-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/requirement-limits.spec.ts",
+      dependencies: ["workforce-requirements-release"],
+    },
+    // The vacancies from a workforce requirement (FR-M1 AC10) set release 2b and the entitlements for the whole database
+    // and write draft vacancies, so they follow the requirement limits.
+    {
+      name: "requirement-vacancies-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/requirement-vacancies.spec.ts",
+      dependencies: ["requirement-limits-release"],
+    },
+    // The partner suggestions (FR-M3) set releases 2a and 2b for the whole database and withdraw suggest_partners for a
+    // moment, so they follow the vacancies from a requirement.
+    {
+      name: "partner-suggestions-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/partner-suggestions.spec.ts",
+      dependencies: ["requirement-vacancies-release"],
+    },
+    // The job order marketplace, the new job order alert and the public Job orders page (FR-N1, FR-L5) set releases 2a
+    // and 2b for the whole database and withdraw list_job_orders for a moment, so they follow the partner suggestions.
+    {
+      name: "job-orders-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/job-orders.spec.ts",
+      dependencies: ["partner-suggestions-release"],
+    },
+    // The invitation pages (FR-O1) set releases 2a and 2b and the plan limits for the whole database and withdraw
+    // list_requirement_invitations for a moment, so they follow the job orders.
+    {
+      name: "invitations-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/invitations.spec.ts",
+      dependencies: ["job-orders-release"],
+    },
+    // The requirement versions and the notices to invited partners (FR-M2, V43) set releases 2a and 2b for the whole
+    // database and run the daily close and reminder jobs, so they follow the invitation pages.
+    {
+      name: "requirement-changes-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/requirement-changes.spec.ts",
+      dependencies: ["invitations-release"],
+    },
     // The sitemap is compared with every public vacancy of the database, so no other spec may open or close one while
     // these tests run: they follow every other project.
     {
       name: "sitemap",
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/search-engine-sitemap.spec.ts",
-      dependencies: ["partner-review-emails-release"],
+      dependencies: ["requirement-changes-release"],
     },
     // The load times of the performance smoke are measured when no other spec loads the server: last of all.
     {
@@ -407,6 +635,12 @@ export default defineConfig({
       reuseExistingServer: !process.env.CI,
     },
     {
+      command: `../../supabase/functions/serve-local.sh billing-plan-price ${process.env.BILLING_PLAN_PRICE_PORT}`,
+      port: Number(process.env.BILLING_PLAN_PRICE_PORT),
+      timeout: 60_000,
+      reuseExistingServer: !process.env.CI,
+    },
+    {
       command: "npm run build && npm run start",
       url: baseURL,
       timeout: 300_000,
@@ -421,3 +655,5 @@ export default defineConfig({
     },
   ],
 });
+
+export default inE2EGroup(config);

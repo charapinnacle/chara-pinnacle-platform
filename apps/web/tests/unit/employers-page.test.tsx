@@ -8,10 +8,12 @@ let showPricing = false;
 const getPostJobHref = vi.hoisted(() => vi.fn());
 const getCurrentUser = vi.hoisted(() => vi.fn());
 const logged = vi.hoisted(() => vi.fn());
+const releasedSwitches = vi.hoisted(() => vi.fn());
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/dal/organizations", () => ({ getPostJobHref }));
 vi.mock("@/lib/dal/session", () => ({ getCurrentUser }));
+vi.mock("@/lib/dal/release", () => ({ releasedSwitches }));
 vi.mock("@/lib/public/navigation", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/public/navigation")>()),
   get SHOW_PRICING() {
@@ -58,6 +60,7 @@ beforeEach(() => {
   showPricing = true;
   getPostJobHref.mockResolvedValue("/en/signup?kind=company");
   getCurrentUser.mockResolvedValue(null);
+  releasedSwitches.mockResolvedValue([]);
   vi.spyOn(console, "error").mockImplementation(logged);
   logged.mockClear();
 });
@@ -138,5 +141,26 @@ describe("the For employers page (U73, FR-H1, FR-H2)", () => {
     expect(text).toContain("Owners and administrators confirm a second step before they open applicants, the team, the company profile or billing.");
     for (const phrase of ["recruitment", "staffing", "verified", "every opening", "every page", "CHARA Match", "corridor"]) expect(text.toLowerCase()).not.toContain(phrase.toLowerCase());
     expect(html).not.toMatch(/<(img|picture)\b|\sstyle=/);
+  });
+
+  it("FR-L5 AC9: has a section on finding partners with a link to each directory while release 2a is on, before the pricing", async () => {
+    expect(await render()).not.toContain("employers-partners-heading");
+    releasedSwitches.mockResolvedValue(["release_partner_directories"]);
+    const html = await render();
+    expect(html).toMatch(/<h2 id="employers-partners-heading"[^>]*>Find recruitment and staffing partners.<\/h2>/);
+    expect(html).toMatch(/<a [^>]*href="\/en\/partners\/recruitment"[^>]*>Recruitment partners<\/a>/);
+    expect(html).toMatch(/<a [^>]*href="\/en\/partners\/staffing"[^>]*>Staffing partners<\/a>/);
+    expect(html.indexOf("employers-facts-heading")).toBeLessThan(html.indexOf("employers-partners-heading"));
+    expect(html.indexOf("employers-partners-heading")).toBeLessThan(html.indexOf("employers-pricing-heading"));
+    expect(textOf(html)).toContain("no company pays to rank higher");
+    expect(textOf(html).toLowerCase()).not.toContain("verified");
+    expect(html.match(/<h1/g)).toHaveLength(1);
+  });
+
+  it("FR-L5 AC8: holds no number other than the step numbers, except the price read from the plan records", async () => {
+    releasedSwitches.mockResolvedValue(["release_partner_directories"]);
+    failure = new Error("connection refused");
+    const html = (await render()).replace(/<span aria-hidden="true"[^>]*>\d+<\/span>/g, "");
+    expect(textOf(html)).not.toMatch(/\d/);
   });
 });

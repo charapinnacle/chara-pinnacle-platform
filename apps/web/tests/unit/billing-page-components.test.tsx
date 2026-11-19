@@ -60,6 +60,15 @@ describe("the usage bars (FR-G5 AC7, AC12)", () => {
     expect(text(html)).toContain("Team members Unlimited");
     expect(html).not.toContain("progressbar");
   });
+
+  it("says a limit of 0 not in use is not included in the plan, without a bar or Limit reached", () => {
+    const html = render([{ key: "active_jobs", used: 0, limit: 0 }]);
+    expect(text(html)).toContain("Open vacancies Not included in your plan");
+    expect(html).not.toContain("progressbar");
+    expect(html).not.toContain("Limit reached");
+    expect(html).not.toContain("<a");
+    expect(text(render([{ key: "workforce_listings", used: 2, limit: 0 }]))).toContain("Workforce listings 2 of 0 Over the limit");
+  });
 });
 
 describe("the plan summary (FR-G5 AC1, AC4, AC5, AC9)", () => {
@@ -80,6 +89,12 @@ describe("the plan summary (FR-G5 AC1, AC4, AC5, AC9)", () => {
     expect(text(html)).toContain("Free plan with read-only access to past applicants.");
     expect(html).toContain('href="#plans"');
     expect(text(html)).not.toContain("Basic");
+  });
+
+  it("tells a lapsed partner that its profile and everything it entered stay (FR-R1)", () => {
+    const html = text(renderToStaticMarkup(<PlanSummary subscription={subscription({ status: "canceled" })} plan={undefined} partner />));
+    expect(html).toContain("Free plan. Your company profile stays as it is and nothing you entered is deleted.");
+    expect(html).not.toContain("applicants");
   });
 
   it("shows the free plan and No subscription for an organisation that never subscribed", () => {

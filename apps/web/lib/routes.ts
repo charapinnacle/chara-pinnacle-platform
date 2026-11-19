@@ -4,10 +4,14 @@ import type { ApplicantListParams } from "@/lib/validation/applicant-list";
 type AccountKind = Database["public"]["Enums"]["account_kind"];
 type ApplicationStatus = Database["public"]["Enums"]["application_status"];
 
-export const dashboardSegments = { worker: "worker", employer: "company" } as const satisfies Record<
-  string,
-  AccountKind
->;
+// Recruitment and staffing companies are company accounts too: their dashboards follow the type of the organisation
+// (FR-R3, FR-R4), and the first segment of an account kind is its home.
+export const dashboardSegments = {
+  worker: "worker",
+  employer: "company",
+  recruitment: "company",
+  staffing: "company",
+} as const satisfies Record<string, AccountKind>;
 
 export type DashboardSegment = keyof typeof dashboardSegments;
 
@@ -43,11 +47,17 @@ export function homePath(lang: string, accountKind: AccountKind | null): string 
 
 // The dashboard of an employer; without a slug it is the one of the first organization of the user.
 export function employerDashboardPath(lang: string, slug?: string): string {
-  return slug ? `/${lang}/dashboard/employer?org=${encodeURIComponent(slug)}` : `/${lang}/dashboard/employer`;
+  return companyDashboardPath(lang, "employer", slug);
+}
+
+// The dashboard of a company for its segment (employer, recruitment or staffing), optionally of one organisation.
+export function companyDashboardPath(lang: string, segment: "employer" | "recruitment" | "staffing", slug?: string): string {
+  const path = `/${lang}/dashboard/${segment}`;
+  return slug ? `${path}?org=${encodeURIComponent(slug)}` : path;
 }
 
 // The sign-up page, optionally with the account type preselected (the person can still change it).
-export function signUpPath(lang: string, kind?: "worker" | "company"): string {
+export function signUpPath(lang: string, kind?: "worker" | "company" | "recruitment_company" | "staffing_company"): string {
   return kind ? `/${lang}/signup?kind=${kind}` : `/${lang}/signup`;
 }
 
@@ -57,6 +67,11 @@ export function mfaPath(lang: string, next?: string): string {
 
 export function settingsPath(lang: string): string {
   return `/${lang}/settings`;
+}
+
+// The copy of a user's own data (FR-S3 AC8).
+export function dataExportPath(lang: string): string {
+  return `${settingsPath(lang)}/data-export`;
 }
 
 // The organisation is carried so that the header of an employer in several organisations stays on the one they work in.
@@ -96,6 +111,97 @@ export function organizationProfilePath(lang: string, slug: string): string {
 // The workforce profile of a recruitment or staffing company (FR-K1): where it serves.
 export function workforceProfilePath(lang: string, slug: string): string {
   return `/${lang}/org/${slug}/workforce-profile`;
+}
+
+// How the members of a partner see their public profile, also before it is public (FR-K4 AC2).
+export function workforceProfilePreviewPath(lang: string, slug: string): string {
+  return `${workforceProfilePath(lang, slug)}/preview`;
+}
+
+// The public profile of a listed recruitment or staffing company (FR-K4).
+export function partnerProfilePath(lang: string, slug: string): string {
+  return `/${lang}/partners/${slug}`;
+}
+
+// The profile opened from a page of one of the viewer's employers: Invite offers that employer first (FR-O1).
+export function partnerProfileForPath(lang: string, slug: string, forSlug: string): string {
+  return `${partnerProfilePath(lang, slug)}?for=${encodeURIComponent(forSlug)}`;
+}
+
+// The public company page of an employer (FR-K5).
+export function companyPagePath(lang: string, slug: string): string {
+  return `/${lang}/companies/${slug}`;
+}
+
+// The workforce requirements of an employer (FR-M1), optionally from a keyset cursor on.
+export function requirementsPath(lang: string, slug: string, after?: string): string {
+  const path = `/${lang}/org/${slug}/requirements`;
+  return after ? `${path}?after=${encodeURIComponent(after)}` : path;
+}
+
+export function requirementPath(lang: string, slug: string, id: string): string {
+  return `${requirementsPath(lang, slug)}/${id}`;
+}
+
+// The invitations of one requirement, as its employer follows them (FR-O1).
+export function requirementInvitationsPath(lang: string, slug: string, id: string): string {
+  return `${requirementPath(lang, slug, id)}/invitations`;
+}
+
+// The responses of partners to one requirement, as its employer reads them (FR-O2; the page arrives with V46).
+export function requirementResponsesPath(lang: string, slug: string, id: string): string {
+  return `${requirementPath(lang, slug, id)}/responses`;
+}
+
+// The partners suggested for one requirement (FR-M3).
+export function requirementPartnersPath(lang: string, slug: string, id: string): string {
+  return `${requirementPath(lang, slug, id)}/partners`;
+}
+
+// The job order marketplace of a recruitment or staffing company (FR-N1), with the query of its filters and page.
+export function jobOrdersPath(lang: string, slug: string, query = ""): string {
+  const path = `/${lang}/org/${slug}/job-orders`;
+  return query === "" ? path : `${path}?${query}`;
+}
+
+export function jobOrderPath(lang: string, slug: string, id: string): string {
+  return `${jobOrdersPath(lang, slug)}/${id}`;
+}
+
+// The invitations a recruitment or staffing company received (FR-O1), with the query of the status filter and the page,
+// and one of them.
+export function invitationsPath(lang: string, slug: string, query = ""): string {
+  const path = `/${lang}/org/${slug}/invitations`;
+  return query === "" ? path : `${path}?${query}`;
+}
+
+export function invitationPath(lang: string, slug: string, id: string): string {
+  return `${invitationsPath(lang, slug)}/${id}`;
+}
+
+// The responses a recruitment or staffing company sent (FR-O2; the pages arrive with V46), and one of them.
+export function responsesPath(lang: string, slug: string): string {
+  return `/${lang}/org/${slug}/responses`;
+}
+
+export function responsePath(lang: string, slug: string, id: string): string {
+  return `${responsesPath(lang, slug)}/${id}`;
+}
+
+// The partners an employer saved (FR-L4), optionally from a keyset cursor on.
+export function savedPartnersPath(lang: string, slug: string, cursor?: string): string {
+  const path = `/${lang}/org/${slug}/saved-partners`;
+  return cursor ? `${path}?cursor=${encodeURIComponent(cursor)}` : path;
+}
+
+// The companies the signed-in user follows (FR-L4), optionally from a keyset cursor on.
+export function followingPath(lang: string, cursor?: string): string {
+  return cursor ? `/${lang}/following?cursor=${encodeURIComponent(cursor)}` : `/${lang}/following`;
+}
+
+// The login page, coming back to the page `next` afterwards.
+export function loginPath(lang: string, next: string): string {
+  return `/${lang}/login?next=${encodeURIComponent(next)}`;
 }
 
 export function membersPath(lang: string, slug: string): string {
@@ -148,9 +254,19 @@ export function adminPath(lang: string, segment = ""): string {
 
 // The form to report a vacancy, a company or a page (and the note on candidate profiles), with the target already named when the link comes from a page that
 // knows it (a vacancy by its id, a page by its path).
-export function reportPath(lang: string, type: "job" | "company" | "profile" | "content", target?: string): string {
+const reportTargetParams = { job: "job", company: "job", profile: "job", content: "path", partner_profile: "partner" } as const;
+
+// The report form of a kind of target, with the target when the page knows it (the vacancy, the path or the slug of a
+// partner profile) and a category to preselect, as "Report a fee demand" does.
+export function reportPath(
+  lang: string,
+  type: keyof typeof reportTargetParams,
+  target?: string,
+  category?: Database["public"]["Enums"]["report_category"],
+): string {
   const query = new URLSearchParams({ type });
-  if (target) query.set(type === "content" ? "path" : "job", target);
+  if (target) query.set(reportTargetParams[type], target);
+  if (category) query.set("category", category);
   return `/${lang}/report?${query.toString()}`;
 }
 
@@ -162,4 +278,13 @@ export function applicantReportPath(lang: string, slug: string, id: string): str
 export function myReportsPath(lang: string, after?: { at: string; id: number }): string {
   if (!after) return `/${lang}/reports`;
   return `/${lang}/reports?${new URLSearchParams({ afterAt: after.at, afterId: String(after.id) }).toString()}`;
+}
+
+// The moderation decisions on the caller's organisations and their appeals (FR-S1), and one decision with its appeal.
+export function appealsPath(lang: string): string {
+  return `/${lang}/appeals`;
+}
+
+export function appealPath(lang: string, decision: number): string {
+  return `${appealsPath(lang)}/${decision}`;
 }

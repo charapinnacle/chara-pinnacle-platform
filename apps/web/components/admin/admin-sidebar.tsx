@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart3, Building2, FileText, Flag, Handshake, KeyRound, type LucideIcon, ScrollText, ShieldAlert, UserCog, Users, EyeOff } from "lucide-react";
+import { Archive, BarChart3, Building2, FileText, Flag, Globe, Handshake, KeyRound, Layers, type LucideIcon, Scale, ScrollText, Settings2, ShieldAlert, UserCog, Users, EyeOff } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { SidebarIdentity } from "@/components/layout/sidebar-identity";
 import { SidebarLink } from "@/components/layout/sidebar-link";
@@ -13,6 +13,10 @@ const icons: Record<Segment, LucideIcon> = {
   users: Users,
   organizations: Building2,
   statistics: BarChart3,
+  plans: Layers,
+  settings: Settings2,
+  retention: Archive,
+  "direct-hiring-rules": Globe,
   legal: FileText,
   audit: ScrollText,
   staff: UserCog,
@@ -21,6 +25,7 @@ const icons: Record<Segment, LucideIcon> = {
   moderation: EyeOff,
   suspensions: ShieldAlert,
   partners: Handshake,
+  appeals: Scale,
 };
 
 type AdminSidebarProps = {

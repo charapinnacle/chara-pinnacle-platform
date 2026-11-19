@@ -23,6 +23,18 @@ const eslintConfig = defineConfig([
           message: 'Import * as z from "zod" (or a subpath): the z export brings all the translations of "zod" into the browser bundle.',
         },
       ],
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "react-hook-form",
+              importNames: ["useFieldArray"],
+              message: "useFieldArray joins the one react-hook-form module of every form, the home page's prefetched log-in and sign-up forms included: keep the rows' keys in state.",
+            },
+          ],
+        },
+      ],
     },
   },
 ]);

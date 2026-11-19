@@ -86,12 +86,18 @@ const adminPages = (userId: string, organizationId: string, reportId: number): P
   "/[lang]/admin/organizations": "/en/admin/organizations",
   "/[lang]/admin/organizations/[id]": `/en/admin/organizations/${organizationId}`,
   "/[lang]/admin/statistics": "/en/admin/statistics",
+  "/[lang]/admin/plans": "/en/admin/plans",
+  "/[lang]/admin/plans/[code]": "/en/admin/plans/employer_starter",
+  "/[lang]/admin/plans/overrides": "/en/admin/plans/overrides",
+  "/[lang]/admin/settings": "/en/admin/settings",
   "/[lang]/admin/legal": "/en/admin/legal",
   "/[lang]/admin/audit": "/en/admin/audit",
   "/[lang]/admin/staff": "/en/admin/staff",
   "/[lang]/admin/mfa-reset": "/en/admin/mfa-reset",
   "/[lang]/admin/reports": "/en/admin/reports",
   "/[lang]/admin/reports/[id]": `/en/admin/reports/${reportId}`,
+  "/[lang]/admin/retention": "/en/admin/retention",
+  "/[lang]/admin/direct-hiring-rules": "/en/admin/direct-hiring-rules",
 });
 
 const trustSafetyPages = (jobId: string): Pages => ({
@@ -112,9 +118,56 @@ const accountStatePages = [
   "/[lang]/post-job",
 ];
 
-// The pages of a release that is switched off while this sweep runs; their own spec switches it on and checks them at
-// both widths (in-app-notifications.spec.ts).
-const releasedPages = ["/[lang]/notifications", "/[lang]/admin/partners", "/[lang]/admin/partners/[id]", "/[lang]/org/[slug]/workforce-profile"];
+// The pages of a release that is switched off while this sweep runs; their own specs switch it on and check them at
+// both widths: notifications (in-app-notifications.spec.ts), the partner reviews of the console (partner-approval.spec.ts),
+// the workforce profile (partner-geographies.spec.ts, partner-workforce-offer.spec.ts, partner-availability.spec.ts), the
+// public partner profile with a complete listed partner and its members' preview of an unlisted one (partner-profile.spec.ts),
+// the recruitment directory with results and empty (partner-search.spec.ts), the staffing directory with results, empty,
+// over the search limit and with the available workforce results of an employer (staffing-directory.spec.ts), the
+// public company page with vacancies, empty and as its administrator (company-page.spec.ts), the saved partners of an
+// employer and the followed companies, with rows and empty (save-partner-follow.spec.ts), the moderation decisions
+// and appeals of an organisation and of the console (partner-profile.spec.ts), the export of a user's own data, empty,
+// being prepared and ready, as a candidate and a company user (data-export.spec.ts), and the recruitment and staffing
+// segments of /[lang]/dashboard/[kind] with data, empty, failed and as a member (partner-dashboards.spec.ts). The team page
+// /[lang]/org/[slug]/members of a recruitment or staffing company, as its owner, an admin and a member, empty and with
+// members, and its invitation and sign-up pages, are checked in partner-team.spec.ts (the employer's are swept here). The
+// ranking page /[lang]/legal/ranking is checked in ranking-transparency.spec.ts. The workforce requirements of an
+// employer (release 2b), the list empty and with a draft, the form new, refused and in edit and a requirement as its owner
+// and as a member, are checked in workforce-requirements.spec.ts; the partner suggestions of a requirement in
+// partner-suggestions.spec.ts. The job order marketplace and job order pages of a partner (eligible, titles only, closed,
+// empty and failed) and the public Job orders page are checked in job-orders.spec.ts. The invitations of a requirement
+// (statuses, empty and failed, as a member and an owner) and the inbox and invitation pages of a partner (pending, full,
+// accepted and declined) are checked in invitations.spec.ts.
+const releasedPages = [
+  "/[lang]/appeals",
+  "/[lang]/appeals/[id]",
+  "/[lang]/admin/appeals",
+  "/[lang]/admin/appeals/[id]",
+  "/[lang]/companies/[slug]",
+  "/[lang]/following",
+  "/[lang]/job-orders",
+  "/[lang]/legal/ranking",
+  "/[lang]/notifications",
+  "/[lang]/org/[slug]/invitations",
+  "/[lang]/org/[slug]/invitations/[id]",
+  "/[lang]/admin/partners",
+  "/[lang]/admin/partners/[id]",
+  "/[lang]/org/[slug]/job-orders",
+  "/[lang]/org/[slug]/job-orders/[id]",
+  "/[lang]/org/[slug]/requirements",
+  "/[lang]/org/[slug]/requirements/[id]",
+  "/[lang]/org/[slug]/requirements/[id]/edit",
+  "/[lang]/org/[slug]/requirements/[id]/invitations",
+  "/[lang]/org/[slug]/requirements/[id]/partners",
+  "/[lang]/org/[slug]/requirements/new",
+  "/[lang]/org/[slug]/saved-partners",
+  "/[lang]/org/[slug]/workforce-profile",
+  "/[lang]/org/[slug]/workforce-profile/preview",
+  "/[lang]/partners/[slug]",
+  "/[lang]/partners/recruitment",
+  "/[lang]/partners/staffing",
+  "/[lang]/settings/data-export",
+];
 
 async function expectPage(page: Page, address: string): Promise<void> {
   const response = await page.goto(address);

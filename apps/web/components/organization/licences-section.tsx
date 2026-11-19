@@ -19,6 +19,7 @@ import { FormField, InputField } from "@/components/forms/form-field";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { Input } from "@/components/ui/input";
 import { deleteLicence, getEvidenceDownload, saveLicence, startEvidenceUpload } from "@/lib/actions/licences";
+import { BRAND_NAME } from "@/lib/brand";
 import type { PartnerLicence } from "@/lib/dal/licences";
 import type { ReferenceItem } from "@/lib/dal/reference";
 import { USABLE_SCAN_STATUSES, formatFileSize } from "@/lib/documents/presentation";
@@ -253,8 +254,8 @@ function LicenceForm({ slug, licence, countries, patterns, maxYears, onClose, on
         label="Supporting document (optional)"
         description={
           licence?.evidence
-            ? "PDF, JPG or PNG, up to 15 MB. A new file replaces the current one. Only Chara Pinnacle staff open it."
-            : "PDF, JPG or PNG, up to 15 MB. Only Chara Pinnacle staff open it."
+            ? `PDF, JPG or PNG, up to 15 MB. A new file replaces the current one. Only ${BRAND_NAME} staff open it.`
+            : `PDF, JPG or PNG, up to 15 MB. Only ${BRAND_NAME} staff open it.`
         }
       >
         {(field) => (
@@ -314,7 +315,8 @@ function DeleteLicence({ slug, licence, onClose, onDeleted }: DeleteLicenceProps
   return (
     <>
       <p className="text-body leading-relaxed">
-        The entry and its supporting document are removed. This cannot be undone.
+        The entry is removed now. Its supporting document is kept out of reach for the retention period of replaced evidence, then
+        deleted. This cannot be undone.
       </p>
       <div className="grid gap-3 sm:grid-cols-2">
         <FormButton type="button" variant="secondary" onClick={onClose}>

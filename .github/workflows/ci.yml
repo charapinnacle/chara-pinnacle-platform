@@ -39,7 +39,19 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - run: npm run db:start
+      - name: Reserve the local stack's ports
+        # The runner hands out 32768-60999 to outgoing connections, the image pulls of db:start among them, and a port of
+        # the stack or of an Edge Function (544xx) taken that way fails its bind with "address already in use".
+        run: sudo sysctl -w net.ipv4.ip_local_reserved_ports=54420-54439
+      - name: Start the local stack
+        # The reservation cannot free a port that a socket opened before it already holds (54424 has failed this way), so a
+        # failed start lists the sockets on the stack's ports and starts once more.
+        run: |
+          npm run db:start && exit 0
+          sudo ss -tanp | grep -E ':544[23][0-9]\b' || true
+          npm run db:stop -- --no-backup
+          sleep 20
+          npm run db:start
       - run: npm run db:test
       - run: npm run db:lint
       - run: npm run db:types
@@ -64,10 +76,18 @@ jobs:
       - run: deno check "*/index.ts"
       - run: deno test --frozen --allow-env=NODE_ENV
 
+  # The projects of apps/web/playwright.config.ts form three groups that only wait for one another so as not to share a
+  # database: on separate runners each group gets its own, so they run side by side.
   e2e:
     needs: [web, db]
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [parallel, serial, release]
+    env:
+      E2E_GROUP: ${{ matrix.group }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -79,14 +99,26 @@ jobs:
           deno-version: v2.x
       - run: npm ci
       - run: cp apps/web/.env.example apps/web/.env.local
-      - run: npm run db:start
+      - name: Reserve the local stack's ports
+        # The runner hands out 32768-60999 to outgoing connections, the image pulls of db:start among them, and a port of
+        # the stack or of an Edge Function (544xx) taken that way fails its bind with "address already in use".
+        run: sudo sysctl -w net.ipv4.ip_local_reserved_ports=54420-54439
+      - name: Start the local stack
+        # The reservation cannot free a port that a socket opened before it already holds (54424 has failed this way), so a
+        # failed start lists the sockets on the stack's ports and starts once more.
+        run: |
+          npm run db:start && exit 0
+          sudo ss -tanp | grep -E ':544[23][0-9]\b' || true
+          npm run db:stop -- --no-backup
+          sleep 20
+          npm run db:start
       - run: npx playwright install --with-deps chromium
         working-directory: apps/web
       - run: npm run e2e
       - if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: e2e-test-results
+          name: e2e-test-results-${{ matrix.group }}
           path: apps/web/test-results
           if-no-files-found: ignore
 

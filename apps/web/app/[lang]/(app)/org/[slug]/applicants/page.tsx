@@ -34,7 +34,7 @@ export const metadata: Metadata = { title: "Applicants", robots: { index: false 
 const csvNotInPlanText = "Your plan does not include the CSV export.";
 
 const frozenText =
-  "Your organization has no active paid plan. Applicant changes and the CSV export are disabled until a plan is chosen.";
+  "Your organisation has no active paid plan. Applicant changes and the CSV export are disabled until a plan is chosen.";
 
 // The list and the board of the applicants of one vacancy, or the list of all the vacancies of the organization. The
 // address holds the whole state (vacancy, view, sort, stage, page), and every value is checked before it is used. A

@@ -2,10 +2,13 @@
 
 import {
   Bookmark,
+  Building2,
   BriefcaseBusiness,
+  ClipboardList,
   CreditCard,
   Flag,
   IdCard,
+  Inbox,
   LayoutDashboard,
   type LucideIcon,
   Search,
@@ -30,6 +33,9 @@ const icons: Record<NavIcon, LucideIcon> = {
   vacancies: BriefcaseBusiness,
   applicants: Users,
   team: UsersRound,
+  workforce: Building2,
+  requirements: ClipboardList,
+  invitations: Inbox,
   billing: CreditCard,
   reports: Flag,
   settings: Settings,

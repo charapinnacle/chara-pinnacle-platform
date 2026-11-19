@@ -1,6 +1,14 @@
 import "server-only";
 import * as z from "zod";
-import { limitPrompt, type OrganizationType, type OrgUsage, type UsagePrompt } from "@/lib/billing/limits";
+import {
+  limitPrompt,
+  shownLimit,
+  unenforcedAllowance,
+  type OrganizationType,
+  type OrgUsage,
+  type PlanAllowance,
+  type UsagePrompt,
+} from "@/lib/billing/limits";
 import { listPublicPlans } from "@/lib/dal/pricing";
 import { createClient } from "@/lib/supabase/server";
 
@@ -27,14 +35,13 @@ export async function getOrgUsage(organizationId: string, keys: readonly string[
     items: Object.fromEntries(
       rows.map((row) => [
         row.limit_key,
-        { used: row.used, limit: row.limit_value, applies: row.applies, resetsAt: row.period_resets_at },
+        { used: row.used, limit: shownLimit(row.limit_key, row.limit_value), applies: row.applies, resetsAt: row.period_resets_at },
       ]),
     ),
   };
 }
 
-// The prompts of the given limit keys: the usage once, and the plans of a partner's type to compare (a partner's prompt
-// has no billing link before partner checkout opens, see upgradeHref).
+// The prompts of the given limit keys: the usage once, and the plans of a partner's type to compare.
 export async function getUsagePrompts<K extends string>(
   organizationId: string,
   type: OrganizationType,
@@ -45,4 +52,13 @@ export async function getUsagePrompts<K extends string>(
     type === "employer" ? null : listPublicPlans(type),
   ]);
   return Object.fromEntries(keys.map((key) => [key, limitPrompt(usage, key, type, plans)])) as Record<K, UsagePrompt | null>;
+}
+
+// The plan limits of the given keys that are not enforced yet, which a form warns beyond.
+export async function getUnenforcedAllowances<K extends string>(
+  organizationId: string,
+  keys: readonly K[],
+): Promise<Record<K, PlanAllowance | null>> {
+  const usage = await getOrgUsage(organizationId, keys);
+  return Object.fromEntries(keys.map((key) => [key, unenforcedAllowance(usage, key)])) as Record<K, PlanAllowance | null>;
 }

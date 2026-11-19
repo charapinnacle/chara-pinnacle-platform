@@ -68,7 +68,9 @@ select set_eq(
 );
 select set_eq(
   $$select kind from private.notification_kinds where not mandatory$$,
-  $$values ('application_received'), ('licence_expiring'), ('partner_licence_expired'), ('listing_confirmation_due')$$,
+  $$values ('application_received'), ('licence_expiring'), ('partner_licence_expired'), ('listing_confirmation_due'),
+    ('followed_company_activity'), ('requirement_closing_soon'), ('job_order_match'), ('invitation_received'),
+    ('invitation_withdrawn'), ('requirement_changed'), ('requirement_closed'), ('response_received'), ('response_withdrawn')$$,
   'catalogue: of the Phase 1 kinds only application_received is optional, as Phase 1 treats it; the other optional kinds are those of Phase 2 (DATA_MODEL.md section 9)'
 );
 select is(
@@ -235,10 +237,13 @@ select is(pg_temp.prefs_as(:'adm', '{"application_received": true}'), 'ok', 'pre
 select is((select digest from public.notification_preferences where user_id = :'adm'), true, 'digest: and the per-kind save leaves the digest alone');
 
 -- notification_kind_catalogue(): the kinds of the caller's audience, with the email state.
+-- adm belongs to no organisation until here; it creates an employer so that the employer-only kinds apply to it.
+select pg_temp.call_as(:'adm', 'authenticated', $$select public.create_organization('employer', 'Catalogue Employer GmbH', null, 'DE', 'F')$$, 'aal1') as adm_org \gset
 select is(
   (select jsonb_agg(c ->> 'kind' order by c ->> 'kind') from jsonb_array_elements(pg_temp.json_as(:'adm', 'select * from public.notification_kind_catalogue()')) c),
-  (select jsonb_agg(kind order by kind) from private.notification_kinds where audience in ('company', 'all') and organization_types is null),
-  'catalogue: a company user of an employer sees the company kinds and those of all users, not those of partners only'
+  (select jsonb_agg(kind order by kind) from private.notification_kinds
+   where audience in ('company', 'all') and (organization_types is null or 'employer' = any (organization_types))),
+  'catalogue: a company user of an employer sees the company kinds, those of employers and those of all users, not those of partners only'
 );
 select is(
   (select jsonb_agg(c ->> 'kind' order by c ->> 'kind') from jsonb_array_elements(pg_temp.json_as(:'wkr', 'select * from public.notification_kind_catalogue()')) c),

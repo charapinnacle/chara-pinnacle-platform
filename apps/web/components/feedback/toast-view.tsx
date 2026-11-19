@@ -1,11 +1,16 @@
 "use client";
 
 import { X } from "lucide-react";
+import dynamic from "next/dynamic";
 import { Toast } from "radix-ui";
 import { cva } from "class-variance-authority";
 import type { ToastItem } from "@/components/feedback/toast-store";
 import { cardVariants } from "@/components/layout/card";
 import { cn } from "@/lib/utils";
+
+// The Toaster fetches this view on every page after hydration; the link component (and next/link with it) is fetched
+// only when a toast has a link, so it stays out of that chunk.
+const TextLink = dynamic(() => import("@/components/forms/text-link").then((module) => module.TextLink), { ssr: false });
 
 const toastVariants = cva(
   cn(
@@ -31,11 +36,11 @@ export default function ToastView({
 }) {
   return (
     <Toast.Provider label="Notification" swipeDirection="down">
-      {items.map(({ id, title, description, variant }) => (
+      {items.map(({ id, title, description, link, variant }) => (
         <Toast.Root
           key={id}
           type={variant === "error" ? "foreground" : "background"}
-          duration={variant === "error" ? Infinity : undefined}
+          duration={variant === "error" || link ? Infinity : undefined}
           onOpenChange={(open) => {
             if (!open) onDismiss(id);
           }}
@@ -47,6 +52,11 @@ export default function ToastView({
               <Toast.Description className="text-small text-muted-foreground">
                 {description}
               </Toast.Description>
+            ) : null}
+            {link ? (
+              <TextLink href={link.href} className="text-small">
+                {link.label}
+              </TextLink>
             ) : null}
           </div>
           <Toast.Close

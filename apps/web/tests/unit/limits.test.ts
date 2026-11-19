@@ -8,7 +8,8 @@ import {
   limitRefusalMessage,
   planComparison,
   resetText,
-  upgradeHref,
+  shownLimit,
+  unenforcedAllowance,
   usageText,
   type OrgUsage,
 } from "@/lib/billing/limits";
@@ -109,9 +110,27 @@ describe("the upgrade prompt data", () => {
     expect(planComparison(recruitmentPlans, "members", "recruitment_company", 1)).toBeNull();
   });
 
-  it("links an employer to its billing page and a partner to none until partner checkout opens", () => {
-    expect(upgradeHref("en", "acme", "employer")).toBe("/en/org/acme/billing");
-    expect(upgradeHref("en", "manila", "recruitment_company")).toBeNull();
-    expect(upgradeHref("en", "manila", "staffing_company")).toBeNull();
+  it("shows a members limit below 1 as the owner alone, which the team size counts (FR-R1 AC2, AC8)", () => {
+    expect(shownLimit("members", 0)).toBe(1);
+    expect(shownLimit("members", 1)).toBe(1);
+    expect(shownLimit("members", 5)).toBe(5);
+    expect(shownLimit("members", null)).toBeNull();
+    expect(shownLimit("markets", 0)).toBe(0);
+    expect(usageText("members", "recruitment_company", 1, shownLimit("members", 0) ?? 0)).toBe("1 of 1 team member");
+  });
+
+  it("gives the plan's limit while it is not enforced, so a form can warn beyond it (FR-R1)", () => {
+    const usage: OrgUsage = {
+      planName: "Free",
+      items: {
+        markets: { used: 4, limit: 3, applies: false, resetsAt: null },
+        listed_occupations: { used: 4, limit: 10, applies: true, resetsAt: null },
+        members: { used: 1, limit: null, applies: false, resetsAt: null },
+      },
+    };
+    expect(unenforcedAllowance(usage, "markets")).toEqual({ limit: 3, planName: "Free" });
+    expect(unenforcedAllowance(usage, "listed_occupations")).toBeNull();
+    expect(unenforcedAllowance(usage, "members")).toBeNull();
+    expect(unenforcedAllowance(usage, "workforce_listings")).toBeNull();
   });
 });

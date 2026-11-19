@@ -7,12 +7,13 @@ import { COMPLAINTS_SLUG, LegalLink, TextLink } from "@/components/forms/text-li
 import { Notice } from "@/components/forms/notice";
 import { JobForm } from "@/components/jobs/job-form";
 import { organizationCrumb } from "@/lib/app/navigation";
+import { vacancyDecisionId } from "@/lib/dal/appeals";
 import { getJob, toJobFormInput } from "@/lib/dal/hiring";
 import { getCountries, getCurrencies, getIndustries, getOccupations } from "@/lib/dal/reference";
 import { requireOrgRole } from "@/lib/dal/session";
 import { isEditable } from "@/lib/jobs/lifecycle";
 import { jobStatusText } from "@/lib/jobs/presentation";
-import { jobPath, jobsPath } from "@/lib/routes";
+import { appealPath, jobPath, jobsPath } from "@/lib/routes";
 import { jobIdSchema } from "@/lib/validation/job";
 
 export const metadata: Metadata = { title: "Edit vacancy", robots: { index: false } };
@@ -37,6 +38,7 @@ export default async function EditJobPage({ params }: PageProps<"/[lang]/org/[sl
   const jobHref = jobPath(lang, slug, job.id);
   const isPublic = job.status === "open" && job.moderationState === "visible";
   const editable = isEditable(job.status);
+  const decisionId = editable && job.moderationState === "hidden" ? await vacancyDecisionId(job.id) : null;
 
   return (
     <div className="grid w-full max-w-3xl gap-section">
@@ -64,11 +66,20 @@ export default async function EditJobPage({ params }: PageProps<"/[lang]/org/[sl
         </Notice>
       ) : job.moderationState === "hidden" ? (
         <Notice tone="info" role="status">
-          Our moderators hid this vacancy. Saving your changes does not make it public again; to appeal, follow the route on the{" "}
-          <LegalLink slug={COMPLAINTS_SLUG} newTabLabel="(opens in a new tab)">
-            Complaints and Dispute Process
-          </LegalLink>{" "}
-          page.
+          Our moderators hid this vacancy. Saving your changes does not make it public again;{" "}
+          {decisionId === null ? (
+            <>
+              to appeal, follow the route on the{" "}
+              <LegalLink slug={COMPLAINTS_SLUG} newTabLabel="(opens in a new tab)">
+                Complaints and Dispute Process
+              </LegalLink>{" "}
+              page.
+            </>
+          ) : (
+            <>
+              to appeal, <TextLink href={appealPath(lang, decisionId)}>see the decision and appeal</TextLink>.
+            </>
+          )}
         </Notice>
       ) : null}
       {editable ? (

@@ -1,6 +1,8 @@
 import "server-only";
 import * as z from "zod";
+import { shownLimit, type OrganizationType } from "@/lib/billing/limits";
 import type { SoldPlan, SubscriptionStatus } from "@/lib/billing/presentation";
+import { PLAN_LIMIT_KEYS, type PlanLimitKey } from "@/lib/billing/pricing";
 import { listPublicPlans } from "@/lib/dal/pricing";
 import { env } from "@/lib/env";
 import { serverEnv } from "@/lib/env.server";
@@ -31,8 +33,6 @@ const subscriptionSchema = z.object({
   past_due_since: z.string().nullable(),
 });
 
-const shownKeys = ["active_jobs", "members"] as const;
-
 const usageSchema = z.array(
   z.object({ limit_key: z.string(), used: z.number(), limit_value: z.number().nullable() }),
 );
@@ -49,11 +49,14 @@ export type Subscription = {
   pastDueSince: string | null;
 };
 
-export type Usage = { key: (typeof shownKeys)[number]; used: number; limit: number | null };
+// The keys of the billing page: those its plans list, and the open workforce requirements while release 2b is on (FR-M4).
+export type UsageKey = PlanLimitKey | "active_requirements";
 
-// The plans a company can buy online: public, priced and not for contact.
-export async function listSoldPlans(): Promise<SoldPlan[]> {
-  return (await listPublicPlans()).filter((plan) => !plan.contactSales && plan.priceMinor > 0);
+export type Usage = { key: UsageKey; used: number; limit: number | null };
+
+// The plans a company of the given type can buy online: public, priced and not for contact.
+export async function listSoldPlans(orgType: OrganizationType = "employer"): Promise<SoldPlan[]> {
+  return (await listPublicPlans(orgType)).filter((plan) => !plan.contactSales && plan.priceMinor > 0);
 }
 
 export async function getBillingState(organizationId: string): Promise<BillingState> {
@@ -85,44 +88,46 @@ export async function getSubscription(organizationId: string): Promise<Subscript
   };
 }
 
-function isShownKey(key: string): key is Usage["key"] {
-  return (shownKeys as readonly string[]).includes(key);
-}
-
-// The open vacancies and the team members against the limits of the plan (null is unlimited). billing_usage also returns
-// the keys of later releases, which the page shows once their features are released.
-export async function getUsage(organizationId: string): Promise<Usage[]> {
+// The usage against the limits of the plan (null is unlimited) for the keys the plans of the organisation's type list:
+// open vacancies and team members for an employer, the workforce profile and the team for a partner. billing_usage also
+// returns the keys of later releases, which the page shows once their features are released (extraKeys).
+export async function getUsage(
+  organizationId: string,
+  orgType: OrganizationType = "employer",
+  extraKeys: readonly UsageKey[] = [],
+): Promise<Usage[]> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("billing_usage", { p_org: organizationId });
   if (error) throw new Error("The usage could not be loaded", { cause: error });
-  return usageSchema
-    .parse(data)
-    .flatMap((row) => (isShownKey(row.limit_key) ? [{ key: row.limit_key, used: row.used, limit: row.limit_value }] : []));
+  const keys: readonly UsageKey[] = [...PLAN_LIMIT_KEYS[orgType], ...extraKeys];
+  const rows = usageSchema.parse(data);
+  return keys.flatMap((key) => {
+    const row = rows.find((candidate) => candidate.limit_key === key);
+    return row ? [{ key, used: row.used, limit: shownLimit(key, row.limit_value) }] : [];
+  });
 }
 
-const answerSchema = z.object({
-  url: z.url({ protocol: /^https$/ }).optional(),
-  error: z.string().optional(),
-  reason: z.string().nullish(),
-  field: z.string().nullish(),
-});
+export type FunctionRefusal = { status: number; reason: string | null; field: string | null };
 
-export type HostedSession =
-  | { url: string }
-  | { refusal: { status: number; reason: string | null; field: string | null } };
+const refusalSchema = z.object({ reason: z.string().nullish(), field: z.string().nullish() });
 
-// The billing-checkout function runs the checks of the database with the person's own token and holds the keys of the
-// payment provider; this server only forwards the session and sends the person to the address it answers with.
-export async function requestHostedSession(body: Record<string, unknown>): Promise<HostedSession> {
+// A billing Edge Function called with the person's own token: the function runs the checks of the database as that person
+// and holds the keys of the payment provider. A success is an answer that matches the schema; anything else is a refusal
+// with the function's reason or field. Status 0 is a network failure or a timeout, 502 a success the schema does not accept.
+export async function callBillingFunction<T>(
+  endpoint: string,
+  body: unknown,
+  schema: z.ZodType<T>,
+  extraHeaders: Record<string, string> = {},
+): Promise<{ data: T } | { refusal: FunctionRefusal }> {
   const supabase = await createClient();
   const { data } = await supabase.auth.getSession();
   if (!data.session) return { refusal: { status: 401, reason: null, field: null } };
-  const endpoint = serverEnv().BILLING_CHECKOUT_ENDPOINT ?? `${env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/billing-checkout`;
   let response: Response;
   try {
     response = await fetch(endpoint, {
       method: "POST",
-      headers: { authorization: `Bearer ${data.session.access_token}`, "content-type": "application/json" },
+      headers: { ...extraHeaders, authorization: `Bearer ${data.session.access_token}`, "content-type": "application/json" },
       body: JSON.stringify(body),
       cache: "no-store",
       signal: AbortSignal.timeout(TIMEOUT_MS),
@@ -130,13 +135,26 @@ export async function requestHostedSession(body: Record<string, unknown>): Promi
   } catch {
     return { refusal: { status: 0, reason: null, field: null } };
   }
-  const answer = answerSchema.safeParse(await response.json().catch(() => null));
-  if (response.ok && answer.success && answer.data.url) return { url: answer.data.url };
+  const payload: unknown = await response.json().catch(() => null);
+  const answer = response.ok ? schema.safeParse(payload) : null;
+  if (answer?.success) return { data: answer.data };
+  const refusal = refusalSchema.safeParse(payload);
   return {
     refusal: {
       status: response.ok ? 502 : response.status,
-      reason: (answer.success && answer.data.reason) || null,
-      field: (answer.success && answer.data.field) || null,
+      reason: (refusal.success && refusal.data.reason) || null,
+      field: (refusal.success && refusal.data.field) || null,
     },
   };
+}
+
+const sessionSchema = z.object({ url: z.url({ protocol: /^https$/ }) });
+
+export type HostedSession = { url: string } | { refusal: FunctionRefusal };
+
+// billing-checkout answers with the address of the provider's hosted page; this server only sends the person there.
+export async function requestHostedSession(body: Record<string, unknown>): Promise<HostedSession> {
+  const endpoint = serverEnv().BILLING_CHECKOUT_ENDPOINT ?? `${env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/billing-checkout`;
+  const result = await callBillingFunction(endpoint, body, sessionSchema);
+  return "data" in result ? { url: result.data.url } : result;
 }

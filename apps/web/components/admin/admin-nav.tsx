@@ -5,14 +5,21 @@ import { usePathname } from "next/navigation";
 import { isCurrent } from "@/lib/app/navigation";
 import { cn } from "@/lib/utils";
 
-export function AdminNav({ entries, className }: { entries: readonly { label: string; href: string }[]; className?: string }) {
+type AdminNavProps = {
+  entries: readonly { label: string; href: string; exact?: true }[];
+  // The plan editor uses the same grid for its own pages (Plans, Overrides).
+  label?: string;
+  className?: string;
+};
+
+export function AdminNav({ entries, label = "Administration", className }: AdminNavProps) {
   const pathname = usePathname();
 
   return (
-    <nav aria-label="Administration" className={className}>
+    <nav aria-label={label} className={className}>
       <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-        {entries.map(({ label, href }) => {
-          const current = isCurrent(pathname, { match: href });
+        {entries.map(({ label: text, href, exact }) => {
+          const current = isCurrent(pathname, { match: href, exact });
           return (
             <li key={href}>
               <Link
@@ -23,7 +30,7 @@ export function AdminNav({ entries, className }: { entries: readonly { label: st
                   current ? "border-brand-ink/40 bg-accent text-accent-foreground" : "bg-card hover:bg-secondary",
                 )}
               >
-                {label}
+                {text}
               </Link>
             </li>
           );

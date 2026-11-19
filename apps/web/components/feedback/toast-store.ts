@@ -2,6 +2,8 @@ export type ToastItem = {
   id: number;
   title: string;
   description?: string;
+  // A page the toast points to, such as the page that was just published.
+  link?: { href: string; label: string };
   variant: "default" | "error";
 };
 

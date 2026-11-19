@@ -319,3 +319,67 @@ Deno.test("an evidence object whose name is not shaped {organization}/{licence}/
     assert.equal(calls.length, 0);
   }
 });
+
+// Response documents (FR-O2 AC5): {organization_id}/{document_id}/{uuid} in partner-response-documents, recorded on the
+// document; a PNG renamed to .pdf and uploaded as a PDF is rejected by its first bytes.
+const RESPONSE_DOCUMENT = "00000000-0000-0000-0000-00000000c002";
+const RESPONSE_PATH = `${ORG}/${RESPONSE_DOCUMENT}/00000000-0000-0000-0000-00000000f002`;
+const RESPONSE_SIGN = "POST /storage/v1/object/sign/partner-response-documents/{id}/{id}/{id}";
+const RESPONSE_READ = "GET /storage/v1/object/sign/partner-response-documents/{id}/{id}/{id}";
+const RESPONSE_STATUS = "POST /rest/v1/rpc/response_document_set_scan_status";
+const responseRecord = (name = RESPONSE_PATH, mimetype = "application/pdf") => ({
+  id: "00000000-0000-0000-0000-00000000e003",
+  bucket_id: "partner-response-documents",
+  name,
+  metadata: { mimetype, size: SIZE },
+});
+
+Deno.test("AC5: a response document is read from its own bucket and its verdict recorded on the document", async () => {
+  for (const [bytes, verdict] of [[PDF, "skipped"], [PNG, "rejected"], [TEXT, "rejected"]] as const) {
+    const { calls, client, fetch } = harness({
+      [RESPONSE_SIGN]: reply(200, { signedURL: `/object/sign/partner-response-documents/${RESPONSE_PATH}?token=t` }),
+      [RESPONSE_READ]: new Response(Uint8Array.from(bytes), { status: 206 }),
+      [RESPONSE_STATUS]: reply(200, verdict),
+    });
+    const response = await handleScanDocument(request(webhook(responseRecord())), {
+      client,
+      sharedSecret: SECRET,
+      fetch,
+    });
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { status: verdict });
+    assert.deepEqual(
+      calls.filter((c) => c.path.endsWith("/rpc/response_document_set_scan_status")).map((c) => c.body),
+      [
+        {
+          p_document: RESPONSE_DOCUMENT,
+          p_path: RESPONSE_PATH,
+          p_status: verdict,
+          p_mime: "application/pdf",
+          p_size: SIZE,
+        },
+      ],
+    );
+    assert.equal(
+      calls.filter((c) => /\/rpc\/(partner_)?document_set_scan_status$/.test(c.path)).length,
+      0,
+      "never the candidate or licence RPC",
+    );
+  }
+});
+
+Deno.test("a response document whose name is not shaped {organization}/{document}/{uuid} is ignored without any call", async () => {
+  for (
+    const name of [
+      `${ORG}/${RESPONSE_DOCUMENT}/profile.pdf`,
+      `${ORG}/not-a-uuid/${RESPONSE_DOCUMENT}`,
+      `${ORG}/${RESPONSE_DOCUMENT}/${RESPONSE_DOCUMENT}/x`,
+    ]
+  ) {
+    const { calls, run } = scan({}, webhook(responseRecord(name)));
+    const response = await run();
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { status: "ignored" });
+    assert.equal(calls.length, 0);
+  }
+});

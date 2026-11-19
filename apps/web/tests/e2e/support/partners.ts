@@ -2,9 +2,11 @@ import { randomUUID } from "node:crypto";
 import type { Page } from "@playwright/test";
 import { env } from "@/lib/env";
 import { callAs } from "./accounts";
+import { choose } from "./combobox";
 import { execute, literal } from "./db";
 import { logIn } from "./login-page";
 import { organizationRows, uniqueToken } from "./organizations";
+import { documentBox, PASSWORD } from "./signup-page";
 import { expect } from "./test";
 import { adminRequest, type TestUser } from "./test-user";
 
@@ -60,6 +62,31 @@ export async function createCommittedPartner(type: PartnerType): Promise<TestUse
   await callAs(user, "set_account_kind");
   execute(`delete from auth.sessions where user_id = ${literal(id)}`);
   return user;
+}
+
+// The sign-up form filled for a partner type, with every document of the type accepted.
+export async function fillPartnerSignup(page: Page, type: PartnerType, email: string): Promise<void> {
+  await page.getByRole("radio", { name: PARTNER_LABEL[type] }).check();
+  await page.getByLabel("Email address").fill(email);
+  await page.getByLabel("Password", { exact: true }).fill(PASSWORD);
+  for (const { title } of await partnerDocuments(type)) await documentBox(page, title).check();
+}
+
+// The Company step of partner onboarding, for a company based in the Philippines.
+export async function fillPartnerCompany(
+  page: Page,
+  details: { legalName: string; displayName?: string; identifier?: string; description?: string },
+): Promise<void> {
+  await page.getByLabel("Legal company name").fill(details.legalName);
+  if (details.displayName) await page.getByLabel("Display name (optional)").fill(details.displayName);
+  await choose(page, "Country where you are based", "Philippines");
+  await choose(page, "Industry", "Administrative and support service activities");
+  await page.getByLabel("Website (optional)").fill("https://manila-skills.example");
+  if (details.identifier) {
+    await page.getByLabel(PARTNER_IDENTIFIER_LABEL).fill(details.identifier);
+    await page.getByLabel("Type of identifier", { exact: true }).selectOption({ value: "registration_number" });
+  }
+  if (details.description) await page.getByLabel("About your company (optional)").fill(details.description);
 }
 
 export async function openPartnerOnboarding(page: Page, user: TestUser): Promise<void> {

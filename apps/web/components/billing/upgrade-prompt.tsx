@@ -9,20 +9,26 @@ type UpgradePromptProps = {
   organizationId: string;
   organizationType: OrganizationType;
   prompt: UsagePrompt;
-  // Null until the billing page sells the organisation's plans: the higher plans are compared instead.
-  billingHref: string | null;
+  billingHref: string;
   // Owners and admins can change the plan; a member reads the usage only.
   canUpgrade: boolean;
+  // The requirement of a per-requirement limit (the invitations of FR-O1) and the partners the person tried to invite,
+  // which the report of the prompt names.
+  requirement?: { id: string; attempted: number };
 };
 
 // Shown where a plan limit stops a change (FR-R1): the usage and the plan, when a monthly count starts again, and the way
-// to a higher plan. Each prompt an owner or admin sees is reported once per display for the upgrade KPI.
-export function UpgradePrompt({ organizationId, organizationType, prompt, billingHref, canUpgrade }: UpgradePromptProps) {
+// to a higher plan: how the higher plans of the type compare and the billing page that sells them (V15). Each prompt an
+// owner or admin sees is reported once per display for the upgrade KPI.
+export function UpgradePrompt({ organizationId, organizationType, prompt, billingHref, canUpgrade, requirement }: UpgradePromptProps) {
   const { limitKey, used, limit, resetsAt, planName, comparison } = prompt;
 
+  const requirementId = requirement?.id;
+  const attempted = requirement?.attempted;
   useEffect(() => {
-    if (canUpgrade) void recordLimitPrompt(organizationId, limitKey);
-  }, [canUpgrade, organizationId, limitKey]);
+    if (!canUpgrade) return;
+    void recordLimitPrompt(organizationId, limitKey, requirementId && attempted ? { id: requirementId, attempted } : undefined);
+  }, [canUpgrade, organizationId, limitKey, requirementId, attempted]);
 
   return (
     <div className="grid gap-1 text-small">
@@ -31,13 +37,12 @@ export function UpgradePrompt({ organizationId, organizationType, prompt, billin
       </p>
       {resetsAt ? <p>{resetText(resetsAt)}</p> : null}
       {canUpgrade ? (
-        billingHref ? (
+        <>
+          {comparison ? <p>{comparison}</p> : null}
           <p>
             <TextLink href={billingHref}>Upgrade your plan</TextLink> to add more.
           </p>
-        ) : comparison ? (
-          <p>{comparison}</p>
-        ) : null
+        </>
       ) : null}
     </div>
   );

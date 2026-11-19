@@ -161,14 +161,18 @@ const days = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString();
 
 // What the provider sends after a checkout with a trial: the customer is linked and the subscription starts Trialing.
 // Returns the end of the trial as the database holds it.
-export async function startTrialThroughWebhook(team: Pick<Team, "id">, customerRef = `cus_${randomUUID().slice(0, 8)}`): Promise<string> {
+export async function startTrialThroughWebhook(
+  team: Pick<Team, "id">,
+  customerRef = `cus_${randomUUID().slice(0, 8)}`,
+  planCode = "employer_starter",
+): Promise<string> {
   const subscription = `sub_${randomUUID().slice(0, 8)}`;
   await deliverBillingEvent({ kind: "checkout.completed", orgId: team.id, providerCustomerRef: customerRef, providerSubscriptionRef: subscription });
   await deliverBillingEvent({
     kind: "subscription.activated",
     orgId: team.id,
     providerCustomerRef: customerRef,
-    planCode: "employer_starter",
+    planCode,
     status: "trialing",
     providerSubscriptionRef: subscription,
     trialEndsAt: days(30),

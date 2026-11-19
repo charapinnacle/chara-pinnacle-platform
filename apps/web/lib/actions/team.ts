@@ -2,9 +2,10 @@
 
 import type { PostgrestError } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { refreshAppShell } from "@/lib/app/refresh-shell";
 import { getOrganizationSlug } from "@/lib/dal/organizations";
+import { isReleased } from "@/lib/dal/release";
 import { getAllowance } from "@/lib/dal/team";
 import { requireOrgRole, requireUser } from "@/lib/dal/session";
 import { defaultLocale } from "@/lib/i18n/locale";
@@ -42,7 +43,7 @@ const REFUSALS: Record<string, string> = {
   not_a_member: "This person is no longer a member of the team.",
   new_owner: "Choose another member of the team as the new owner.",
   no_pending_transfer: "No ownership transfer is waiting. It may have expired or been cancelled.",
-  organization_suspended: "This organization is suspended, so its team cannot be changed.",
+  organization_suspended: "This organisation is suspended, so its team cannot be changed.",
 };
 
 function membersPath(slug: string): string {
@@ -60,12 +61,19 @@ function refusal(error: PostgrestError, slug: string): TeamResult {
   return { message: TEAM_FAILURE };
 }
 
+// The team of an employer, or of a recruitment or staffing company while release 2a is on (FR-J1), as the team page.
+async function teamOrganization(slug: string, minRole: MemberRole) {
+  const { organization } = await requireOrgRole(defaultLocale, slug, minRole, { partner: "either" });
+  if (organization.type !== "employer" && !(await isReleased("release_partner_directories"))) notFound();
+  return organization;
+}
+
 async function runTeamAction(
   slug: string,
   minRole: MemberRole,
   call: (supabase: Supabase, organizationId: string) => PromiseLike<{ error: PostgrestError | null }>,
 ): Promise<TeamResult> {
-  const { organization } = await requireOrgRole(defaultLocale, slug, minRole);
+  const organization = await teamOrganization(slug, minRole);
   const { error } = await call(await createClient(), organization.id);
   if (error) return refusal(error, slug);
   revalidatePath(membersPath(slug));
@@ -93,7 +101,7 @@ export async function inviteMember(input: InviteFormInput & { slug: string }): P
   const parsed = inviteInputSchema.safeParse(input);
   if (!parsed.success) return { errors: fieldErrors(parsed.error) };
   const { slug, email, role } = parsed.data;
-  const { organization } = await requireOrgRole(defaultLocale, slug, "admin");
+  const organization = await teamOrganization(slug, "admin");
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("invite_member", {
@@ -159,6 +167,8 @@ function invitationRefusal(error: PostgrestError): string {
     return "Confirm your email address first, then open the invitation link again.";
   }
   if (error.message === "CHARA_FORBIDDEN" && error.details === "organization_type_mismatch") return COMPANY_TYPE_CANNOT_JOIN;
+  // An invitation to a recruitment or staffing company while release 2a is off is answered as the page shows it.
+  if (error.message === "CHARA_FORBIDDEN" && error.details === "release_off") return INVITATION_INVALID;
   if (error.message === "CHARA_CONFLICT") return "You are already a member of this team.";
   if (error.message === "CHARA_INVITATION_INVALID") return INVITATION_INVALID;
   console.error("Accept invitation failed", { code: error.code, message: error.message });
@@ -166,9 +176,7 @@ function invitationRefusal(error: PostgrestError): string {
 }
 
 export async function acceptInvitation(token: string): Promise<{ message: string } | undefined> {
-  const user = await requireUser(defaultLocale);
-  // The invitations of this page are an employer's (FR-A5); a recruitment or staffing company account joins none (FR-J1).
-  if (user.intendedOrganizationType) return { message: COMPANY_TYPE_CANNOT_JOIN };
+  await requireUser(defaultLocale);
   const parsed = invitationTokenSchema.safeParse(token);
   if (!parsed.success) return { message: INVITATION_INVALID };
 

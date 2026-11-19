@@ -7,8 +7,9 @@ import { PostJobLabel } from "@/components/layout/post-job-label";
 import { SiteMenu } from "@/components/layout/site-menu";
 import { signOut } from "@/lib/actions/login";
 import { getPostJobHref } from "@/lib/dal/organizations";
+import { releasedSwitches } from "@/lib/dal/release";
 import { getCurrentUser } from "@/lib/dal/session";
-import { forAccountKind, guestLinks, howItWorksLink, laterPhaseFeatures, menuLinks } from "@/lib/public/navigation";
+import { forAccountKind, guestLinks, howItWorksLink, menuLinks, networkMenu } from "@/lib/public/navigation";
 import { homePath } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
@@ -69,7 +70,7 @@ function MenuActions({ lang, area, postJobHref }: { lang: string; area: string |
   return (
     <div className="sticky bottom-0 -mx-5 mt-auto grid grid-cols-2 gap-2.5 border-t bg-background px-5 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
       {postJobHref ? (
-        <LinkButton href={postJobHref} className="col-span-2 xs:hidden">
+        <LinkButton href={postJobHref} prefetch={false} className="col-span-2 xs:hidden">
           <PostJobLabel />
         </LinkButton>
       ) : null}
@@ -95,10 +96,11 @@ function MenuActions({ lang, area, postJobHref }: { lang: string; area: string |
 // The public header (OPEN_QUESTIONS.md D90): from 768 px the links, Post a job and Sign in, with How it works from 1024 px,
 // and no Menu. Below 768 px only the logo, Post a job, Sign in and Menu stay, and Menu opens the panel with everything a
 // visitor can explore, the client's later-phase navigation as plain text, and the account actions; below 420 px Post a job
-// moves into the panel.
+// moves into the panel. An item of that navigation becomes an Explore link once its release is on (FR-L5).
 export async function PublicNav({ lang }: { lang: string }) {
-  const [user, postJobHref] = await Promise.all([getCurrentUser(), getPostJobHref(lang)]);
+  const [user, postJobHref, released] = await Promise.all([getCurrentUser(), getPostJobHref(lang), releasedSwitches()]);
   const area = user ? homePath(lang, user.accountKind) : null;
+  const network = networkMenu(released);
   return (
     <div className="flex items-center gap-1">
       <nav aria-label="Main">
@@ -109,9 +111,10 @@ export async function PublicNav({ lang }: { lang: string }) {
               {howItWorksLink.label}
             </Link>
           </li>
+          {/* Post a job leads into the signed-in area: prefetching it would load the whole app shell on every public page. */}
           {postJobHref ? (
             <li className="max-xs:hidden">
-              <LinkButton href={postJobHref} size="default" className="min-h-11 px-4 md:mx-1">
+              <LinkButton href={postJobHref} prefetch={false} size="default" className="min-h-11 px-4 md:mx-1">
                 <PostJobLabel />
               </LinkButton>
             </li>
@@ -125,11 +128,11 @@ export async function PublicNav({ lang }: { lang: string }) {
             Explore
           </p>
           <ul className="divide-y">
-            {forAccountKind(menuLinks, user?.accountKind).map(({ path, label }) => (
+            {forAccountKind([...menuLinks, ...network.links], user?.accountKind).map(({ path, label }) => (
               <li key={label}>
                 <Link
                   href={path ? `/${lang}/${path}` : `/${lang}`}
-                  className="flex min-h-13 items-center justify-between gap-3 text-lead font-medium transition-colors duration-150 hover:text-brand-ink"
+                  className="flex min-h-13 items-center justify-between gap-3 text-lead capitalize font-medium transition-colors duration-150 hover:text-brand-ink"
                 >
                   {label}
                   <ChevronRight aria-hidden className="size-4 shrink-0 text-muted-foreground" />
@@ -146,8 +149,8 @@ export async function PublicNav({ lang }: { lang: string }) {
             <span className="shrink-0 rounded-full border px-2.5 py-0.5 text-caption font-medium text-muted-foreground">Not yet available</span>
           </div>
           <ul aria-labelledby="menu-later" className="flex flex-wrap gap-2">
-            {laterPhaseFeatures.map((feature) => (
-              <li key={feature} className="rounded-lg bg-secondary px-3 py-1.5 text-small text-muted-foreground">
+            {network.later.map((feature) => (
+              <li key={feature} className="rounded-lg bg-secondary px-3 py-1.5 text-small capitalize text-muted-foreground">
                 {feature}
               </li>
             ))}

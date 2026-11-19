@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Users } from "lucide-react";
+import { notFound } from "next/navigation";
 import * as z from "zod";
 import { Card } from "@/components/layout/card";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
@@ -13,6 +14,7 @@ import { MemberActions } from "@/components/team/member-actions";
 import { ResendInvitation } from "@/components/team/resend-invitation";
 import { TransferOwnership, TransferResponse } from "@/components/team/ownership-transfer";
 import { organizationCrumb } from "@/lib/app/navigation";
+import { isReleased } from "@/lib/dal/release";
 import { getAllowance, getInvitations, getMembers, getPendingTransfer, type TeamMember } from "@/lib/dal/team";
 import { requireOrgRole, roleRank } from "@/lib/dal/session";
 import { formatDate } from "@/lib/i18n/format";
@@ -30,9 +32,13 @@ function mfaStatus(member: TeamMember): string {
   return member.mfaEnrolled ? "Enrolled" : "Not enrolled";
 }
 
+// The team of an employer (FR-A5) or of a recruitment or staffing company (FR-J1 AC9), whose team page is part of release
+// 2a like its other pages. Owners and admins are at aal2 here (requireOrgRole sends them to the two-step page).
 export default async function MembersPage({ params, searchParams }: PageProps<"/[lang]/org/[slug]/members">) {
   const [{ lang, slug }, { after }] = await Promise.all([params, searchParams]);
-  const { user, organization } = await requireOrgRole(lang, slug, "member");
+  const { user, organization } = await requireOrgRole(lang, slug, "member", { partner: "either" });
+  const partner = organization.type !== "employer";
+  if (partner && !(await isReleased("release_partner_directories"))) notFound();
   if (organization.suspended) return <SuspendedOrganization title="Team" subject="team members" />;
   const manager = organization.role !== "member";
   const cursor = z.uuid().safeParse(after);
@@ -86,7 +92,15 @@ export default async function MembersPage({ params, searchParams }: PageProps<"/
       ) : null}
 
       {onlyOwner ? (
-        <EmptyState icon={Users} title="You are the only member" description="Invite colleagues to work on vacancies and applicants with you.">
+        <EmptyState
+          icon={Users}
+          title="You are the only member"
+          description={
+            partner
+              ? "Invite colleagues to keep your workforce profile, listings and licences up to date with you."
+              : "Invite colleagues to work on vacancies and applicants with you."
+          }
+        >
           {invite}
         </EmptyState>
       ) : null}

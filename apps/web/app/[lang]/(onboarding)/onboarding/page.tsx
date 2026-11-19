@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import * as z from "zod";
+import { LegalEntityForm } from "@/components/billing/legal-entity-form";
 import { ChooseKindForm } from "@/components/consent/choose-kind-form";
 import { CommitKind } from "@/components/consent/commit-kind";
 import { ConsentForm } from "@/components/consent/consent-form";
@@ -20,7 +21,6 @@ import { WhereYouServeForm } from "@/components/organization/where-you-serve-for
 import { WorkforceOfferForm } from "@/components/organization/workforce-offer-form";
 import { CreatePassportForm } from "@/components/passport/create-passport-form";
 import { commitAccountKind } from "@/lib/actions/consents";
-import { upgradeHref } from "@/lib/billing/limits";
 import { geographiesComplete, getOrganizationGeographies } from "@/lib/dal/geographies";
 import { getBillingState } from "@/lib/dal/billing";
 import { getCommitmentStatus } from "@/lib/dal/commitment";
@@ -33,14 +33,16 @@ import { getInvitationPreview } from "@/lib/dal/team";
 import { getCountries, getIndustries, getLanguages, getOccupations, type ReferenceItem } from "@/lib/dal/reference";
 import { isReleased } from "@/lib/dal/release";
 import { requireUser } from "@/lib/dal/session";
-import { getUsagePrompts } from "@/lib/dal/usage";
+import { getUnenforcedAllowances, getUsagePrompts } from "@/lib/dal/usage";
 import { getWorkforceOffer, workforceOfferComplete, workforceOfferDefaults } from "@/lib/dal/workforce-offer";
 import { countryFromAcceptLanguage } from "@/lib/i18n/locale";
 import { pendingInvitationToken } from "@/lib/invitation-cookie";
 import {
+  billingPath,
   homePath,
   mfaPath,
   onboardingPath,
+  organizationProfilePath,
   partnerStepPath,
   whatYouOfferPath,
   whereYouServePath,
@@ -48,7 +50,7 @@ import {
 import { BRAND_NAME } from "@/lib/brand";
 import { COMMITMENT_SLUG, commitmentOutdated, WORKERS_NEVER_PAY } from "@/lib/validation/commitment";
 import { identifierKindLabels } from "@/lib/validation/organization";
-import { awaitingReview, infoStepIndex, submittable } from "@/lib/validation/partner-review";
+import { awaitingReview, infoStepIndexes, submittable } from "@/lib/validation/partner-review";
 import { partnerTypeSchema, type PartnerType } from "@/lib/validation/sign-up";
 
 export const metadata: Metadata = { title: "Welcome" };
@@ -57,7 +59,7 @@ const kindLabel = { worker: "Worker", company: "Employer" } as const;
 
 // The first step that is not done yet: a person who left half-way and comes back lands on it. An owner who created the
 // company but has no authenticator yet continues with the two-step set-up. A recruitment or staffing company (FR-J1)
-// goes Company, Where you serve (the countries, then what it offers), Commitments, Security, Ready (PartnerNextStep).
+// goes Company, Where you serve, What you offer, Commitments, Security, Ready (PartnerNextStep).
 export default async function OnboardingPage({
   params,
   searchParams,
@@ -94,6 +96,18 @@ export default async function OnboardingPage({
       (await headers()).get("accept-language"),
       countries.map(({ code }) => code),
     );
+    // A person who registered from a team invitation joins that team instead of creating a company (FR-A5, and FR-J1 for
+    // the team of a recruitment or staffing company).
+    const invitation = await pendingInvitationToken();
+    const preview = invitation ? await getInvitationPreview(invitation) : null;
+    if (
+      invitation &&
+      preview &&
+      preview.email.toLowerCase() === user.email?.toLowerCase() &&
+      preview.organizationType === (user.intendedOrganizationType ?? "employer")
+    ) {
+      redirect(`/${lang}/invitations/${invitation}`);
+    }
     if (partnerType.success) {
       return (
         <OnboardingPanel
@@ -110,11 +124,6 @@ export default async function OnboardingPage({
           />
         </OnboardingPanel>
       );
-    }
-    const invitation = await pendingInvitationToken();
-    const preview = invitation ? await getInvitationPreview(invitation) : null;
-    if (invitation && preview?.email.toLowerCase() === user.email?.toLowerCase()) {
-      redirect(`/${lang}/invitations/${invitation}`);
     }
     return (
       <OnboardingPanel
@@ -195,8 +204,7 @@ type PartnerNextStepProps = {
 };
 
 // The steps after Company for a partner (FR-J1 AC8): Where you serve (FR-K1) until both lists hold a country, then What
-// you offer (FR-K2) until it names an occupation and the recruitment type, both within the step Where you serve of the
-// indicator; then Commitments (FR-J3), where the owner alone accepts the employer-pays commitment and an admin or a
+// you offer (FR-K2) until it names an occupation and the recruitment type, each a step of the indicator; then Commitments (FR-J3), where the owner alone accepts the employer-pays commitment and an admin or a
 // member reads it; then Security, where the owner and each admin set up two-step verification (a member is not asked);
 // then Ready, where the owner or an admin submits the company for review, and which shows the pending state once it is
 // in the staff queue. A partner who comes back lands on the first step not done; the address of Ready leads there while
@@ -215,14 +223,22 @@ async function PartnerNextStep({ lang, aal, organization, countries, industries,
   const review = await getPartnerReview(organization.id);
   if (!review) throw new Error("A partner organisation has no review state");
   if (!submittable(review.status)) {
-    // A listed or declined partner is past onboarding: its dashboard says where it stands.
-    if (!awaitingReview(review.status)) redirect(homePath(lang, "company"));
+    // A listed or declined partner is past onboarding: its dashboard says where it stands, and an owner or admin keeps the
+    // company details on the company profile page.
+    if (!awaitingReview(review.status)) {
+      redirect(
+        step === "company" && organization.role !== "member"
+          ? organizationProfilePath(lang, organization.slug)
+          : homePath(lang, "company"),
+      );
+    }
     return (
       <PartnerReviewPending
         lang={lang}
         organization={organization}
         targetDays={await getReviewTargetDays()}
         wasListed={review.listedAt !== null}
+        manager={organization.role !== "member"}
       />
     );
   }
@@ -237,11 +253,11 @@ async function PartnerNextStep({ lang, aal, organization, countries, industries,
   const geographiesDone = geographiesComplete(geographies);
   const offerDone = workforceOfferComplete(organization.type, offer);
   if (step === "ready" && !(geographiesDone && offerDone && commitment.accepted && twoStepDone)) redirect(onboardingPath(lang));
-  const reopened = review.status === "info_requested" && review.infoStep ? infoStepIndex[review.infoStep] : undefined;
+  const reopened = review.status === "info_requested" && review.infoStep ? infoStepIndexes[review.infoStep] : undefined;
 
   if (member && !(geographiesDone && offerDone)) {
     return (
-      <StepPending lang={lang} current={1} title={geographiesDone ? "Next: What you offer" : "Next: Where you serve"}>
+      <StepPending lang={lang} current={geographiesDone ? 2 : 1} title={geographiesDone ? "Next: What you offer" : "Next: Where you serve"}>
         The owner or an admin of {organization.displayName}{" "}
         {geographiesDone ? "chooses what you offer" : "chooses the countries where you serve"}. Come back to this page when
         they have.
@@ -254,8 +270,6 @@ async function PartnerNextStep({ lang, aal, organization, countries, industries,
     if (aal !== "aal2") redirect(mfaPath(lang, partnerStepPath(lang, "company")));
     const [profile, billing] = await Promise.all([getOrganizationProfile(organization.id), getBillingState(organization.id)]);
     if (!profile) throw new Error("The organisation has no profile");
-    // The identifier is shown only, as on the profile page of an employer: the owner records it on the billing page, which
-    // a partner gets with V15, so until then a correction goes through support.
     const identifier = billing.identifier
       ? `${identifierKindLabels[billing.identifier_kind ?? ""] ?? "Identifier"}: ${billing.identifier}.`
       : "No company registration number or VAT number is recorded yet.";
@@ -281,8 +295,16 @@ async function PartnerNextStep({ lang, aal, organization, countries, industries,
             {identifier}{" "}
             {billing.identifier_locked
               ? "It cannot be changed once a payment has been started for the company."
-              : "The owner corrects it on the billing page, or contact support."}
+              : organization.role === "owner"
+                ? "You correct it here."
+                : "The owner corrects it on this page."}
           </p>
+          {!billing.identifier_locked && organization.role === "owner" ? (
+            <LegalEntityForm
+              slug={organization.slug}
+              defaults={{ identifier: billing.identifier ?? "", identifierKind: billing.identifier_kind ?? "" }}
+            />
+          ) : null}
         </section>
         <TextLink standalone href={partnerStepPath(lang, "ready")}>
           Back to Ready
@@ -292,9 +314,10 @@ async function PartnerNextStep({ lang, aal, organization, countries, industries,
   }
 
   if (!geographiesDone || (!member && step === "where-you-serve")) {
-    const [profile, prompts] = await Promise.all([
+    const [profile, prompts, allowances] = await Promise.all([
       getOrganizationProfile(organization.id),
       getUsagePrompts(organization.id, organization.type, ["markets"]),
+      getUnenforcedAllowances(organization.id, ["markets"]),
     ]);
     const basedIn = countries.find(({ code }) => code === profile?.country)?.name ?? profile?.country ?? "";
     return (
@@ -311,7 +334,8 @@ async function PartnerNextStep({ lang, aal, organization, countries, industries,
           countries={countries}
           defaults={geographies}
           marketsPrompt={prompts.markets}
-          billingHref={upgradeHref(lang, organization.slug, organization.type)}
+          marketsAllowance={allowances.markets}
+          billingHref={billingPath(lang, organization.slug)}
           onboarding
         />
       </OnboardingPanel>
@@ -326,7 +350,7 @@ async function PartnerNextStep({ lang, aal, organization, countries, industries,
     ]);
     return (
       <OnboardingPanel
-        steps={<OnboardingSteps kind="partner" current={1} />}
+        steps={<OnboardingSteps kind="partner" current={2} />}
         title="What you offer"
         description="Employers, job orders and the directories find you by the occupations you recruit or supply. Choose them from the list."
       >
@@ -339,7 +363,7 @@ async function PartnerNextStep({ lang, aal, organization, countries, industries,
           languages={languages}
           defaults={workforceOfferDefaults(offer)}
           occupationsPrompt={prompts.listed_occupations}
-          billingHref={upgradeHref(lang, organization.slug, organization.type)}
+          billingHref={billingPath(lang, organization.slug)}
           onboarding
         />
       </OnboardingPanel>
@@ -353,7 +377,7 @@ async function PartnerNextStep({ lang, aal, organization, countries, industries,
     const owner = organization.role === "owner";
     return (
       <OnboardingPanel
-        steps={<OnboardingSteps kind="partner" current={2} />}
+        steps={<OnboardingSteps kind="partner" current={3} />}
         title="Commitments"
         description={
           commitment.accepted
@@ -405,7 +429,7 @@ async function PartnerNextStep({ lang, aal, organization, countries, industries,
   if (!twoStepDone) {
     return (
       <OnboardingPanel
-        steps={<OnboardingSteps kind="partner" current={3} />}
+        steps={<OnboardingSteps kind="partner" current={4} />}
         title="Secure your account"
         description={`As ${organization.role === "owner" ? "the owner" : "an admin"} of ${organization.displayName} you will manage its team, billing, job orders and candidates, so ${BRAND_NAME} asks for a code from an authenticator app before you open them. It takes about a minute.`}
       >

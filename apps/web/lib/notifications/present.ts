@@ -1,20 +1,28 @@
 import type { Database } from "@chara-pinnacle/db-types";
 import { applicationStatusLabels } from "@/lib/applications/presentation";
 import { formatDate } from "@/lib/i18n/format";
+import { changedFieldsText } from "@/lib/requirements/change-fields";
 import {
+  appealPath,
   applicantPath,
   applicationPath,
   billingPath,
+  companyPagePath,
+  dataExportPath,
   employerDashboardPath,
   homePath,
+  invitationPath,
+  jobOrderPath,
   jobPath,
   mfaPath,
-  partnerStepPath,
+  myReportsPath,
+  requirementPath,
+  requirementResponsesPath,
+  responsePath,
   settingsPath,
-  whereYouServePath,
   workforceProfilePath,
 } from "@/lib/routes";
-import { infoStepLabels, infoStepSchema, type InfoStep } from "@/lib/validation/partner-review";
+import { infoStepLabels, infoStepSchema } from "@/lib/validation/partner-review";
 
 type AccountKind = Database["public"]["Enums"]["account_kind"];
 type ApplicationStatus = Database["public"]["Enums"]["application_status"];
@@ -30,7 +38,13 @@ export type NotificationItem = {
 };
 
 // What a list item shows: one sentence, a short name of the kind and the page of its context (null when there is none).
-export type PresentedNotification = { title: string; kindLabel: string; href: string | null };
+export type PresentedNotification = {
+  title: string;
+  kindLabel: string;
+  href: string | null;
+  // A second page the item offers after its title, such as the complaint route of a dismissed report.
+  secondary?: { lead: string; label: string; href: string };
+};
 
 type Context = { lang: string; accountKind: AccountKind | null };
 
@@ -49,9 +63,37 @@ function isApplicationStatus(value: string | undefined): value is ApplicationSta
   return value !== undefined && Object.hasOwn(applicationStatusLabels, value);
 }
 
-// The onboarding step staff reopened with a request for information (FR-J4).
-function infoStepPath(lang: string, step: InfoStep): string {
-  return step === "where_you_serve" ? whereYouServePath(lang) : partnerStepPath(lang, step);
+// The moderation decision a notice names, which its appeal page is addressed by.
+function decisionId(payload: Record<string, unknown>): number | null {
+  const value = payload.moderation_action_id;
+  return typeof value === "number" && Number.isInteger(value) && value > 0 ? value : null;
+}
+
+// The requirement a closing reminder names, on the page of the recipient's organisation.
+function closingRequirementPath(lang: string, payload: Record<string, unknown>): string | null {
+  const slug = text(payload, "org_slug");
+  const id = text(payload, "requirement_id");
+  return slug && id && /^[0-9a-f-]{36}$/.test(id) ? requirementPath(lang, slug, id) : null;
+}
+
+function invitationHref(lang: string, payload: Record<string, unknown>): string | null {
+  const slug = text(payload, "org_slug");
+  const id = text(payload, "invitation_id");
+  return slug && id && /^[0-9a-f-]{36}$/.test(id) ? invitationPath(lang, slug, id) : null;
+}
+
+// A partner's notice about a requirement it responded to on the marketplace names its response (V44), not an invitation.
+function responseHref(lang: string, payload: Record<string, unknown>): string | null {
+  const slug = text(payload, "org_slug");
+  const id = text(payload, "response_id");
+  return slug && id && /^[0-9a-f-]{36}$/.test(id) ? responsePath(lang, slug, id) : null;
+}
+
+// The responses of the requirement a response notice names, on the employer's page (FR-T1 AC8).
+function requirementResponsesHref(lang: string, payload: Record<string, unknown>): string | null {
+  const slug = text(payload, "org_slug");
+  const id = text(payload, "requirement_id");
+  return slug && id && /^[0-9a-f-]{36}$/.test(id) ? requirementResponsesPath(lang, slug, id) : null;
 }
 
 function licencePath(lang: string, payload: Record<string, unknown>): string | null {
@@ -143,9 +185,16 @@ const PRESENTERS: Record<string, { label: string; present: Presenter }> = {
       };
     },
   },
+  // An organisation suspended while release 2a is on is led to the decision and its appeal (FR-S1).
   account_suspended: {
     label: "Account",
-    present: (_payload, { lang }) => ({ title: "Your account was suspended", href: `/${lang}/suspended` }),
+    present: (payload, { lang }) => {
+      const decision = decisionId(payload);
+      const org = text(payload, "org_name");
+      return decision
+        ? { title: `${org ?? "Your organisation"} was suspended`, href: appealPath(lang, decision) }
+        : { title: "Your account was suspended", href: `/${lang}/suspended` };
+    },
   },
   account_reinstated: {
     label: "Account",
@@ -170,7 +219,8 @@ const PRESENTERS: Record<string, { label: string; present: Presenter }> = {
         title: step.success
           ? `Our team needs more information about ${infoStepLabels[step.data]}`
           : "Our team needs more information about your company",
-        href: step.success ? infoStepPath(lang, step.data) : partnerStepPath(lang, "ready"),
+        // The dashboard shows the team's message with the way back to onboarding; the reopened step page does not show it.
+        href: employerDashboardPath(lang),
       };
     },
   },
@@ -213,6 +263,171 @@ const PRESENTERS: Record<string, { label: string; present: Presenter }> = {
               ? `${total} availability listings need confirming`
               : "Some availability listings need confirming",
         href: slug ? `${workforceProfilePath(lang, slug)}#availability-heading` : null,
+      };
+    },
+  },
+  followed_company_activity: {
+    label: "Followed companies",
+    present: (payload, { lang }) => {
+      const org = text(payload, "org_name") ?? "A company you follow";
+      const total = Number(text(payload, "total"));
+      const vacancies = Array.isArray(payload.vacancies) ? (payload.vacancies as Record<string, unknown>[]) : [];
+      const first = vacancies[0] ? text(vacancies[0], "job_title") : undefined;
+      const slug = text(payload, "org_slug");
+      return {
+        title:
+          total === 1 && first
+            ? `${org} published a new vacancy: ${first}`
+            : total > 1
+              ? `${org} published ${total} new vacancies`
+              : `${org} published new vacancies`,
+        href: slug ? companyPagePath(lang, slug) : null,
+      };
+    },
+  },
+  // The affected company reads the decision on its profile; a reporter reads the outcome of the report (FR-S1 step Inform);
+  // the appellant reads the outcome of the appeal on the decision page (step Appeal).
+  moderation_decision: {
+    label: "Moderation",
+    present: (payload, { lang }) => {
+      const reference = text(payload, "reference");
+      if (reference) {
+        return {
+          title: `Your report ${reference} was closed`,
+          href: myReportsPath(lang),
+          // A reporter may contest a decision not to act (DSA Art. 20); until it is decided how, the route is the
+          // Complaints and Dispute Process (OPEN_QUESTIONS.md L12).
+          ...(text(payload, "outcome") === "dismissed"
+            ? { secondary: { lead: "If you disagree with this outcome, see the", label: "Complaints and Dispute Process", href: `/${lang}/legal/complaints-and-dispute-process` } }
+            : {}),
+        };
+      }
+      const outcome = text(payload, "appeal_outcome");
+      if (outcome) {
+        const decision = decisionId(payload);
+        const about = text(payload, "title");
+        return {
+          title: `${about ? `Your appeal about ${about}` : "Your appeal"} was decided: ${outcome === "restored" ? "the decision was reversed" : "the decision was upheld"}`,
+          href: decision ? appealPath(lang, decision) : null,
+        };
+      }
+      // Only the public profile is hidden, not the company: the title names the profile, never the company alone.
+      const slug = text(payload, "org_slug");
+      const unhidden = text(payload, "decision") === "unhide";
+      return {
+        title: unhidden ? "Your public profile is shown again" : "Your public profile was hidden by moderation",
+        href: slug ? `${workforceProfilePath(lang, slug)}${unhidden ? "" : "#moderation-heading"}` : null,
+      };
+    },
+  },
+  // A partner's reminder names its invitation (V43) and links there; the employer's links to the requirement to extend it.
+  requirement_closing_soon: {
+    label: "Workforce requirements",
+    present: (payload, { lang }) => {
+      const title = text(payload, "title");
+      const value = text(payload, "closes_on");
+      const closes = value && !Number.isNaN(Date.parse(value)) ? formatDate(value) : undefined;
+      return {
+        title: `${title ? `"${title}"` : "A workforce requirement"} closes ${closes ? `on ${closes}` : "soon"}`,
+        href: text(payload, "invitation_id")
+          ? invitationHref(lang, payload)
+          : text(payload, "response_id")
+            ? responseHref(lang, payload)
+            : closingRequirementPath(lang, payload),
+      };
+    },
+  },
+  // FR-M2 step Edit: the fields, never their values; the link lands on the changes of the invitation or response page.
+  requirement_changed: {
+    label: "Invitations",
+    present: (payload, { lang }) => {
+      const title = text(payload, "title");
+      const employer = text(payload, "employer_name");
+      const fields = changedFieldsText(payload.changed_fields);
+      const href = text(payload, "response_id") ? responseHref(lang, payload) : invitationHref(lang, payload);
+      return {
+        title: `${employer ?? "The employer"} changed ${title ? `"${title}"` : "a workforce requirement"}${fields ? `: ${fields}` : ""}`,
+        href: href ? `${href}#changes` : null,
+      };
+    },
+  },
+  requirement_closed: {
+    label: "Invitations",
+    present: (payload, { lang }) => {
+      const title = text(payload, "title");
+      const responded = text(payload, "response_id") !== undefined;
+      const subject = title ? `"${title}"` : `A workforce requirement you ${responded ? "responded to" : "are invited to"}`;
+      return {
+        title: `${subject} ${text(payload, "close_reason") === "filled" ? "is filled" : "is closed"}`,
+        href: responded ? responseHref(lang, payload) : invitationHref(lang, payload),
+      };
+    },
+  },
+  // NFR-S11: the generated title and the destination, never the employer; the link is the recipient's own company page.
+  job_order_match: {
+    label: "Job orders",
+    present: (payload, { lang }) => {
+      const title = text(payload, "title");
+      const slug = text(payload, "org_slug");
+      const id = text(payload, "requirement_id");
+      return {
+        title: title ? `New job order: ${title}` : "A new job order fits your company",
+        href: slug && id && /^[0-9a-f-]{36}$/.test(id) ? jobOrderPath(lang, slug, id) : null,
+      };
+    },
+  },
+  // The invitation reveals the employer to the invited partner (decision 3.2), so the item names it with the requirement's
+  // title; the link is the recipient's own invitation page.
+  invitation_received: {
+    label: "Invitations",
+    present: (payload, { lang }) => {
+      const title = text(payload, "title");
+      const employer = text(payload, "employer_name");
+      return {
+        title: `${employer ?? "An employer"} invited your company to ${title ? `"${title}"` : "a workforce requirement"}`,
+        href: invitationHref(lang, payload),
+      };
+    },
+  },
+  invitation_withdrawn: {
+    label: "Invitations",
+    present: (payload, { lang }) => {
+      const title = text(payload, "title");
+      const employer = text(payload, "employer_name");
+      return {
+        title: `${employer ?? "The employer"} withdrew the invitation to ${title ? `"${title}"` : "a workforce requirement"}`,
+        href: invitationHref(lang, payload),
+      };
+    },
+  },
+  // FR-O2 step Submit and FR-N2 step Withdraw, to the employer: the partner's name and the requirement's own title.
+  response_received: {
+    label: "Responses",
+    present: (payload, { lang }) => {
+      const title = text(payload, "title");
+      return {
+        title: `${text(payload, "partner_name") ?? "A partner"} responded to ${title ? `"${title}"` : "your workforce requirement"}`,
+        href: requirementResponsesHref(lang, payload),
+      };
+    },
+  },
+  response_withdrawn: {
+    label: "Responses",
+    present: (payload, { lang }) => {
+      const title = text(payload, "title");
+      return {
+        title: `${text(payload, "partner_name") ?? "A partner"} withdrew its response to ${title ? `"${title}"` : "your workforce requirement"}`,
+        href: requirementResponsesHref(lang, payload),
+      };
+    },
+  },
+  data_export_ready: {
+    label: "Account",
+    present: (payload, { lang }) => {
+      const until = text(payload, "expires_at");
+      return {
+        title: until ? `Your data is ready to download until ${formatDate(until)}` : "Your data is ready to download",
+        href: dataExportPath(lang),
       };
     },
   },

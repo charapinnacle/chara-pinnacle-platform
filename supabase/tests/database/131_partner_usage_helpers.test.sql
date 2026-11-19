@@ -1,5 +1,5 @@
 begin;
-select plan(65);
+select plan(66);
 
 \ir organizations_fixture.inc
 
@@ -251,7 +251,10 @@ select is(pg_temp.usage(:'ow3', 'org_usage', :'x'),
 update private.settings set value = 'true' where key = 'entitlements_enforced';
 select is(pg_temp.usage_of(:'mb', :'r', 'markets', 'applies'), 'true', 'with enforcement on the limit applies');
 insert into billing.organization_limit_overrides (organization_id, limit_key, limit_value) values (:'r', 'markets', 5);
-select is(pg_temp.usage_of(:'mb', :'r', 'markets', 'limit_value'), '5', 'an override replaces the plan limit');
+select is(pg_temp.usage_of(:'mb', :'r', 'markets', 'limit_value'), '3', 'an override is ignored while the plan is not Enterprise (FR-R2)');
+update billing.subscriptions set plan_code = 'recruitment_enterprise' where organization_id = :'r';
+select is(pg_temp.usage_of(:'mb', :'r', 'markets', 'limit_value'), '5', 'on Enterprise the override replaces the plan limit');
+update billing.subscriptions set plan_code = 'recruitment_partner' where organization_id = :'r';
 delete from billing.organization_limit_overrides where organization_id = :'r';
 update billing.subscriptions set plan_code = 'staffing_enterprise' where organization_id = :'s';
 select is(pg_temp.usage_of(:'ow2', :'s', 'markets', 'limit_value'), null, 'Enterprise reads null (unlimited) for markets');

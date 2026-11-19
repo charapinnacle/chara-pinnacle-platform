@@ -94,14 +94,15 @@ test.describe("submission for review (FR-J1 AC8 to AC11)", () => {
 
     // AC8: onboarding opens at the first step not done, the completed ones announced as done.
     await expect(page.getByRole("heading", { name: "Commitments", exact: true, level: 1 })).toBeVisible();
-    await expect(currentStep(page)).toContainText("Step 3 of 5: Commitments");
+    await expect(currentStep(page)).toContainText("Step 4 of 6: Commitments");
     const steps = onboardingSteps(page).getByRole("listitem");
     await expect(steps).toHaveText([
-      "Step 1 of 5: Company (done)",
-      "Step 2 of 5: Where you serve (done)",
-      "3Step 3 of 5: Commitments",
-      "4Step 4 of 5: Security",
-      "5Step 5 of 5: Ready",
+      "Step 1 of 6: Company (done)",
+      "Step 2 of 6: Where you serve (done)",
+      "Step 3 of 6: What you offer (done)",
+      "4Step 4 of 6: Commitments",
+      "5Step 5 of 6: Security",
+      "6Step 6 of 6: Ready",
     ]);
     // The address of Ready leads to the first step not done.
     await page.goto("/en/onboarding?step=ready");
@@ -121,7 +122,7 @@ test.describe("submission for review (FR-J1 AC8 to AC11)", () => {
 
     // Security: the Phase 1 enrolment, as a step of partner onboarding.
     await expect(page.getByRole("heading", { name: "Secure your account", level: 1 })).toBeVisible();
-    await expect(currentStep(page)).toContainText("Step 4 of 5: Security");
+    await expect(currentStep(page)).toContainText("Step 5 of 6: Security");
     await expect(page.getByText(/^As the owner of Manila Skills .+ you will manage its team, billing, job orders and candidates/)).toBeVisible();
     await expectAccessibleAtBothWidths(page);
     await page.setViewportSize({ width: 1280, height: 900 });
@@ -131,9 +132,13 @@ test.describe("submission for review (FR-J1 AC8 to AC11)", () => {
     await expect(page.getByRole("heading", { name: "Submit your company for review", level: 1 })).toBeVisible();
     await expect(page).toHaveURL(/\/en\/onboarding$/);
     expect((await sessionClaims(page.context())).aal).toBe("aal2");
-    await expect(currentStep(page)).toContainText("Step 5 of 5: Ready");
+    await expect(currentStep(page)).toContainText("Step 6 of 6: Ready");
     await expect(page.getByText(/A review usually takes one working day\.$/)).toBeVisible();
     await expectChecks(page);
+    await expect(page.getByRole("link", { name: "Add your licences" })).toHaveAttribute(
+      "href",
+      /\/en\/org\/[^/]+\/workforce-profile#licences-heading$/,
+    );
     await expectAccessibleAtBothWidths(page);
     await page.setViewportSize({ width: 1280, height: 900 });
     expect(reviewRow(id)).toEqual({ review_status: "onboarding", submitted: false, info_step: null });
@@ -155,9 +160,9 @@ test.describe("submission for review (FR-J1 AC8 to AC11)", () => {
     await expectAccessibleAtBothWidths(page);
     await page.setViewportSize({ width: 1280, height: 900 });
 
-    // The dashboard shows the pending state instead of sending the partner back to onboarding.
+    // The dashboard of the company's type shows the pending state instead of sending the partner back to onboarding.
     await page.getByRole("link", { name: /^Go to your dashboard/ }).click();
-    await expect(page).toHaveURL(/\/en\/dashboard\/employer$/);
+    await expect(page).toHaveURL(new RegExp(`/en/dashboard/(recruitment|staffing)\\?org=${slug}$`));
     await expect(page.getByRole("heading", { name: WAITING, level: 2 })).toBeVisible();
     await expect(page.getByRole("main")).not.toContainText(/approved|verified/i);
     await expectAccessibleAtBothWidths(page);
@@ -242,7 +247,7 @@ test.describe("submission for review (FR-J1 AC8 to AC11)", () => {
     await signInAtAal2(page, partner.user, secret, "/en/onboarding?step=company");
 
     await expect(page.getByRole("heading", { name: "Your company details", level: 1 })).toBeVisible();
-    await expect(currentStep(page)).toContainText("Step 1 of 5: Company");
+    await expect(currentStep(page)).toContainText("Step 1 of 6: Company");
     await expect(page.getByLabel("Legal company name")).toHaveValue(/^Manila Skills .+ Inc\.$/);
     await expectAccessibleAtBothWidths(page);
     await page.setViewportSize({ width: 1280, height: 900 });
@@ -253,11 +258,24 @@ test.describe("submission for review (FR-J1 AC8 to AC11)", () => {
 
     await expect(page.getByRole("heading", { name: "Submit your company again", level: 1 })).toBeVisible();
     await expect(page.getByRole("status").filter({ hasText: "Our team asked for more information about your company details." })).toBeVisible();
-    await expect(onboardingSteps(page).getByRole("listitem").first()).toHaveText("1Step 1 of 5: Company (more information requested)");
-    await expect(page.getByRole("link", { name: "Change your company details" }).first()).toHaveAttribute("href", "/en/onboarding?step=company");
+    await expect(onboardingSteps(page).getByRole("listitem").first()).toHaveText("1Step 1 of 6: Company (more information requested)");
+    await expect(page.getByRole("link", { name: "Change your company details" })).toHaveCount(1);
+    await expect(page.getByRole("link", { name: "Change your company details" })).toHaveAttribute("href", "/en/onboarding?step=company");
     await expectAccessibleAtBothWidths(page);
     await page.setViewportSize({ width: 1280, height: 900 });
 
+    // The resubmission waits for the confirmation that the reopened step was updated or needs no change.
+    await page.getByRole("button", { name: "Submit again for review" }).click();
+    const confirmation = page.getByRole("checkbox", {
+      name: "I have updated what our team asked about, or checked that nothing needs to change.",
+    });
+    await expect(page.getByRole("alert").filter({ hasText: "There is a problem" })).toContainText(
+      "Confirm that you have updated what our team asked about, or that nothing needs to change.",
+    );
+    expect(reviewRow(partner.id).review_status).toBe("info_requested");
+    await expectAccessibleAtBothWidths(page);
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await confirmation.check();
     await page.getByRole("button", { name: "Submit again for review" }).click();
     await expect(page.getByRole("heading", { name: WAITING, level: 1 })).toBeVisible();
     // Listed before, so it returns to re-review; the reopened step is answered.
@@ -265,6 +283,44 @@ test.describe("submission for review (FR-J1 AC8 to AC11)", () => {
     expect(submissionAudits(partner.id).map(({ metadata }) => metadata)).toEqual([
       { from: "info_requested", to: "re_review", info_step: "company" },
     ]);
+  });
+
+  test("FR-J1, FR-J4 AC9: a listed partner's owner edits the company details; only the identifier returns it to review", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+    const partner = await partnerAtCommitments("staffing_company", { accepted: true });
+    const secret = await enrollTotp(partner.user);
+    execute(
+      `update public.organizations set review_status = 'listed', submitted_at = now() - interval '31 days',
+         listed_at = now() - interval '30 days'
+       where id = ${literal(partner.id)}`,
+    );
+    await signInAtAal2(page, partner.user, secret, `/en/org/${partner.slug}/profile`);
+    await page.goto("/en/onboarding?step=company");
+    await expect(page).toHaveURL(`/en/org/${partner.slug}/profile`);
+    await expect(page.getByRole("heading", { name: "Company profile", level: 1 })).toBeVisible();
+    await expect(page.getByText("Changing the legal name or the company identifier sends")).toBeVisible();
+    await expectAccessibleAtBothWidths(page);
+    await page.setViewportSize({ width: 1280, height: 900 });
+
+    await page.getByLabel("Display name (optional)").fill(`Manila Staffing ${partner.slug}`);
+    await page.getByLabel("Website (optional)").fill("https://manila-staffing.example");
+    await page.getByLabel(/^About your company/).fill("We supply welders to employers in Germany.");
+    await page.getByRole("button", { name: "Save profile" }).click();
+    await expect(page.getByText("Company profile saved", { exact: true })).toBeVisible();
+    expect(reviewRow(partner.id).review_status, "the display name, website and description keep it listed").toBe("listed");
+
+    await page.getByLabel("Company registration number or VAT number").fill(`MSX${partner.id.slice(0, 8)}`);
+    await page.getByRole("button", { name: "Save identifier" }).click();
+    await expect(page.getByText("Identifier saved", { exact: true })).toBeVisible();
+    expect(reviewRow(partner.id).review_status, "a new identifier returns it to review").toBe("re_review");
+    expect(organizationAudit(partner.id).filter(({ action }) => action === "partner.returned_to_review").map(({ metadata }) => metadata)).toEqual([
+      { fields: ["legal_entity_identifier"] },
+    ]);
+
+    await page.goto(`/en/dashboard/staffing`);
+    await expect(page.getByRole("link", { name: "Company profile" })).toHaveAttribute("href", `/en/org/${partner.slug}/profile`);
   });
 
   test("the release switch closes Ready, the submission and the pending dashboard", async ({ page }) => {

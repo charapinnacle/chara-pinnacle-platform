@@ -6,9 +6,12 @@ import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/layout/page-header";
 import { ReportForm } from "@/components/reports/report-form";
 import { getPublicJob } from "@/lib/dal/hiring";
+import { getPartnerProfile } from "@/lib/dal/partner-profile";
+import { isReleased } from "@/lib/dal/release";
 import { getCurrentUser } from "@/lib/dal/session";
 import { contentPathFrom, vacancyIdFrom } from "@/lib/reports/target";
-import { reportTargetTypes } from "@/lib/validation/report";
+import { reportCategorySchema, reportTargetTypes } from "@/lib/validation/report";
+import { slugSchema } from "@/lib/validation/team";
 
 export const metadata: Metadata = { title: "Report", robots: { index: false } };
 
@@ -17,13 +20,16 @@ const headings = {
   company: "Report a company",
   profile: "Report a profile",
   content: "Report content",
+  partner_profile: "Report a company",
 } as const;
 
 const first = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value) ?? "";
 
 // The kind of report is in the address (?type=), and so is the target when the link comes from a page that knows it
-// (?job= for a vacancy or a company, ?path= for a page). A vacancy that is not public is no target: the person then gives
-// a link, and the database refuses what cannot be reported. Candidate profiles are private, so there is a note and no form.
+// (?job= for a vacancy or a company, ?path= for a page, ?partner= for the slug of a partner profile) and a category to
+// preselect (?category=). A vacancy that is not public is no target: the person then gives a link, and the database
+// refuses what cannot be reported. Candidate profiles are private, so there is a note and no form. A partner profile is
+// reported from its page only, and only while release 2a is on.
 export default async function ReportPage({ params, searchParams }: PageProps<"/[lang]/report">) {
   const [{ lang }, query] = await Promise.all([params, searchParams]);
   const type = z.enum(reportTargetTypes).safeParse(first(query.type));
@@ -45,6 +51,25 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/[
     );
   }
 
+  const category = reportCategorySchema.safeParse(first(query.category)).data;
+
+  if (kind === "partner_profile") {
+    const partner = slugSchema.safeParse(first(query.partner));
+    const [released, user] = await Promise.all([isReleased("release_partner_directories"), getCurrentUser()]);
+    if (!partner.success || !released) notFound();
+    // The company is named as its profile names it; a profile that is not public names nothing, and the database refuses
+    // the report.
+    const profile = await getPartnerProfile(partner.data);
+    return (
+      <PageContainer layout="page" className="grid max-w-3xl gap-8">
+        <PageHeader title={headings.partner_profile}>
+          {profile.state === "found" ? <p className="text-body font-medium wrap-anywhere">{profile.profile.displayName}</p> : null}
+        </PageHeader>
+        <ReportForm lang={lang} type={kind} target={partner.data} category={category} signedIn={user !== null} />
+      </PageContainer>
+    );
+  }
+
   const [user, job] = await Promise.all([
     getCurrentUser(),
     kind === "content" ? null : getKnownJob(first(query.job)),
@@ -59,7 +84,7 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/[
       <PageHeader title={headings[kind]}>
         {about ? <p className="text-body font-medium wrap-anywhere">{about}</p> : null}
       </PageHeader>
-      <ReportForm lang={lang} type={kind} target={target} signedIn={user !== null} />
+      <ReportForm lang={lang} type={kind} target={target} category={category} signedIn={user !== null} />
     </PageContainer>
   );
 }

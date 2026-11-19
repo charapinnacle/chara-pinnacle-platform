@@ -4,8 +4,21 @@ import { adminEntries, entriesFor } from "@/lib/admin/navigation";
 const labels = (roles: Parameters<typeof entriesFor>[0]) => entriesFor(roles).map((entry) => entry.label);
 
 describe("the entries of the console", () => {
-  it("give the Platform Administrator eight functions, the reports among them", () => {
-    expect(labels(["admin"])).toEqual(["Users", "Organisations", "Statistics", "Legal documents", "Audit log", "Staff", "MFA reset", "Reports"]);
+  it("give the Platform Administrator twelve functions, the reports, the plans, the settings, the retention periods and the direct-hiring rules among them", () => {
+    expect(labels(["admin"])).toEqual([
+      "Users",
+      "Organisations",
+      "Statistics",
+      "Plans and limits",
+      "Platform settings",
+      "Retention periods",
+      "Direct-hiring rules",
+      "Legal documents",
+      "Audit log",
+      "Staff",
+      "MFA reset",
+      "Reports",
+    ]);
   });
 
   it("give the Trust & Safety Administrator the searches, the reports, the moderation of vacancies and the record of suspensions", () => {
@@ -27,12 +40,32 @@ describe("the entries of the console", () => {
   });
 
   it("join the entries of a person with two roles once each, in the order of the console", () => {
-    expect(labels(["trust_safety", "admin"])).toHaveLength(10);
-    expect(new Set(labels(["trust_safety", "admin"])).size).toBe(10);
+    expect(labels(["trust_safety", "admin"])).toHaveLength(14);
+    expect(new Set(labels(["trust_safety", "admin"])).size).toBe(14);
   });
 
-  it("have no entry for plans, limits or settings, which Phase 1 changes by migration", () => {
-    expect(adminEntries.map((entry) => entry.label).join(" ")).not.toMatch(/plan|limit|setting/i);
+  it("give the plan editor and the settings to the Platform Administrator only, outside any release switch (FR-R2)", () => {
+    const editor = adminEntries.filter((entry) => /plan|limit|setting/i.test(entry.label));
+    expect(editor.map((entry) => [entry.segment, entry.roles, "release" in entry])).toEqual([
+      ["plans", ["admin"], false],
+      ["settings", ["admin"], false],
+    ]);
+    expect(labels(["trust_safety"]).join(" ")).not.toMatch(/plan|limit|setting/i);
+    expect(entriesFor(["verification_reviewer"], ["release_partner_directories"]).map((entry) => entry.label)).toEqual(["Partner reviews"]);
+  });
+
+  it("give the retention periods to the Platform Administrator only, outside any release switch (FR-S3)", () => {
+    const retention = adminEntries.filter((entry) => entry.segment === "retention");
+    expect(retention.map((entry) => [entry.label, entry.roles, "release" in entry])).toEqual([["Retention periods", ["admin"], false]]);
+    expect(labels(["trust_safety"])).not.toContain("Retention periods");
+    expect(entriesFor(["verification_reviewer"], ["release_partner_directories"]).map((entry) => entry.label)).not.toContain("Retention periods");
+  });
+
+  it("give the direct-hiring rules to the Platform Administrator only, outside any release switch (FR-Q5)", () => {
+    const rules = adminEntries.filter((entry) => entry.segment === "direct-hiring-rules");
+    expect(rules.map((entry) => [entry.label, entry.roles, "release" in entry])).toEqual([["Direct-hiring rules", ["admin"], false]]);
+    expect(labels(["trust_safety"])).not.toContain("Direct-hiring rules");
+    expect(entriesFor(["verification_reviewer"], ["release_partner_directories"]).map((entry) => entry.label)).not.toContain("Direct-hiring rules");
   });
 
   it("use one address name for each entry", () => {

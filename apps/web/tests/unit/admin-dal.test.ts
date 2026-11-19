@@ -380,18 +380,29 @@ describe("the reports of Trust & Safety", () => {
     target_label: n % 2 ? `Welder ${n}` : "Candidate profile",
     category: "harassment",
     status: "new",
+    priority: 2,
+    due_at: "2026-10-05T10:00:00+00:00",
+    overdue: true,
     created_at: "2026-10-01T10:00:00+00:00",
     handled_at: null,
   });
+  const CURSOR = { priority: 1, dueAt: "2026-10-02T10:00:00+00:00", id: 40 };
 
-  it("lists a status and a kind in pages of 25, with the id of the last row shown as the cursor", async () => {
+  it("FR-S1 AC3: lists the open queue in pages of 25, continuing after the cursor (priority, due time, id) of the last row", async () => {
     const { listReports } = await reports();
     rpcMock.mockResolvedValue({ data: Array.from({ length: 26 }, (_, n) => row(n + 1)), error: null });
-    const page = await listReports({ status: "open", type: "job" }, 40);
+    const page = await listReports({ status: "open", type: "job" }, CURSOR);
 
-    expect(rpcMock).toHaveBeenCalledWith("admin_list_reports", { p_status: "open", p_type: "job", p_limit: 26, p_after_id: 40 });
+    expect(rpcMock).toHaveBeenCalledWith("admin_list_reports", {
+      p_status: "open",
+      p_type: "job",
+      p_limit: 26,
+      p_after_id: 40,
+      p_after_priority: 1,
+      p_after_due_at: "2026-10-02T10:00:00+00:00",
+    });
     expect(page.rows).toHaveLength(25);
-    expect(page.next).toBe(25);
+    expect(page.next).toEqual({ priority: 2, dueAt: "2026-10-05T10:00:00+00:00", id: 25 });
     expect(page.rows[1]).toEqual({
       id: 2,
       reference: "R-000002",
@@ -399,9 +410,25 @@ describe("the reports of Trust & Safety", () => {
       targetLabel: "Candidate profile",
       category: "harassment",
       status: "new",
+      priority: 2,
+      dueAt: "2026-10-05T10:00:00+00:00",
+      overdue: true,
       createdAt: "2026-10-01T10:00:00+00:00",
       handledAt: null,
     });
+  });
+
+  it("pages a closed list on the id alone, and starts from the top for a cursor of the other shape", async () => {
+    const { listReports } = await reports();
+    rpcMock.mockResolvedValue({ data: Array.from({ length: 26 }, (_, n) => row(n + 1)), error: null });
+    const closed = await listReports({ status: "actioned" }, { id: 40 });
+    expect(rpcMock).toHaveBeenLastCalledWith("admin_list_reports", expect.objectContaining({ p_after_id: 40, p_after_priority: undefined, p_after_due_at: undefined }));
+    expect(closed.next).toEqual({ id: 25 });
+
+    await listReports({ status: "actioned" }, CURSOR);
+    expect(rpcMock).toHaveBeenLastCalledWith("admin_list_reports", expect.objectContaining({ p_after_id: undefined, p_after_priority: undefined }));
+    await listReports({ status: "new" }, { id: 40 });
+    expect(rpcMock).toHaveBeenLastCalledWith("admin_list_reports", expect.objectContaining({ p_status: "new", p_after_id: undefined, p_after_due_at: undefined }));
   });
 
   it("fails loudly when the queue cannot be read", async () => {
@@ -418,7 +445,9 @@ describe("the reports of Trust & Safety", () => {
           id: 7, reference: "R-000007", target_type: "company", category: "illegal_content", details: "Text of the report.", status: "in_review",
           reporter_kind: "visitor", reporter_email: "v@example.test", content_path: null, job_id: ID, job_title: "Welder", job_status: "open",
           job_moderation_state: "visible", organization_id: OTHER, organization_name: "Acme Bau", organization_status: "active",
-          resolution_note: null, handled_at: "2026-10-02T10:00:00+00:00", created_at: "2026-10-01T10:00:00+00:00",
+          organization_slug: "acme-bau", resolution_note: null, handled_at: "2026-10-02T10:00:00+00:00", created_at: "2026-10-01T10:00:00+00:00",
+          priority: 2, due_at: "2026-10-05T10:00:00+00:00", overdue: false, organization_type: "employer",
+          organization_moderation_state: null, decision_due_at: "2026-10-08T10:00:00+00:00", decision: null,
         },
       ],
       error: null,
@@ -434,12 +463,46 @@ describe("the reports of Trust & Safety", () => {
       reporterEmail: "v@example.test",
       contentPath: null,
       job: { id: ID, title: "Welder", status: "open", moderationState: "visible" },
-      organization: { id: OTHER, name: "Acme Bau", status: "active" },
+      organization: { id: OTHER, name: "Acme Bau", slug: "acme-bau", status: "active", type: "employer", moderationState: null },
       resolutionNote: null,
       handledAt: "2026-10-02T10:00:00+00:00",
       createdAt: "2026-10-01T10:00:00+00:00",
+      dueAt: "2026-10-05T10:00:00+00:00",
+      overdue: false,
+      decisionDueAt: "2026-10-08T10:00:00+00:00",
+      decision: null,
     });
     expect(rpcMock).toHaveBeenCalledWith("admin_get_report", { p_id: 7 });
+  });
+
+  it("reads every listing of a partner for staff, stale ones flagged, and the decisions with their report (DATA_MODEL 11.13)", async () => {
+    const { getPartnerModeration } = await reports();
+    rpcMock.mockResolvedValueOnce({
+      data: [
+        {
+          organization_id: OTHER, organization_type: "staffing_company", status: "suspended", moderation_state: "org_suspended", listed: true,
+          listings: [
+            { id: ID, occupation: "Welders", source_country: "Philippines", available: 120, monthly_capacity: 40, available_from: "2026-11-01", confirmed_at: "2026-05-01T10:00:00+00:00", stale: true },
+          ],
+          history: [{ id: 3, action: "organization_suspended", reasons: "Fee demanded from workers.", at: "2026-10-02T10:00:00+00:00", report_id: 7 }],
+        },
+      ],
+      error: null,
+    });
+    expect(await getPartnerModeration(OTHER)).toEqual({
+      status: "suspended",
+      moderationState: "org_suspended",
+      listed: true,
+      listings: [
+        { id: ID, occupation: "Welders", sourceCountry: "Philippines", available: 120, monthlyCapacity: 40, availableFrom: "2026-11-01", confirmedAt: "2026-05-01T10:00:00+00:00", stale: true },
+      ],
+      history: [{ id: 3, action: "organization_suspended", reasons: "Fee demanded from workers.", at: "2026-10-02T10:00:00+00:00", reportId: 7 }],
+    });
+    expect(rpcMock).toHaveBeenCalledWith("admin_get_partner_moderation", { p_org: OTHER });
+    rpcMock.mockResolvedValueOnce({ data: null, error: { message: "CHARA_NOT_FOUND" } });
+    expect(await getPartnerModeration(OTHER)).toBeNull();
+    rpcMock.mockResolvedValueOnce({ data: null, error: { message: "boom" } });
+    await expect(getPartnerModeration(OTHER)).rejects.toThrow("The partner could not be loaded");
   });
 
   it("gives null for a report that does not exist and throws for any other failure", async () => {
@@ -448,5 +511,45 @@ describe("the reports of Trust & Safety", () => {
     expect(await getReport(7)).toBeNull();
     rpcMock.mockResolvedValueOnce({ data: null, error: { message: "boom" } });
     await expect(getReport(7)).rejects.toThrow("The report could not be loaded");
+  });
+});
+
+// FR-S2: the partner network counts and key figures.
+describe("the partner network statistics", () => {
+  it("read the counts and the figures of the range, keep hidden values null and take the threshold from the first figure", async () => {
+    rpcMock.mockImplementation(async (name: string) =>
+      name === "admin_network_counts"
+        ? { data: [{ metric: "partner_saves", period_start: "2026-03-01", count: 9 }, { metric: "partner_saves", period_start: "2026-04-01", count: null }], error: null }
+        : {
+            data: [
+              { metric: "stats_min_count", label: null, unit: "count", range_figure: false, value: 8, base: 8 },
+              { metric: "states_recorded_from", label: "2026-03-31", unit: "date", range_figure: false, value: null, base: null },
+              { metric: "approval_share", label: null, unit: "percent", range_figure: true, value: null, base: null },
+            ],
+            error: null,
+          },
+    );
+    const statistics = await dal.networkStatistics({ from: "2026-03-01", to: "2026-04-30", period: "week" });
+
+    expect(rpcMock).toHaveBeenCalledWith("admin_network_counts", { p_from: "2026-03-01", p_to: "2026-04-30", p_period: "week" });
+    expect(rpcMock).toHaveBeenCalledWith("admin_network_kpis", { p_from: "2026-03-01", p_to: "2026-04-30" });
+    expect(statistics).toEqual({
+      counts: [
+        { metric: "partner_saves", periodStart: "2026-03-01", count: 9 },
+        { metric: "partner_saves", periodStart: "2026-04-01", count: null },
+      ],
+      figures: [{ metric: "approval_share", label: null, unit: "percent", rangeFigure: true, value: null, base: null }],
+      minCount: 8,
+      statesFrom: "2026-03-31",
+    });
+  });
+
+  it("throw a failure that keeps the database error as its cause", async () => {
+    const error = { code: "42501", message: "CHARA_FORBIDDEN" };
+    rpcMock.mockImplementation(async (name: string) => (name === "admin_network_counts" ? { data: null, error } : { data: [], error: null }));
+    await expect(dal.networkStatistics({ from: "2026-03-01", to: "2026-04-30", period: "month" })).rejects.toMatchObject({
+      message: "The partner network counts could not be loaded",
+      cause: error,
+    });
   });
 });

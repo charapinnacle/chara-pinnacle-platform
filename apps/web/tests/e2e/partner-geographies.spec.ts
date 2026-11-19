@@ -45,7 +45,7 @@ test.describe("Where you serve (FR-K1)", () => {
     await openPartnerOnboarding(page, user);
 
     await expect(page.getByRole("heading", { name: "Where you serve", level: 1 })).toBeVisible();
-    await expect(currentStep(page)).toContainText("Step 2 of 5: Where you serve");
+    await expect(currentStep(page)).toContainText("Step 2 of 6: Where you serve");
     await expect(page.getByRole("term").filter({ hasText: "Where are you based?" })).toBeVisible();
     await expect(page.getByRole("definition").filter({ hasText: /^Philippines$/ })).toBeVisible();
     await expect(page.getByText("No countries chosen yet.")).toHaveCount(2);
@@ -54,8 +54,9 @@ test.describe("Where you serve (FR-K1)", () => {
 
     // AC10: nothing chosen. The errors stand next to the fields and the focus moves to the first of them.
     await page.getByRole("button", { name: "Continue" }).click();
-    await expect(page.getByText("Choose at least one country you source workers from")).toBeVisible();
-    await expect(page.getByText("Choose at least one country you recruit for")).toBeVisible();
+    const problem = page.getByRole("alert").filter({ hasText: "There is a problem" });
+    await expect(problem.getByRole("link", { name: "Choose at least one country you source workers from." })).toBeVisible();
+    await expect(problem.getByRole("link", { name: "Choose at least one country you recruit for." })).toBeVisible();
     await expect(page.getByRole("combobox", { name: SOURCES })).toBeFocused();
 
     await pickWithKeys(page, SOURCES, "phil", "Philippines");
@@ -63,7 +64,7 @@ test.describe("Where you serve (FR-K1)", () => {
     await expect(chips(page, SOURCES)).toHaveText(["Philippines", "Nepal"]);
     await expect(page.getByText("2 countries", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Continue" }).click();
-    await expect(page.getByText("Choose at least one country you recruit for")).toBeVisible();
+    await expect(page.getByText("Choose at least one country you recruit for.").first()).toBeVisible();
     await expect(page.getByRole("combobox", { name: RECRUITS_FOR })).toBeFocused();
     expect(geographies(id)).toBe("|");
 
@@ -74,16 +75,16 @@ test.describe("Where you serve (FR-K1)", () => {
     await pickWithKeys(page, RECRUITS_FOR, "saudi", "Saudi Arabia");
     await expect(chips(page, RECRUITS_FOR)).toHaveText(["Germany", "United Arab Emirates", "Saudi Arabia"]);
     await expect(page.getByText("3 of 3 countries", { exact: true })).toBeVisible();
-    await expect(page.getByText("Choose at least one country you recruit for")).toHaveCount(0);
+    await expect(page.getByText("Choose at least one country you recruit for.")).toHaveCount(0);
 
     // AC5: a fourth country is not added; the limit is announced with the way to upgrade.
     await pickWithKeys(page, RECRUITS_FOR, "fran", "France");
     await expect(chips(page, RECRUITS_FOR)).toHaveCount(3);
     const notice = page.getByRole("status").filter({ hasText: LIMIT_MESSAGE });
     await expect(notice).toBeVisible();
-    // The billing page does not sell partner plans yet (V15): the prompt compares them instead of linking there.
+    // The prompt compares the higher plans and links to the billing page that sells them (V15).
     await expect(notice).toContainText(COMPARISON);
-    await expect(notice.getByRole("link")).toHaveCount(0);
+    await expect(notice.getByRole("link", { name: "Upgrade your plan" })).toHaveAttribute("href", /\/en\/org\/[^/]+\/billing$/);
     await expect(page.getByText("3 of 3 countries", { exact: true })).toBeVisible();
     // A second blocked add replaces the notice in the live region, so it is announced again.
     await notice.locator(":scope > div").evaluate((element) => element.setAttribute("data-first", "true"));
@@ -124,11 +125,11 @@ test.describe("Where you serve (FR-K1)", () => {
     await expect(chips(page, SOURCES)).toHaveText(["Philippines", "Nepal"]);
     expect(geographies(id)).toBe("|");
 
-    // AC1: the save stores the rows, audits them once and moves on to What you offer, still on step 2 (FR-K2); once the
-    // offer is saved the partner continues with Commitments.
+    // AC1: the save stores the rows, audits them once and moves on to What you offer, step 3 (FR-K2); once the offer is
+    // saved the partner continues with Commitments.
     await page.getByRole("button", { name: "Continue" }).click();
     await expect(page.getByRole("heading", { name: "What you offer", level: 1 })).toBeVisible();
-    await expect(currentStep(page)).toContainText("Step 2 of 5: Where you serve");
+    await expect(currentStep(page)).toContainText("Step 3 of 6: What you offer");
     await callAs(user, "set_organization_workforce_offer", {
       p_org: id,
       p_occupations: ["7212"],
@@ -139,7 +140,7 @@ test.describe("Where you serve (FR-K1)", () => {
     });
     await page.goto("/en/onboarding");
     await expect(page.getByRole("heading", { name: "Commitments", exact: true, level: 1 })).toBeVisible();
-    await expect(currentStep(page)).toContainText("Step 3 of 5: Commitments");
+    await expect(currentStep(page)).toContainText("Step 4 of 6: Commitments");
     expect(geographies(id)).toBe("NP,PH|AE,DE,SA");
     const [organization] = organizationRows(user.id);
     expect(organization.based_in_country).toBe("PH");
@@ -162,6 +163,33 @@ test.describe("Where you serve (FR-K1)", () => {
     await page.getByRole("button", { name: "Continue" }).click();
     await expect(page.getByRole("heading", { name: "Commitments", exact: true, level: 1 })).toBeVisible();
     expect(geographies(id)).toBe("NP,PH|AE,DE");
+  });
+
+  test("AC5: while the limits are not enforced, more served countries than the plan includes are saved with a warning", async ({
+    page,
+  }) => {
+    const { user, id } = await partnerWithCompany("recruitment_company");
+    await openPartnerOnboarding(page, user);
+    await expect(page.getByRole("heading", { name: "Where you serve", level: 1 })).toBeVisible();
+
+    await pickWithKeys(page, SOURCES, "phil", "Philippines");
+    for (const [typed, country] of [
+      ["ger", "Germany"],
+      ["united arab", "United Arab Emirates"],
+      ["saudi", "Saudi Arabia"],
+    ] as const) {
+      await pickWithKeys(page, RECRUITS_FOR, typed, country);
+    }
+    const warning = page.getByRole("status").filter({ hasText: "Plan limits are not enforced yet" });
+    await expect(warning).toHaveCount(0);
+    await pickWithKeys(page, RECRUITS_FOR, "fran", "France");
+    await expect(chips(page, RECRUITS_FOR)).toHaveCount(4);
+    await expect(warning).toContainText("4 of 3 countries served on your Free plan.");
+    await expect(warning.getByRole("link", { name: "Compare plans" })).toHaveAttribute("href", /\/en\/org\/[^/]+\/billing$/);
+    await expectAccessibleAtBothWidths(page);
+    await page.getByRole("button", { name: "Continue" }).click();
+    await expect(page.getByRole("heading", { name: "Where you serve", level: 1 })).toHaveCount(0);
+    expect(geographies(id)).toBe("PH|AE,DE,FR,SA");
   });
 
   test("AC10: a skeleton shows while the saved countries load", async ({ page }) => {

@@ -6,8 +6,9 @@ import { Section } from "@/components/layout/section";
 import { TextLink } from "@/components/forms/text-link";
 import { DeleteAccount } from "@/components/settings/delete-account";
 import { getDeletionStatus } from "@/lib/dal/account-closure";
+import { releasedSwitches } from "@/lib/dal/release";
 import { requireUser } from "@/lib/dal/session";
-import { homePath, notificationSettingsPath } from "@/lib/routes";
+import { dataExportPath, homePath, notificationSettingsPath } from "@/lib/routes";
 
 export const metadata: Metadata = { title: "Settings", robots: { index: false } };
 
@@ -16,7 +17,7 @@ export default async function SettingsPage({ params }: PageProps<"/[lang]/settin
   // A candidate who still has to accept a new version of the terms can ask for deletion all the same.
   const user = await requireUser(lang, { consentGate: false });
   if (user.accountKind !== "worker") redirect(homePath(lang, user.accountKind));
-  const status = await getDeletionStatus();
+  const [status, released] = await Promise.all([getDeletionStatus(), releasedSwitches()]);
 
   return (
     <div className="grid w-full max-w-3xl gap-page">
@@ -27,6 +28,11 @@ export default async function SettingsPage({ params }: PageProps<"/[lang]/settin
       <TextLink standalone="flush" href={notificationSettingsPath(lang)}>
         Notification settings
       </TextLink>
+      {released.includes("release_data_export") ? (
+        <TextLink standalone="flush" href={dataExportPath(lang)}>
+          Download my data
+        </TextLink>
+      ) : null}
       <Section
         id="delete-account"
         title="Delete account"

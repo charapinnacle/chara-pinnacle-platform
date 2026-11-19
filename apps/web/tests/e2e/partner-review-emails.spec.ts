@@ -115,7 +115,8 @@ test.describe("Partner review, licence and availability notifications (FR-T1)", 
     await waitForHydration(item);
     await item.focus();
     await page.keyboard.press("Enter");
-    await expect(page).toHaveURL("/en/dashboard/employer");
+    // The link of the notification leads to the dashboard, which shows the one of the company's type (FR-R3 AC2).
+    await expect(page).toHaveURL(`/en/dashboard/recruitment?org=${listed.slug}`);
     await expect(page.getByRole("heading", { name: "Your company is listed", level: 2 })).toBeVisible();
     await expect(bell(page)).toHaveAccessibleName("Notifications");
 
@@ -126,7 +127,9 @@ test.describe("Partner review, licence and availability notifications (FR-T1)", 
     });
     await waitForHydration(askItem);
     await askItem.click();
-    await expect(askedVisitor.page).toHaveURL("/en/onboarding?step=where-you-serve");
+    // The item opens the dashboard, where the team's message is shown with the way back to onboarding.
+    await expect(askedVisitor.page).toHaveURL(`/en/dashboard/recruitment?org=${asked.slug}`);
+    await expect(askedVisitor.page.getByText(askReason)).toBeVisible();
     await askedVisitor.context.close();
   });
 

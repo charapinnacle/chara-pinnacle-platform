@@ -31,7 +31,7 @@ describe("prices", () => {
 });
 
 describe("the disclosures before the redirect (FR-G2 AC2)", () => {
-  it("states the five things for an organisation that is eligible for a trial", () => {
+  it("states the six things for an organisation that is eligible for a trial (FR-G2 AC2, FR-R1 AC6)", () => {
     expect(checkoutDisclosures(BASIC, false)).toEqual([
       { title: "Trial period", text: "30 days free, starting when you confirm your payment details." },
       { title: "Price after the trial", text: "EUR 39.00 per month, excluding VAT." },
@@ -41,6 +41,10 @@ describe("the disclosures before the redirect (FR-G2 AC2)", () => {
         text: "When the trial ends, your subscription converts to the paid Basic plan and your payment method is charged automatically.",
       },
       { title: "How to cancel", text: "Open Manage billing on the billing page and cancel before the trial ends, and you are not charged." },
+      {
+        title: "No long-term commitment",
+        text: "A card is needed to start. There is no long-term commitment: the subscription runs from month to month until you cancel.",
+      },
     ]);
   });
 
@@ -50,7 +54,7 @@ describe("the disclosures before the redirect (FR-G2 AC2)", () => {
 
   it("shows no trial period, and says the first payment is due at once, for a company that had its trial", () => {
     const items = checkoutDisclosures(BASIC, true);
-    expect(items.map((item) => item.title)).toEqual(["Trial period", "Price", "Billing frequency", "Automatic conversion", "How to cancel"]);
+    expect(items.map((item) => item.title)).toEqual(["Trial period", "Price", "Billing frequency", "Automatic conversion", "How to cancel", "No long-term commitment"]);
     expect(items[0].text).toBe(
       "There is no free trial: a free trial has already been used for this company, so the first payment is due at once.",
     );
@@ -100,7 +104,7 @@ describe("the dates and amounts of a live subscription (FR-G5 AC4, AC5)", () => 
 
   it("shows the next invoice date and the price of an active subscription", () => {
     expect(planFacts({ ...NO_DATES, status: "active", currentPeriodEnd: "2026-12-04T00:00:00Z" }, PROFESSIONAL)).toEqual([
-      "Next invoice 4 Dec 2026",
+      "Next invoice 4 December 2026",
       "EUR 79.00 per month excl. VAT",
     ]);
   });
@@ -122,12 +126,12 @@ describe("the dates and amounts of a live subscription (FR-G5 AC4, AC5)", () => 
   });
 
   it("leaves the amount out for a plan that is not sold online", () => {
-    expect(planFacts({ ...NO_DATES, status: "active", currentPeriodEnd: "2026-12-04T00:00:00Z" }, undefined)).toEqual(["Next invoice 4 Dec 2026"]);
+    expect(planFacts({ ...NO_DATES, status: "active", currentPeriodEnd: "2026-12-04T00:00:00Z" }, undefined)).toEqual(["Next invoice 4 December 2026"]);
     expect(planFacts({ ...NO_DATES, status: "trialing", trialEndsAt: "2026-11-04T00:00:00Z" }, undefined)).toEqual(["Trial ends 4 Nov 2026"]);
   });
 
   it("reads dates as UTC calendar days, not the day of the server", () => {
-    expect(planFacts({ ...NO_DATES, status: "active", currentPeriodEnd: "2026-12-03T23:30:00-05:00" }, undefined)).toEqual(["Next invoice 4 Dec 2026"]);
+    expect(planFacts({ ...NO_DATES, status: "active", currentPeriodEnd: "2026-12-03T23:30:00-05:00" }, undefined)).toEqual(["Next invoice 4 December 2026"]);
   });
 
   it("says that the free plan applies to a paused subscription, with no next invoice", () => {

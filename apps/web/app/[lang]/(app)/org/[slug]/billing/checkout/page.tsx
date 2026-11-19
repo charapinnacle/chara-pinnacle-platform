@@ -9,6 +9,7 @@ import { checkoutDisclosures, formatPrice, type SoldPlan } from "@/lib/billing/p
 import { getBillingState, getSubscription, listSoldPlans, type BillingState } from "@/lib/dal/billing";
 import { getLegalDocument } from "@/lib/dal/legal";
 import { getCountries } from "@/lib/dal/reference";
+import { isReleased } from "@/lib/dal/release";
 import { requireOrgRole } from "@/lib/dal/session";
 import { toOptions } from "@/lib/reference-options";
 import { billingPath } from "@/lib/routes";
@@ -29,12 +30,14 @@ function identifierDefaults(state: BillingState) {
 
 export default async function CheckoutPage({ params, searchParams }: PageProps<"/[lang]/org/[slug]/billing/checkout">) {
   const [{ lang, slug }, { plan: planParam }] = await Promise.all([params, searchParams]);
-  const { organization } = await requireOrgRole(lang, slug, "admin", { hideFromOutsiders: true });
+  const { organization } = await requireOrgRole(lang, slug, "admin", { hideFromOutsiders: true, partner: "either" });
+  if (organization.type !== "employer" && !(await isReleased("release_partner_directories"))) notFound();
   const code = planCodeSchema.safeParse(typeof planParam === "string" ? planParam : "");
   if (!code.success) notFound();
 
+  // Only the plans of the organisation's type: a plan of another type is not found here, as its checkout refuses it.
   const [plans, state, subscription, terms, countries] = await Promise.all([
-    listSoldPlans(),
+    listSoldPlans(organization.type),
     getBillingState(organization.id),
     getSubscription(organization.id),
     getLegalDocument("subscription-and-billing-terms"),

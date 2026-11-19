@@ -1,9 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { json } from "../_shared/http.ts";
+import { signedInUser } from "../_shared/auth.ts";
+import { isObject, json } from "../_shared/http.ts";
 import { type BillingProvider, BillingProviderError } from "../_shared/billing/provider.ts";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const BEARER = /^Bearer ([A-Za-z0-9_-]+)\.([A-Za-z0-9_-]+)\.[A-Za-z0-9_-]+$/;
 const MAX_FIELD = 64;
 const MAX_TERMS_VERSION = 1_000_000;
 const MAX_TRIAL_DAYS = 365;
@@ -15,23 +15,31 @@ const REASONS = new Set([
   "aal2_required",
   "organization_suspended",
   "unknown_plan",
+  "plan_not_for_org_type",
   "plan_not_sold",
   "legal_entity_identifier_required",
   "terms_not_published",
   "terms_version_mismatch",
   "already_subscribed",
   "no_customer",
+  "portal_not_configured",
 ]);
 const FIELDS = new Set(["billing_country", "identifier", "vat_id", "registration_number"]);
 // FR-G6: the database refuses a worker account with this detail. The answer to the caller is the generic one (it is not
 // in REASONS); the attempt is recorded so that the refusals can be counted.
 const WORKER_ACCOUNT = "worker_account";
 
+export type OrganizationType = "employer" | "recruitment_company" | "staffing_company";
+
+// The portal configuration of each organisation type at the provider, which lists only that type's products.
+export type PortalConfigurations = Partial<Record<OrganizationType, string>>;
+
 interface BillingCheckoutDeps {
   userClient: (authorization: string) => SupabaseClient;
   serviceClient: SupabaseClient;
   provider: Pick<BillingProvider, "name" | "createCheckout" | "createPortal">;
   siteUrl: string;
+  portalConfigurations: PortalConfigurations;
 }
 
 interface Checkout {
@@ -48,29 +56,6 @@ interface Checkout {
 interface Portal {
   action: "portal";
   orgId: string;
-}
-
-// The platform has verified the signature (verify_jwt); this only turns away, before any call, a token that cannot be
-// a signed-in person's: the publishable key, an anonymous token, an expired one, and returns who the person is. What
-// the person may do is the database's to say.
-function signedInUser(authorization: string): string | null {
-  const payload = BEARER.exec(authorization)?.[2];
-  if (!payload) {
-    return null;
-  }
-  try {
-    const claims: unknown = JSON.parse(atob(payload.replaceAll("-", "+").replaceAll("_", "/")));
-    return isObject(claims) && claims.role === "authenticated" && typeof claims.sub === "string" &&
-        typeof claims.exp === "number" && claims.exp * 1000 > Date.now()
-      ? claims.sub
-      : null;
-  } catch {
-    return null;
-  }
-}
-
-function isObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function isBoundedInteger(value: unknown, max: number): value is number {
@@ -204,11 +189,25 @@ async function startPortal(
   if (error || !row) {
     return error ? answer(error, userId, deps) : json(502, { error: "unavailable" });
   }
+  const type = row.organization_type;
+  const configuration = isOrganizationType(type) ? deps.portalConfigurations[type] : undefined;
+  // Stripe's default portal configuration lists the employer products, so a partner's portal without its own
+  // configuration would offer it plans of another type: it is refused instead (the go-live check requires the
+  // configurations while release 2a is on). The employer portal keeps the default when no configuration is set.
+  if (!configuration && type !== "employer" && deps.provider.name === "stripe") {
+    console.error("billing-checkout portal not configured", { type });
+    return json(503, { error: "unavailable", reason: "portal_not_configured" });
+  }
   const { url } = await deps.provider.createPortal({
     customerRef: String(row.customer_ref),
     returnUrl: returnUrl(deps.siteUrl, String(row.slug)),
+    ...(configuration ? { configuration } : {}),
   });
   return json(200, { url });
+}
+
+function isOrganizationType(value: unknown): value is OrganizationType {
+  return value === "employer" || value === "recruitment_company" || value === "staffing_company";
 }
 
 function returnUrl(siteUrl: string, slug: string): string {

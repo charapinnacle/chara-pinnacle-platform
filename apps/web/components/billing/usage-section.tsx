@@ -3,11 +3,23 @@ import { Card } from "@/components/layout/card";
 import { classifyUsage, type UsageState } from "@/lib/billing/usage";
 import type { Usage } from "@/lib/dal/billing";
 
-const USAGE_NAMES = { active_jobs: "Open vacancies", members: "Team members" } as const satisfies Record<Usage["key"], string>;
+const USAGE_NAMES = {
+  active_jobs: "Open vacancies",
+  members: "Team members",
+  markets: "Countries served",
+  listed_occupations: "Occupations listed",
+  workforce_listings: "Workforce listings",
+  active_requirements: "Open workforce requirements",
+} as const satisfies Record<Usage["key"], string>;
 
+// What stays when a lower plan applies: nothing is deleted (FR-G4, FR-R1 lapse).
 const OVER_LIMIT_TEXT = {
   active_jobs: "Existing vacancies stay open. No more can be opened until usage is below the limit.",
   members: "Existing members stay. No more can be invited until usage is below the limit.",
+  markets: "The countries you serve stay on your profile. No more can be added until usage is below the limit.",
+  listed_occupations: "The occupations you list stay on your profile. No more can be added until usage is below the limit.",
+  workforce_listings: "Your listings stay. No more can be added until usage is below the limit.",
+  active_requirements: "Open requirements stay open. No more can be published or reopened until usage is below the limit.",
 } as const satisfies Record<Usage["key"], string>;
 
 const STATE_TEXT: Record<UsageState, string | null> = {
@@ -29,14 +41,15 @@ export function UsageSection({ usage, upgradeHref }: UsageSectionProps) {
       <ul className="grid gap-5">
         {usage.map(({ key, used, limit }) => {
           const level = classifyUsage(used, limit);
-          const stateText = STATE_TEXT[level.state];
+          const notIncluded = limit === 0 && used === 0;
+          const stateText = notIncluded ? null : STATE_TEXT[level.state];
           return (
             <li key={key} className="grid gap-2">
               <p className="flex flex-wrap items-baseline justify-between gap-x-4">
                 <span className="font-medium">{USAGE_NAMES[key]}</span>
-                <span>{level.label}</span>
+                <span>{notIncluded ? "Not included in your plan" : level.label}</span>
               </p>
-              {limit !== null && level.percent !== null ? (
+              {limit !== null && level.percent !== null && !notIncluded ? (
                 <div
                   role="progressbar"
                   aria-label={USAGE_NAMES[key]}

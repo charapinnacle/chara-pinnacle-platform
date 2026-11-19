@@ -5,9 +5,17 @@ import { OnboardingSteps } from "@/components/onboarding/onboarding-steps";
 import { ReviewChecks } from "@/components/onboarding/review-checks";
 import { SubmitForReview } from "@/components/onboarding/submit-for-review";
 import { WelcomeTiles } from "@/components/onboarding/welcome-tiles";
-import { homePath, partnerStepPath, whatYouOfferPath, whereYouServePath, workforceProfilePath } from "@/lib/routes";
 import {
-  infoStepIndex,
+  billingPath,
+  homePath,
+  membersPath,
+  partnerStepPath,
+  whatYouOfferPath,
+  whereYouServePath,
+  workforceProfilePath,
+} from "@/lib/routes";
+import {
+  infoStepIndexes,
   infoStepLabels,
   reviewTimeText,
   type InfoStep,
@@ -15,12 +23,18 @@ import {
 
 type Organization = { slug: string; displayName: string };
 
-// Where a request for information about a step leads (FR-J4 AC7): the step itself, reopened.
+// Where a request for information about a step leads (FR-J4 AC7): the step itself, reopened, or for the licences their
+// section of the workforce profile.
 const reopenLinks = {
   company: (lang: string) => ({ href: partnerStepPath(lang, "company"), label: "Change your company details" }),
   where_you_serve: (lang: string) => ({ href: whereYouServePath(lang), label: "Change where you serve" }),
   commitments: (lang: string) => ({ href: partnerStepPath(lang, "commitments"), label: "Review the commitment" }),
-} as const satisfies Record<InfoStep, (lang: string) => { href: string; label: string }>;
+  licences: (lang: string, slug: string) => ({ href: licencesPath(lang, slug), label: "Update your licences" }),
+} as const satisfies Record<InfoStep, (lang: string, slug: string) => { href: string; label: string }>;
+
+function licencesPath(lang: string, slug: string): string {
+  return `${workforceProfilePath(lang, slug)}#licences-heading`;
+}
 
 type PartnerReadyStepProps = {
   lang: string;
@@ -38,10 +52,10 @@ type PartnerReadyStepProps = {
 // Ready, the last step of partner onboarding (FR-J1 AC10, AC11): what staff check, how long it takes, and the submission
 // by the owner or an admin. After a request for information it names the step staff reopened and links to it.
 export function PartnerReadyStep({ lang, organization, manager, targetDays, infoRequested, infoStep, message }: PartnerReadyStepProps) {
-  const reopen = infoStep ? reopenLinks[infoStep](lang) : null;
+  const reopen = infoStep ? reopenLinks[infoStep](lang, organization.slug) : null;
   return (
     <OnboardingPanel
-      steps={<OnboardingSteps kind="partner" current={4} reopened={infoStep ? infoStepIndex[infoStep] : undefined} />}
+      steps={<OnboardingSteps kind="partner" current={5} reopened={infoStep ? infoStepIndexes[infoStep] : undefined} />}
       title={infoRequested ? "Submit your company again" : "Submit your company for review"}
       description={`Our team reviews ${organization.displayName} before it is listed in the partner directories. A review usually takes ${reviewTimeText(targetDays)}.`}
     >
@@ -65,6 +79,11 @@ export function PartnerReadyStep({ lang, organization, manager, targetDays, info
         </Notice>
       ) : null}
       <ReviewChecks id="review-checks" />
+      <p className="text-body">
+        Licences are optional before you submit. Add the licence or registration you hold for each country where you work
+        on your workforce profile, so our team can check it in the review.{" "}
+        <TextLink href={licencesPath(lang, organization.slug)}>Add your licences</TextLink>
+      </p>
       {manager ? (
         <SubmitForReview slug={organization.slug} again={infoRequested} />
       ) : (
@@ -73,19 +92,20 @@ export function PartnerReadyStep({ lang, organization, manager, targetDays, info
         </Notice>
       )}
       <div className="flex flex-wrap gap-x-6 gap-y-3">
-        {manager ? (
-          <>
-            <TextLink standalone href={partnerStepPath(lang, "company")}>
-              Change your company details
-            </TextLink>
-            <TextLink standalone href={whereYouServePath(lang)}>
-              Change where you serve
-            </TextLink>
-            <TextLink standalone href={whatYouOfferPath(lang)}>
-              Change what you offer
-            </TextLink>
-          </>
-        ) : null}
+        {manager
+          ? [
+              { href: partnerStepPath(lang, "company"), label: "Change your company details" },
+              { href: whereYouServePath(lang), label: "Change where you serve" },
+              { href: whatYouOfferPath(lang), label: "Change what you offer" },
+            ]
+              // The step staff reopened is linked in their notice already.
+              .filter(({ href }) => href !== reopen?.href)
+              .map(({ href, label }) => (
+                <TextLink key={href} standalone href={href}>
+                  {label}
+                </TextLink>
+              ))
+          : null}
         <TextLink standalone href={`/${lang}`}>
           Go to the home page
         </TextLink>
@@ -94,16 +114,22 @@ export function PartnerReadyStep({ lang, organization, manager, targetDays, info
   );
 }
 
-type PartnerReviewPendingProps = { lang: string; organization: Organization; targetDays: number; wasListed: boolean };
+type PartnerReviewPendingProps = {
+  lang: string;
+  organization: Organization;
+  targetDays: number;
+  wasListed: boolean;
+  // The owner or an admin chooses the plan and invites the team; a member is offered the profile and the dashboard.
+  manager: boolean;
+};
 
 // The Ready step once the company is in the staff queue (FR-J1 AC11): it says the company is being reviewed, how long that
-// usually takes and what staff check, and offers what can be done meanwhile. Never "approved" or "verified" (decision
-// 2.6). Choosing a plan and inviting the team are not offered yet: the billing page of a partner comes with V15 and no
-// team page is open to partners.
-export function PartnerReviewPending({ lang, organization, targetDays, wasListed }: PartnerReviewPendingProps) {
+// usually takes and what staff check, and offers what can be done meanwhile: the workforce profile, and for the owner and
+// admins choosing a plan and inviting the team. Never "approved" or "verified" (decision 2.6).
+export function PartnerReviewPending({ lang, organization, targetDays, wasListed, manager }: PartnerReviewPendingProps) {
   return (
     <OnboardingPanel
-      steps={<OnboardingSteps kind="partner" current={4} />}
+      steps={<OnboardingSteps kind="partner" current={5} />}
       title="Your company is waiting for review"
       description={`Our team is reviewing ${organization.displayName}. A review usually takes ${reviewTimeText(targetDays)}. ${wasListed ? "Your company stays listed while our team reviews the change." : "Until it is done, your company is not shown to employers."}`}
     >
@@ -119,12 +145,23 @@ export function PartnerReviewPending({ lang, organization, targetDays, wasListed
               title: "Complete your workforce profile",
               text: "Check the countries and occupations employers will find you by.",
             },
+            ...(manager
+              ? [
+                  {
+                    href: billingPath(lang, organization.slug),
+                    title: "Choose a plan",
+                    text: "Compare the plans for your company.",
+                  },
+                  {
+                    href: membersPath(lang, organization.slug),
+                    title: "Invite your team",
+                    text: "Keep your profile and listings up to date together.",
+                  },
+                ]
+              : []),
             { href: homePath(lang, "company"), title: "Go to your dashboard", text: "See where your review stands." },
           ]}
         />
-        <p className="text-small text-muted-foreground">
-          Choosing a plan and inviting your team open here once plans for recruitment and staffing companies are available.
-        </p>
       </section>
     </OnboardingPanel>
   );

@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { enrolledStaff, revokeRole, signInStaff } from "./support/admin";
+import { ADMIN_ENTRIES, enrolledStaff, revokeRole, signInStaff } from "./support/admin";
 import { execute, literal } from "./support/db";
 import { createCommittedUser, enrollTotp } from "./support/login";
 import { logIn } from "./support/login-page";
@@ -7,7 +7,6 @@ import { enterCode, newOwner, staffUser } from "./support/mfa";
 import { signInAtAal2 } from "./support/team";
 import { expect, test } from "./support/test";
 
-const ADMIN_ENTRIES = ["Users", "Organisations", "Statistics", "Legal documents", "Audit log", "Staff", "MFA reset", "Reports"];
 const TRUST_ENTRIES = ["Users", "Organisations", "Reports", "Vacancy moderation", "Suspensions and reinstatements"];
 
 async function entries(page: Page): Promise<string[]> {
@@ -79,19 +78,16 @@ test.describe("the administration console: who gets in and what each role sees",
     await expect(page.getByRole("heading", { name: "Audit log", level: 1 })).toBeVisible();
   });
 
-  test("FR-F1 AC1: the Platform Administrator has eight entries, the reports among them and none for plans, limits or settings, and no page of the Trust & Safety role", async ({
+  test("FR-F1 AC1, FR-R2 AC1, FR-S3 AC10, FR-Q5 AC10: the Platform Administrator has twelve entries, the reports, the plans, the settings, the retention periods and the direct-hiring rules among them, and no page of the Trust & Safety role", async ({
     page,
   }) => {
     await signInStaff(page, "admin");
     await expect(page.getByRole("heading", { name: "Administration", level: 1 })).toBeVisible();
     expect(await entries(page)).toEqual(ADMIN_ENTRIES);
-    for (const forbidden of [/plans/i, /limits/i, /settings/i]) {
-      await expect(page.getByRole("navigation", { name: "Administration" }).getByRole("link", { name: forbidden })).toHaveCount(0);
-    }
-    for (const path of ["/en/admin/moderation", "/en/admin/suspensions", "/en/admin/plans", "/en/admin/settings"]) {
+    for (const path of ["/en/admin/moderation", "/en/admin/suspensions"]) {
       await expectNotFound(page, path);
     }
-    for (const path of ["users", "organizations", "statistics", "legal", "audit", "staff", "mfa-reset", "reports"]) {
+    for (const path of ["users", "organizations", "statistics", "plans", "plans/overrides", "settings", "legal", "audit", "staff", "mfa-reset", "reports"]) {
       const response = await page.goto(`/en/admin/${path}`);
       expect(response?.status(), path).toBe(200);
     }
@@ -102,7 +98,7 @@ test.describe("the administration console: who gets in and what each role sees",
   }) => {
     await signInStaff(page, "trust_safety");
     expect(await entries(page)).toEqual(TRUST_ENTRIES);
-    for (const path of ["audit", "statistics", "legal", "staff", "mfa-reset"]) {
+    for (const path of ["audit", "statistics", "legal", "staff", "mfa-reset", "plans", "plans/overrides", "plans/employer_starter", "settings"]) {
       await expectNotFound(page, `/en/admin/${path}`);
     }
     for (const path of ["users", "organizations", "reports", "moderation", "suspensions"]) {
@@ -117,7 +113,7 @@ test.describe("the administration console: who gets in and what each role sees",
     await signInStaff(page, "verification_reviewer");
     await expect(page.getByText("No functions are available for your role in this release.")).toBeVisible();
     await expect(page.getByRole("navigation", { name: "Administration" })).toHaveCount(0);
-    for (const path of ["users", "organizations", "audit", "moderation", "suspensions", "staff"]) {
+    for (const path of ["users", "organizations", "audit", "moderation", "suspensions", "staff", "plans", "settings"]) {
       await expectNotFound(page, `/en/admin/${path}`, { staff: false });
     }
   });

@@ -13,9 +13,27 @@ import { pathToFileURL } from "node:url";
 
 const STRIPE_API = "https://api.stripe.com/v1";
 
-// Partner plans (FR-R1) are seeded before partner checkout exists, so only employer plans are sold for now.
+// The plans checkout sells, of every organisation type (FR-G1, FR-R1): public, priced and not for contact.
 export function isSold(plan) {
-  return plan.org_type === "employer" && plan.is_public && !plan.contact_sales && plan.price_minor > 0;
+  return plan.is_public && !plan.contact_sales && plan.price_minor > 0;
+}
+
+// The partner plans are sold only while release 2a is on (20261127100000_partner_checkout.sql), so they are mirrored only
+// then: Stripe never holds a price no one can buy, and the prices are mirrored once CHARA has confirmed them.
+export function isMirrored(plan, partnersReleased) {
+  return isSold(plan) && (plan.org_type === "employer" || partnersReleased);
+}
+
+export function skippedPlans(plans, partnersReleased) {
+  return plans.filter((plan) => isSold(plan) && !isMirrored(plan, partnersReleased)).map((plan) => plan.code);
+}
+
+const PRODUCT_SUFFIX = { recruitment_company: " (recruitment companies)", staffing_company: " (staffing companies)" };
+
+// The name of the Stripe product: the plan name, with the company type for a partner plan, as the plans of the three
+// types share their names (Basic, Professional) and Stripe shows the product name on invoices and in the portal.
+export function productName(plan) {
+  return `${plan.name}${PRODUCT_SUFFIX[plan.org_type] ?? ""}`;
 }
 
 function priceMatches(price, plan) {
@@ -40,20 +58,21 @@ function priceMatches(price, plan) {
  *     archivePrice(id: string): Promise<unknown>,
  *   },
  *   store: { saveProduct(code: string, id: string): Promise<void>, savePrice(code: string, id: string): Promise<void> },
+ *   partnersReleased?: boolean,
  * }} options
  * @returns {Promise<string[]>} what was changed at Stripe, empty when nothing was
  */
-export async function syncPlans({ plans, refs, stripe, store }) {
+export async function syncPlans({ plans, refs, stripe, store, partnersReleased = false }) {
   const [products, prices] = await Promise.all([stripe.listProducts(), stripe.listPrices()]);
   const changes = [];
-  for (const plan of plans.filter(isSold).toSorted((a, b) => a.sort - b.sort)) {
+  for (const plan of plans.filter((candidate) => isMirrored(candidate, partnersReleased)).toSorted((a, b) => a.sort - b.sort)) {
     const stored = refs[plan.code] ?? {};
     let product = products.find((candidate) => candidate.metadata?.plan_code === plan.code);
     if (!product) {
       product = await stripe.createProduct(plan);
       changes.push(`created the product of ${plan.code}`);
-    } else if (product.name !== plan.name) {
-      await stripe.renameProduct(product.id, plan.name);
+    } else if (product.name !== productName(plan)) {
+      await stripe.renameProduct(product.id, productName(plan));
       changes.push(`renamed the product of ${plan.code}`);
     }
     if (stored.product !== product.id) {
@@ -115,7 +134,7 @@ export function stripeApi(secretKey, fetchFn = fetch) {
     listPrices: () => list("/prices?active=true&limit=100"),
     getPrice: (id) => call("GET", `/prices/${encodeURIComponent(id)}`),
     createProduct: (plan) =>
-      write("/products", { name: plan.name, "metadata[plan_code]": plan.code }, `chara-product-${plan.code}-${plan.name}`),
+      write("/products", { name: productName(plan), "metadata[plan_code]": plan.code }, `chara-product-${plan.code}-${plan.name}`),
     renameProduct: (id, name) => write(`/products/${encodeURIComponent(id)}`, { name }),
     createPrice: (plan, productId) =>
       write(
@@ -178,6 +197,7 @@ function loadState(databaseUrl) {
           'is_public', p.is_public, 'contact_sales', p.contact_sales, 'sort', p.sort,
           'limits', (select coalesce(json_object_agg(l.limit_key, l.limit_value), '{}') from billing.plan_limits l where l.plan_code = p.code)
         ) order by p.sort), '[]') from billing.plans p),
+       'partners_released', coalesce((select (s.value #>> '{}')::boolean from private.settings s where s.key = 'release_partner_directories'), false),
        'refs', (select coalesce(json_object_agg(r.plan_code, json_build_object('product', r.provider_product_ref, 'price', r.provider_price_ref)), '{}')
                 from billing.plan_provider_refs r where r.provider = 'stripe')
      );`,
@@ -222,7 +242,10 @@ async function main(argv, env) {
       process.stdout.write(`${JSON.stringify(await exportPlans(state, stripe), null, 2)}\n`);
       return 0;
     }
-    const changes = await syncPlans({ plans: state.plans, refs: state.refs, stripe, store: databaseStore(databaseUrl) });
+    const partnersReleased = state.partners_released === true;
+    const changes = await syncPlans({ plans: state.plans, refs: state.refs, stripe, store: databaseStore(databaseUrl), partnersReleased });
+    const skipped = skippedPlans(state.plans, partnersReleased).map((code) => `skipped ${code}: release_partner_directories off`);
+    process.stdout.write(skipped.length ? `${skipped.join("\n")}\n` : "");
     process.stdout.write(changes.length ? `${changes.join("\n")}\n` : "Stripe already mirrors the plans: nothing changed\n");
     return 0;
   } catch (error) {

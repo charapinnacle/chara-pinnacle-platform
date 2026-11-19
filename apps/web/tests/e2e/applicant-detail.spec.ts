@@ -35,7 +35,7 @@ test.describe("the applicant detail page", () => {
     await logIn(page, member, applicantUrl(company.slug, applicationId));
     await expect(page.getByRole("heading", { name: "Ana Silva", level: 1 })).toBeVisible();
     const profile = page.getByRole("region", { name: "Profile as submitted" });
-    await expect(profile.getByText(`Submitted ${DETAIL.submitted}`, { exact: true })).toBeVisible();
+    await expect(profile.getByText(`Submitted ${formatDate(DETAIL.submitted)}`, { exact: true })).toBeVisible();
     const row = (label: string) => profile.locator(`div:has(> dt:text-is('${label}')) > dd`);
     await expect(row("Headline")).toHaveText("Welder");
     await expect(row("Occupation")).toHaveText("Welders and flame cutters");
@@ -148,12 +148,12 @@ test.describe("the applicant detail page", () => {
     await changeStageButton(second).click();
     await stageDialog(second).getByLabel("New stage").selectOption({ label: "Not selected" });
     await stageDialog(second).getByRole("button", { name: "Review" }).click();
-    await expect(stageDialog(second).getByRole("alert").first()).toContainText("Choose a reason");
+    await expect(stageDialog(second).getByRole("alert").first()).toContainText("Choose a reason.");
     expect(eventRows(boId)).toHaveLength(1);
     await stageDialog(second).getByLabel("Reason (visible to the candidate)", { exact: true }).selectOption({ label: "Other" });
     await stageDialog(second).getByLabel("Other reason (visible to the candidate)").fill("   ");
     await stageDialog(second).getByRole("button", { name: "Review" }).click();
-    await expect(stageDialog(second).getByRole("alert").first()).toContainText("Enter a reason");
+    await expect(stageDialog(second).getByRole("alert").first()).toContainText("Enter a reason.");
     await stageDialog(second).getByLabel("Reason (visible to the candidate)", { exact: true }).selectOption({ label: "Position filled" });
     await stageDialog(second).getByRole("button", { name: "Review" }).click();
     await expect(stageDialog(second).getByText("Ana Silva", { exact: true })).toBeVisible();
