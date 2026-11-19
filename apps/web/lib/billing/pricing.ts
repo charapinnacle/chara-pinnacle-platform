@@ -85,6 +85,8 @@ const featureLabels = {
   advanced_partner_search: { label: "Advanced partner search filters", release: "release_partner_directories" },
   available_workforce_search: { label: "Available workforce search", release: "release_partner_directories" },
   job_order_access: { label: "Job order access", release: "release_job_orders" },
+  employer_discovery: { label: "Find employers by destination and industry", release: "release_job_orders" },
+  advanced_employer_discovery: { label: "Find employers by occupation and size, with saved searches", release: "release_job_orders" },
 } as const satisfies Record<string, { label: string; release: ReleaseSwitch | null }>;
 
 // The plan the pricing page marks as recommended (OPEN_QUESTIONS.md P19: the owner has not named one; the default is the

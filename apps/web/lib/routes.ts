@@ -195,6 +195,12 @@ export function jobOrderPath(lang: string, slug: string, id: string): string {
   return `${jobOrdersPath(lang, slug)}/${id}`;
 }
 
+// Find Employers of a recruitment or staffing company (FR-L3), with the query of its filters and page.
+export function findEmployersPath(lang: string, slug: string, query = ""): string {
+  const path = `/${lang}/org/${slug}/find-employers`;
+  return query === "" ? path : `${path}?${query}`;
+}
+
 // The response form for a job order of the marketplace (FR-N2 step Respond, FR-O2).
 export function jobOrderRespondPath(lang: string, slug: string, id: string): string {
   return `${jobOrderPath(lang, slug, id)}/respond`;

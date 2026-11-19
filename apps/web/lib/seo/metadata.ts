@@ -6,7 +6,7 @@ import type { CompanyPage } from "@/lib/companies/page";
 import { env } from "@/lib/env";
 import { countryInSentence, formatDate } from "@/lib/i18n/format";
 import type { PartnerProfile } from "@/lib/partners/profile";
-import { JOB_ORDERS_PATH, RANKING_PATH } from "@/lib/public/navigation";
+import { FIND_COMPANIES_PATH, JOB_ORDERS_PATH, RANKING_PATH } from "@/lib/public/navigation";
 import { companyPagePath, partnerProfilePath } from "@/lib/routes";
 import { staticPages, type StaticPageKey } from "./pages";
 
@@ -102,6 +102,14 @@ export function jobOrdersPageMetadata(lang: string): Metadata {
     withBrand("Job orders", " — "),
     `How employers publish workforce requirements on ${BRAND_NAME} as job orders for recruitment and staffing companies, and who sees them.`,
     `/${lang}/${JOB_ORDERS_PATH}`,
+  );
+}
+
+export function findCompaniesPageMetadata(lang: string): Metadata {
+  return pageMetadata(
+    withBrand("Find companies", " — "),
+    `How recruitment and staffing companies on ${BRAND_NAME} find employers with a public company page and open job orders.`,
+    `/${lang}/${FIND_COMPANIES_PATH}`,
   );
 }
 

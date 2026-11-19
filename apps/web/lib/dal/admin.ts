@@ -287,10 +287,10 @@ const partnerSearchRowSchema = z.object({
   min_count: z.number().int(),
 });
 
-export type PartnerSearchKind = "recruitment" | "staffing" | "available_workforce";
+export type PartnerSearchKind = "recruitment" | "staffing" | "available_workforce" | "employers";
 
-// The searches of one directory, or of the available workforce, of the days (FR-L1, FR-L2, FR-K3 KPIs); answered only
-// while release 2a is on.
+// The searches of one directory, of the available workforce or of Find Employers, of the days (FR-L1, FR-L2, FR-K3,
+// FR-L3 KPIs); answered only while release 2a is on.
 export async function partnerSearchCounts(kind: PartnerSearchKind, from: string, to: string): Promise<PartnerSearchCounts> {
   const supabase = await adminClient();
   const { data, error } = await supabase.rpc("admin_partner_search_stats", { p_kind: kind, p_from: from, p_to: to });

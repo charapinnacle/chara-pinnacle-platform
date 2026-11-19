@@ -169,3 +169,20 @@ export const jobOrderCopy = {
   paging:
     "Job orders come 20 per page by default, with a link to the next page, and the number of requests per person is limited to prevent scraping; neither changes the order.",
 } as const;
+
+// Find Employers as public.search_employers orders it (FR-L3, V53). The page describes it while release 2b is on;
+// tests/unit/ranking-transparency.test.tsx holds the order against the latest definition of the function.
+export const findEmployersOrderBy = "order by r.sort_at desc nulls last, r.id";
+
+// The employers a company row may show, as the function writes them.
+export const findEmployersSelection = "where e.type = 'employer' and e.status = 'active'";
+
+export const findEmployersCopy = {
+  selection:
+    "Listed recruitment and staffing companies on a paid partner plan can find employers: employers whose company page is public, and employers named on an open job order the company sees. A job order whose employer chose not to be named is listed on its own, never next to the employer.",
+  order:
+    "The latest activity of each result comes first: for an employer, the newest publication of a job order or of a vacancy on its public page; for a job order listed on its own, its publication.",
+  payment: "No employer can pay to appear higher, and the plan of the company searching decides only which filters it can use, never the order.",
+  paging:
+    "Results come 20 per page by default, with a link to the next page, and the number of searches per company is limited to prevent scraping; neither changes the order.",
+} as const;

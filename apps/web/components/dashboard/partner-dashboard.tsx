@@ -38,6 +38,7 @@ import { formatCount, formatDate } from "@/lib/i18n/format";
 import {
   billingPath,
   companyDashboardPath,
+  findEmployersPath,
   followingPath,
   jobOrdersPath,
   membersPath,
@@ -304,9 +305,9 @@ function PlanUsageCard({ plan, usage, type, billingHref }: PlanUsageProps) {
 // missing one too); the next actions, the review
 // and listing state, the workforce profile, profile views, followers, licences, the team, the available workforce and
 // the plan with its usage. Every figure is read from the database on each request and each part loads, fails and
-// retries on its own. While release 2b is on the header links the job order marketplace (V40). The blocks of job
-// orders, invitations, submissions, projects, partner requests, matching employers and unread messages, and the actions
-// Find employers, Submit candidates, Find companies and Respond to request, come with their releases (V55, V75); until
+// retries on its own. While release 2b is on the header links the job order marketplace (V40) and Find employers (V53).
+// The blocks of job orders, invitations, submissions, projects, partner requests, matching employers and unread
+// messages, and the actions Submit candidates, Find companies and Respond to request, come with their releases (V55, V75); until
 // then they are absent, not shown as zero. A member sees
 // every block but none of the actions of the owner and admins. Owners and admins see the plan once at aal2, as on the
 // billing page (FR-A4).
@@ -354,9 +355,14 @@ export async function PartnerDashboard({ lang, user, organization }: PartnerDash
           jobOrders || canManage ? (
             <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
               {jobOrders ? (
-                <TextLink standalone href={jobOrdersPath(lang, slug)}>
-                  Job orders
-                </TextLink>
+                <>
+                  <TextLink standalone href={jobOrdersPath(lang, slug)}>
+                    Job orders
+                  </TextLink>
+                  <TextLink standalone href={findEmployersPath(lang, slug)}>
+                    Find employers
+                  </TextLink>
+                </>
               ) : null}
               {canManage ? (
                 <TextLink standalone href={organizationProfilePath(lang, slug)}>
