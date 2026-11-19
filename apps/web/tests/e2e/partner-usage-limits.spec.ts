@@ -90,7 +90,7 @@ test.describe("Partner usage and the upgrade prompt (FR-R1)", () => {
     execute(`update billing.plan_limits set limit_value = 2 where plan_code = 'free_staffing_company' and limit_key = 'markets'`);
     try {
       await serve.getByRole("button", { name: "Save countries" }).click();
-      await expect(serve.getByText("Your plan's limit of countries served is reached.")).toBeVisible();
+      await expect(page.locator("#geo-serves-market-error")).toContainText("Your plan's limit of countries served is reached.");
       await expect.poll(() => prompts(id)).toContain("markets");
     } finally {
       execute(`update billing.plan_limits set limit_value = 3 where plan_code = 'free_staffing_company' and limit_key = 'markets'`);
