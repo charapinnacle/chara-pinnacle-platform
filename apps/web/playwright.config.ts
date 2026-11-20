@@ -173,6 +173,9 @@ const config = defineConfig({
         "**/release-2b-journey.spec.ts",
         "**/job-order-anonymity.spec.ts",
         "**/messaging.spec.ts",
+        "**/worker-visibility.spec.ts",
+        "**/find-workers.spec.ts",
+        "**/contact-requests.spec.ts",
       ],
     },
     {
@@ -708,13 +711,37 @@ const config = defineConfig({
       testMatch: "**/messaging.spec.ts",
       dependencies: ["job-order-anonymity-release"],
     },
+    // The Find Workers opt-in (V68) sets release 2c's release_find_workers for the whole database and withdraws a function
+    // from the API role, so it follows the messaging pages.
+    {
+      name: "worker-visibility-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/worker-visibility.spec.ts",
+      dependencies: ["messaging-release"],
+    },
+    // Find Workers (V69) sets releases 2a, 2b and release_find_workers for the whole database and withdraws a function from
+    // the API role, so it follows the opt-in.
+    {
+      name: "find-workers-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/find-workers.spec.ts",
+      dependencies: ["worker-visibility-release"],
+    },
+    // Contact requests (V70) set release_find_workers and release_messaging for the whole database and open vacancies, so
+    // they follow Find Workers and come before the sitemap.
+    {
+      name: "contact-requests-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/contact-requests.spec.ts",
+      dependencies: ["find-workers-release"],
+    },
     // The sitemap is compared with every public vacancy of the database, so no other spec may open or close one while
     // these tests run: they follow every other project.
     {
       name: "sitemap",
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/search-engine-sitemap.spec.ts",
-      dependencies: ["messaging-release"],
+      dependencies: ["contact-requests-release"],
     },
     // The load times of the performance smoke are measured when no other spec loads the server: last of all.
     {

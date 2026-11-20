@@ -40,6 +40,7 @@ import {
   billingPath,
   companyDashboardPath,
   findEmployersPath,
+  findWorkersPath,
   followingPath,
   invitationsPath,
   jobOrdersPath,
@@ -334,10 +335,11 @@ export async function PartnerDashboard({ lang, user, organization }: PartnerDash
     () => null,
   );
   const listings = Promise.all([getWorkforceListings(id), getAvailabilityRules(), getOccupations(), getCountries()]);
-  const [twoStepDone, jobOrders, submissionsOn] = await Promise.all([
+  const [twoStepDone, jobOrders, submissionsOn, findWorkers] = await Promise.all([
     planLocked ? hasVerifiedTotpFactor(lang) : false,
     jobOrdersReleased,
     isReleased("release_candidate_submissions"),
+    isReleased("release_find_workers"),
   ]);
   // The submission pages need both switches, as submissionsReleased says.
   const submissions = jobOrders && submissionsOn;
@@ -351,7 +353,7 @@ export async function PartnerDashboard({ lang, user, organization }: PartnerDash
         title={dashboardQuestions[type]}
         description={organization.displayName}
         actions={
-          jobOrders || canManage ? (
+          jobOrders || canManage || findWorkers ? (
             <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
               {type === "recruitment_company" ? (
                 <>
@@ -387,6 +389,11 @@ export async function PartnerDashboard({ lang, user, organization }: PartnerDash
                   ) : null}
                 </>
               )}
+              {findWorkers ? (
+                <TextLink standalone href={findWorkersPath(lang, slug)}>
+                  Find workers
+                </TextLink>
+              ) : null}
               {canManage ? (
                 <TextLink standalone href={organizationProfilePath(lang, slug)}>
                   Company profile

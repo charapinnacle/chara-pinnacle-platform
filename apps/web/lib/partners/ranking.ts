@@ -195,3 +195,27 @@ export const findEmployersCopy = {
   paging:
     "Results come 20 per page by default, with a link to the next page, and the number of searches per company is limited to prevent scraping; neither changes the order.",
 } as const;
+
+// Find Workers as public.search_workers orders it (FR-Q2, V69). The page describes it while release 2c is on;
+// tests/unit/ranking-transparency.test.tsx holds the order and the selection against the latest definition of the function.
+export const findWorkersOrderBy = "order by r.score desc, r.updated_at desc, r.card_id";
+
+// Which cards are searched: the listed ones (opted in, account active, no deletion requested; V68).
+export const findWorkersSelection = "where c.listed";
+
+export const findWorkersCopy = {
+  selection:
+    "Employers, and listed recruitment and staffing companies, on a paid plan can search the workers who chose to be found. Only workers whose choice is current and whose account is active are shown; every filter leaves out the workers that do not match it.",
+  score:
+    "The match score: one point for each field your keyword is found in (the occupation, the headline, the skills), and one point for each of the skills you chose that the worker lists. Without a keyword or skills, every worker scores the same.",
+  updated:
+    "The last time the worker changed a field their card shows, most recent first.",
+  identifier: "A fixed random number of each card, so that cards equal on everything above always appear in the same order.",
+  rules:
+    "The direct-hiring rules of the worker's country for your destination decide only whether a card offers direct contact or points to recruitment partners, never whether or where it is listed.",
+  never:
+    "No characteristic such as gender, age, nationality, religion or health is a filter or counts in the order. Whether your organisation pays, and its plan, decide only which filters it can use, never the order; workers never pay.",
+  paging:
+    "Results come 20 per page by default, with a link to the next page, and the number of searches per person is limited to prevent scraping; neither changes the order.",
+} as const;
+

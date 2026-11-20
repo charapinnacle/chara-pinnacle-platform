@@ -11,6 +11,9 @@ import {
   findEmployersCopy,
   findEmployersOrderBy,
   findEmployersSelection,
+  findWorkersCopy,
+  findWorkersOrderBy,
+  findWorkersSelection,
   freshListing,
   jobOrderAccessChecks,
   jobOrderCopy,
@@ -75,6 +78,7 @@ const availableWorkforce = latestDefinition("search_available_workforce");
 const suggestPartners = latestDefinition("suggest_partners");
 const listJobOrders = latestDefinition("list_job_orders");
 const searchEmployers = latestDefinition("search_employers");
+const searchWorkers = latestDefinition("search_workers");
 const assertJobOrderPartner = latestDefinition("assert_job_order_partner", "private");
 
 async function renderPage(): Promise<string> {
@@ -278,6 +282,38 @@ describe("the ranking page and Find Employers (FR-L3, NFR-C8)", () => {
     isReleased.mockResolvedValue(true);
     const text = await renderPage();
     for (const line of Object.values(findEmployersCopy)) expect(text).toContain(squash(line));
+  });
+});
+
+// FR-Q2: the page says how Find Workers orders its cards; each test fails when search_workers changes alone.
+describe("the ranking page and Find Workers (FR-Q2, NFR-C8)", () => {
+  it("search_workers searches the listed cards, by match score, then the card's last change, then card id", () => {
+    expect(searchWorkers).toContain(findWorkersSelection);
+    expect(searchWorkers).toContain(findWorkersOrderBy);
+    expect(searchWorkers).toContain(
+      "f.q_occupation::integer + f.q_headline::integer + f.q_skills::integer + f.skill_hits as score",
+    );
+  });
+
+  it("no order by of search_workers reads a plan or a characteristic of the worker", () => {
+    const orders = [...searchWorkers.matchAll(/order by [^;]*?(?=\)|;|limit|$)/g)].map((match) => match[0]);
+    expect(orders.length).toBeGreaterThan(0);
+    for (const order of orders) {
+      expect(order).not.toMatch(/\b(billing|subscriptions?|plan_code|plans|has_feature|paid)\b/i);
+      expect(order).not.toMatch(/\b(gender|age|nationality|religion|ethnicity|health|current_country|direct_contact)\b/i);
+    }
+  });
+
+  it("names no plan", () => {
+    for (const text of Object.values(findWorkersCopy)) expect(text).not.toMatch(/\b(Basic|Professional|Enterprise|Free)\b/);
+  });
+
+  it("the page describes Find Workers only while release 2c is on", async () => {
+    isReleased.mockImplementation((key: string) => Promise.resolve(key !== "release_find_workers"));
+    expect(await renderPage()).not.toContain(squash(findWorkersCopy.score));
+    isReleased.mockResolvedValue(true);
+    const text = await renderPage();
+    for (const line of Object.values(findWorkersCopy)) expect(text).toContain(squash(line));
   });
 });
 

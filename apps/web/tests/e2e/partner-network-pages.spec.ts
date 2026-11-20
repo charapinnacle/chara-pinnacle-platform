@@ -101,15 +101,16 @@ test.describe("the public partner network pages (FR-L5)", () => {
     await partner.context.close();
   });
 
-  test("AC3: the pages of 2b and 2c do not exist and neither the sitemap nor the menu names them; with their switches on only the pages built so far (Job orders, V40; Find companies, V53) appear", async ({ request }) => {
+  test("AC3: the pages of 2b and 2c do not exist and neither the sitemap nor the menu names them; with their switches on only the pages built so far (Job orders, V40; Find companies, V53; Find workers, V69) appear", async ({ request }) => {
     for (const path of UNRELEASED_PATHS) expect((await request.get(path)).status(), path).toBe(404);
     const sitemap = await (await request.get("/sitemap.xml")).text();
     for (const path of ["/en/partners/recruitment", "/en/partners/staffing"]) expect(sitemap).toContain(`<loc>${SITE}${path}</loc>`);
     for (const path of UNRELEASED_PATHS) expect(sitemap).not.toContain(`<loc>${SITE}${path}</loc>`);
 
     // Their switches alone publish nothing: each page's own unit adds its link and sitemap entry (job-orders.spec.ts
-    // checks the Job orders page, its link and its entry, find-employers.spec.ts the Find companies page).
-    const built = ["/en/job-orders", "/en/companies"];
+    // checks the Job orders page, its link and its entry, find-employers.spec.ts the Find companies page,
+    // find-workers.spec.ts the Find workers page).
+    const built = ["/en/job-orders", "/en/companies", "/en/find-workers"];
     const notBuilt = UNRELEASED_PATHS.filter((path) => !built.includes(path));
     setRelease("release_job_orders", true);
     setRelease("release_find_workers", true);

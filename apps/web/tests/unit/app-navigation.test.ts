@@ -180,6 +180,45 @@ describe("the header links of an organisation", () => {
     expect(organizationLinks("en", { slug: "acme", role: "owner", suspended: true, messaging: true })).toEqual([]);
   });
 
+  it("FR-Q2, FR-Q3: add Find workers and the contact requests before the analytics for employers and partners while Find Workers is released", () => {
+    expect(labels(organizationLinks("en", { slug: "acme", role: "member", suspended: false, jobOrders: true, analytics: true, findWorkers: true }))).toEqual([
+      "Organisation",
+      "Vacancies",
+      "Applicants",
+      "Requirements",
+      "Find workers",
+      "Contact requests",
+      "Analytics",
+      "Team",
+    ]);
+    expect(
+      organizationLinks("en", { slug: "manila", role: "member", suspended: false, partnerSegment: "recruitment", findWorkers: true }).find(
+        ({ label }) => label === "Find workers",
+      )?.href,
+    ).toBe("/en/org/manila/find-workers");
+    expect(
+      organizationLinks("en", { slug: "manila", role: "member", suspended: false, partnerSegment: "recruitment", findWorkers: true }).find(
+        ({ label }) => label === "Contact requests",
+      )?.href,
+    ).toBe("/en/org/manila/contact-requests");
+    expect(organizationLinks("en", { slug: "acme", role: "owner", suspended: true, findWorkers: true })).toEqual([]);
+  });
+
+  it("FR-Q3: adds Contact requests for a candidate after the applications while Find Workers is released", () => {
+    expect(labels(workerLinks("en", { submissions: true, contactRequests: true, messaging: true }))).toEqual([
+      "Dashboard",
+      "Find jobs",
+      "Saved",
+      "Applications",
+      "Submissions",
+      "Contact requests",
+      "Messages",
+      "Passport",
+    ]);
+    expect(workerLinks("en", { contactRequests: true }).find(({ label }) => label === "Contact requests")?.href).toBe("/en/contact-requests");
+    expect(labels(workerLinks("en"))).not.toContain("Contact requests");
+  });
+
   it("give a suspended organisation none, because each of its pages only says that it is suspended", () => {
     for (const role of ["owner", "admin", "member"] as const) {
       expect(organizationLinks("en", { slug: "acme", role, suspended: true })).toEqual([]);

@@ -75,8 +75,19 @@ export async function employerEntry(lang: string, user: { id: string; aal: strin
       </div>
     );
   }
-  const [network, requirements] = await Promise.all([isReleased("release_partner_directories"), isReleased("release_job_orders")]);
+  const [network, requirements, findWorkers] = await Promise.all([
+    isReleased("release_partner_directories"),
+    isReleased("release_job_orders"),
+    isReleased("release_find_workers"),
+  ]);
   return (
-    <EmployerDashboard lang={lang} organization={organization} twoStepDone={twoStepDone} network={network} requirements={requirements} />
+    <EmployerDashboard
+      lang={lang}
+      organization={organization}
+      twoStepDone={twoStepDone}
+      network={network}
+      requirements={requirements}
+      findWorkers={findWorkers}
+    />
   );
 }

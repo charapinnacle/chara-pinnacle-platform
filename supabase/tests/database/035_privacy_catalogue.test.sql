@@ -1,5 +1,5 @@
 begin;
-select plan(9);
+select plan(10);
 
 \ir privacy_fixture.inc
 
@@ -20,7 +20,13 @@ $$;
 -- answer to a submission request, which shares the chosen documents of the own passport with the employer and revokes that
 -- share again (FR-O4, V48), or (mark_submission_viewed, get_employer_submission, submission_documents) the employer's
 -- reads and system's move of a submitted candidate, which answer only for an approved submission of the caller's employer,
--- reach the share only to check it or to set its expiry, and return no storage path (FR-O5, V50). The match is on source text, so a helper two calls away or a dynamic query would not be seen.
+-- reach the share only to check it or to set its expiry, and return no storage path (FR-O5, V50), or (set_worker_visibility,
+-- set_card_sections, my_card_preview) the worker's own Find Workers card, its opt-in and its sections (FR-Q1, V68), or
+-- (search_workers) the Find Workers search of a paid organisation, which reads the listed cards and filters on the lists
+-- behind them, and returns the card columns only (FR-Q2, V69), or (list_contact_requests_sent) the organisation's own
+-- contact requests, which name the worker by first and last name only once the worker accepted, or (list_conversations,
+-- get_conversation, list_messages) the conversations, which name the worker of an accepted contact request to the
+-- organisation as they name an applicant (FR-Q3, V70). The match is on source text, so a helper two calls away or a dynamic query would not be seen.
 select set_eq(
   $$select p.proname::text
     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
@@ -32,7 +38,7 @@ select set_eq(
           where q.pronamespace = 'private'::regnamespace
             and q.prosrc ~* '(worker_profiles|worker_skills|worker_languages|worker_preferred_countries|worker_work_authorizations|worker_documents|passport_shares|worker_training|worker_employment_history|worker_preferred_industries|worker_preferred_employment_types)'
             and p.prosrc ~* ('private\.' || q.proname || '\s*\(')))$$,
-  $$values ('application_documents'), ('application_profile_changed'), ('apply_to_job'), ('approve_submission'), ('create_worker_passport'), ('delete_worker_document'), ('document_access_grant'), ('get_employer_submission'), ('mark_application_viewed'), ('mark_submission_viewed'), ('passport_limits'), ('submission_documents'), ('withdraw_application'), ('withdraw_submission')$$,
+  $$values ('application_documents'), ('application_profile_changed'), ('apply_to_job'), ('approve_submission'), ('create_worker_passport'), ('delete_worker_document'), ('document_access_grant'), ('get_conversation'), ('get_employer_submission'), ('list_contact_requests_sent'), ('list_conversations'), ('list_messages'), ('mark_application_viewed'), ('mark_submission_viewed'), ('my_card_preview'), ('passport_limits'), ('search_workers'), ('set_card_sections'), ('set_worker_visibility'), ('submission_documents'), ('withdraw_application'), ('withdraw_submission')$$,
   'AC10: the functions open to the API roles that read candidate data are on the allow-list'
 );
 
@@ -43,20 +49,26 @@ select is(
   0::bigint, 'AC10: the allow-listed owner functions act for the caller (auth.uid)'
 );
 
--- No view over candidate data is open to the API roles: there is no listing, and no view is a way around the policies.
+-- No view over candidate data is open to the API roles: there is no listing, and no view is a way around the policies. The
+-- Find Workers cards (public.worker_search, V68) are granted to no API role; search_workers is their only reader.
 select is_empty(
   $$select distinct c.relname::text
     from pg_depend d
     join pg_rewrite r on r.oid = d.objid
     join pg_class c on c.oid = r.ev_class and c.relkind in ('v', 'm')
     where d.refobjid = any (pg_temp.candidate_tables()) and c.relnamespace = 'public'::regnamespace
-      and c.relname <> 'v_my_document_access_log'$$,
-  'AC10: no view or materialized view in public reads a candidate table, except the candidate''s own access log (FR-B5)'
+      and c.relname not in ('v_my_document_access_log', 'worker_search')$$,
+  'AC10: no view or materialized view in public reads a candidate table, except the candidate''s own access log (FR-B5) and the ungranted Find Workers cards (FR-Q1)'
 );
 select is_empty(
   $$select c.relname::text from pg_class c
     where c.relnamespace = 'public'::regnamespace and c.relkind = 'v' and coalesce(c.reloptions, '{}') @> array['security_invoker=true'] is not true$$,
   'every view in public is security_invoker'
+);
+select is_empty(
+  $$select 'worker_search' where has_table_privilege('anon', 'public.worker_search', 'select')
+      or has_table_privilege('authenticated', 'public.worker_search', 'select')$$,
+  'FR-Q1 AC4: the Find Workers cards are granted to no API role'
 );
 
 -- The policies on candidate tables look at the owner only: a policy for an organisation or staff would fail here.

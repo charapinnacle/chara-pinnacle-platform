@@ -21,6 +21,8 @@ export type AppNavProps = {
   notifications?: { userId: string; initialUnread: number } | null;
   // Set for a candidate while candidate submissions are released (FR-O4).
   submissions?: boolean;
+  // Set for a candidate while Find Workers is released (FR-Q3).
+  contactRequests?: boolean;
   // Set for a candidate while release 2c is on (FR-P1).
   messages?: boolean;
   // The unread messages of the header badge while release 2c is on (FR-P4), with the id of each organisation by slug.
@@ -29,11 +31,11 @@ export type AppNavProps = {
 
 // What the header and the sidebar offer, for who is signed in: a candidate, or the role in the organisation named by the
 // address.
-export function useAppNavigation({ lang, email, accountKind, organizations, submissions, messages }: AppNavProps) {
+export function useAppNavigation({ lang, email, accountKind, organizations, submissions, contactRequests, messages }: AppNavProps) {
   const pathname = usePathname();
   const orgParam = useSearchParams().get("org");
   const organization = accountKind === "company" ? currentOrganization(lang, pathname, orgParam, organizations) : undefined;
-  const offered = accountKind === "worker" ? workerLinks(lang, { submissions, messaging: messages }) : organization ? organizationLinks(lang, organization) : [];
+  const offered = accountKind === "worker" ? workerLinks(lang, { submissions, contactRequests, messaging: messages }) : organization ? organizationLinks(lang, organization) : [];
   const links = isGatePage(lang, pathname) ? [] : offered;
   const roleLabel = accountKind === "worker" ? "Worker" : accountKind === "company" ? (organization?.roleLabel ?? "Employer") : undefined;
   const switcher = organizations.length > 1 ? organization : undefined;

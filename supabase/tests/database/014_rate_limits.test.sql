@@ -49,7 +49,8 @@ select results_eq(
     ('rate_limit_reset_password_max', '10'), ('rate_limit_reset_password_seconds', '300'),
     ('rate_limit_signup_max', '30'), ('rate_limit_signup_seconds', '300'),
     ('rate_limit_user_buckets', '1048576'),
-    ('rate_limit_visitor_keys_max', '20000')$$,
+    ('rate_limit_visitor_keys_max', '20000'),
+    ('rate_limit_worker_search_max', '30'), ('rate_limit_worker_search_seconds', '60')$$,
   'the limits of the actions, the bucket count and the cap on new visitors are settings with their defaults'
 );
 

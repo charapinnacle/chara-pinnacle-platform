@@ -9,15 +9,18 @@ import {
   applicationPath,
   billingPath,
   companyPagePath,
+  contactRequestsPath,
   conversationPath,
   dataExportPath,
   employerDashboardPath,
+  findWorkersCardPath,
   homePath,
   invitationPath,
   jobOrderPath,
   jobPath,
   mfaPath,
   myReportsPath,
+  orgContactRequestsPath,
   partnerSubmissionsPath,
   requirementPath,
   requirementResponsesPath,
@@ -597,6 +600,48 @@ const PRESENTERS: Record<string, { label: string; present: Presenter }> = {
           ? `A candidate you submitted for ${requirement} is now ${employerSubmissionLabels[status]}`
           : `The stage of a candidate you submitted for ${requirement} changed`,
         href: requirementSubmissionsHref(lang, payload),
+      };
+    },
+  },
+  // FR-Q1 AC8: the yearly question whether the Find Workers card should stay; only the date to answer by.
+  // V70: the company that asks and the vacancy it offers, never the message (FR-Q3 step Notify).
+  contact_request_received: {
+    label: "Contact requests",
+    present: (payload, { lang }) => {
+      const organization = text(payload, "org_name") ?? "A company";
+      const job = text(payload, "job_title");
+      return {
+        title: `${organization} would like to contact you${job ? ` about "${job}"` : ""}`,
+        href: contactRequestsPath(lang),
+      };
+    },
+  },
+  // V70: the worker's answer without the worker's name (NFR-S9); the name is on the organisation's requests page.
+  contact_request_decided: {
+    label: "Contact requests",
+    present: (payload, { lang }) => {
+      const decision = text(payload, "decision");
+      const slug = text(payload, "org_slug");
+      return {
+        title:
+          decision === "accepted"
+            ? "A worker accepted your contact request"
+            : decision === "declined"
+              ? "A worker declined your contact request"
+              : "A worker answered your contact request",
+        href: slug ? orgContactRequestsPath(lang, slug) : null,
+      };
+    },
+  },
+  visibility_confirmation: {
+    label: "Find Workers",
+    present: (payload, { lang }) => {
+      const by = text(payload, "respond_by");
+      return {
+        title: by
+          ? `Please confirm by ${formatDate(by)} that your card should stay in Find Workers`
+          : "Please confirm that your card should stay in Find Workers",
+        href: findWorkersCardPath(lang),
       };
     },
   },

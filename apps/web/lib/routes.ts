@@ -66,6 +66,11 @@ export function mfaPath(lang: string, next?: string): string {
   return next && next !== "/" ? `/${lang}/mfa?next=${encodeURIComponent(next)}` : `/${lang}/mfa`;
 }
 
+// The Find Workers part of the passport: the card preview, the opt-in and the yearly confirmation (FR-Q1).
+export function findWorkersCardPath(lang: string): string {
+  return `/${lang}/passport#find-workers`;
+}
+
 export function settingsPath(lang: string): string {
   return `/${lang}/settings`;
 }
@@ -199,6 +204,21 @@ export function jobOrderPath(lang: string, slug: string, id: string): string {
 export function findEmployersPath(lang: string, slug: string, query = ""): string {
   const path = `/${lang}/org/${slug}/find-employers`;
   return query === "" ? path : `${path}?${query}`;
+}
+
+export function findWorkersPath(lang: string, slug: string, query = ""): string {
+  const path = `/${lang}/org/${slug}/find-workers`;
+  return query === "" ? path : `${path}?${query}`;
+}
+
+// The contact requests a worker received, and those an organisation sent from Find Workers (FR-Q3).
+export function contactRequestsPath(lang: string): string {
+  return `/${lang}/contact-requests`;
+}
+
+export function orgContactRequestsPath(lang: string, slug: string, status?: string): string {
+  const path = `/${lang}/org/${slug}/contact-requests`;
+  return status ? `${path}?${new URLSearchParams({ status }).toString()}` : path;
 }
 
 // The response form for a job order of the marketplace (FR-N2 step Respond, FR-O2).
