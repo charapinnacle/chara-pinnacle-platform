@@ -149,7 +149,7 @@ test.describe("Find Workers (FR-Q2)", () => {
     const save = nigeriaCard.getByRole("button", { name: /^Save: / });
     await waitForHydration(save);
     await save.click();
-    await expect(page.getByText("Worker saved")).toBeVisible();
+    await expect(page.getByText("Worker saved", { exact: true })).toBeVisible();
     const saved = page.getByRole("region", { name: "Saved workers" });
     await expect(saved.getByTestId("worker-card")).toContainText("Nigeria");
     await expect(saved.getByRole("button", { name: /^Remove from saved: / })).toBeVisible();
