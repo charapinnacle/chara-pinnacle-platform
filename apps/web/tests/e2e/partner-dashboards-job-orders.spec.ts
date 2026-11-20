@@ -90,6 +90,8 @@ test.describe("Partner dashboards, release 2b (V55)", () => {
   let acme: Team;
 
   test.beforeAll(async () => {
+    // The submission pipeline, which runs earlier, leaves requirements in Andorra.
+    execute(`delete from public.workforce_requirements where country_code = ${literal(ANDORRA)}`);
     setPartnerRelease(true);
     setRelease("release_job_orders", true);
     setRelease("release_candidate_submissions", false);
