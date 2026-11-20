@@ -27,6 +27,7 @@ const filterLabels: Record<PageContext, string> = {
   requirement_invitation: "Invitations",
   partner_response: "Responses",
   contact_request: "Contact requests",
+  inquiry: "Inquiries",
 };
 
 type InboxProps = {

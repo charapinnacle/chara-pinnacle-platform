@@ -37,6 +37,7 @@ select results_eq(
     ('rate_limit_document_access_max', '30'), ('rate_limit_document_access_seconds', '60'),
     ('rate_limit_employer_search_max', '60'), ('rate_limit_employer_search_seconds', '60'),
     ('rate_limit_forgot_password_max', '10'), ('rate_limit_forgot_password_seconds', '300'),
+    ('rate_limit_inquiry_max', '10'), ('rate_limit_inquiry_seconds', '86400'),
     ('rate_limit_job_orders_max', '60'), ('rate_limit_job_orders_seconds', '60'),
     ('rate_limit_login_max', '30'), ('rate_limit_login_seconds', '300'),
     ('rate_limit_message_max', '20'), ('rate_limit_message_seconds', '60'),

@@ -12,6 +12,9 @@ vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ rpc: rpcM
 vi.mock("@/lib/dal/settings", () => ({ getPublicSettings: settingsMock }));
 vi.mock("@/lib/dal/release", () => ({ isReleased: releasedMock }));
 vi.mock("@/lib/dal/session", () => ({ requireUser: async () => ({ id: "user-1", accountKind: "company" }) }));
+vi.mock("@/lib/dal/connection-actions", () => ({ listConversationConnections: async () => ({}) }));
+vi.mock("@/lib/dal/contact-requests", () => ({ listOpenVacancies: async () => [] }));
+vi.mock("@/lib/dal/submissions", () => ({ submissionsReleased: async () => false, getSubmissionTarget: async () => null }));
 vi.mock("next/navigation", () => ({
   notFound: () => {
     throw new Error("NOT_FOUND");

@@ -90,7 +90,7 @@ describe("the Find Workers results (FR-Q2 AC6, AC10, AC12)", () => {
       nextCursor: null,
       cursorIgnored: false,
     });
-    contactsMock.mockResolvedValue(new Map([[other.card_id, { status: "pending", sentAt: "2027-02-10T09:00:00+00:00", canSend: false }]]));
+    contactsMock.mockResolvedValue(new Map([[other.card_id, { requestId: "33333333-3333-4333-8333-333333333333", status: "pending", sentAt: "2027-02-10T09:00:00+00:00", canSend: false }]]));
     const { filters } = parseFindWorkersParams({});
     const html = await render(<FindWorkersResults organizationId="org" filters={filters} context={context} languages={{}} />);
     expect(contactsMock).toHaveBeenCalledWith("org", [card.card_id, other.card_id]);

@@ -1,11 +1,14 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState, useTransition } from "react";
+import { TypedMessageCard } from "@/components/connections/typed-message-card";
 import { toastNetworkError } from "@/components/feedback/toast-store";
 import { FormButton } from "@/components/forms/form-button";
 import { TextLink } from "@/components/forms/text-link";
 import { MessageComposer, type ComposerOrganization } from "@/components/messaging/message-composer";
 import { fetchEarlierMessages, markConversationRead } from "@/lib/actions/messaging";
+import { typedMessageCard, type ConversationConnection } from "@/lib/connections/typed-messages";
 import { formatDateTime } from "@/lib/i18n/format";
 import { useConversationMessages } from "@/lib/messaging/hooks";
 import { senderLabel } from "@/lib/messaging/present";
@@ -25,6 +28,9 @@ type ConversationThreadProps = {
   organization: ComposerOrganization | null;
   // Shown above the composer, or above what replaces it: the "Workers never pay" notice (FR-P3 AC11).
   notice?: React.ReactNode;
+  // The connections of the typed messages by message id (FR-P2, V71), and whether the reader is the worker.
+  connections?: Record<string, ConversationConnection>;
+  reader?: "worker" | "organization";
   children?: React.ReactNode;
 };
 
@@ -41,12 +47,24 @@ export function ConversationThread({
   maxChars,
   organization,
   notice,
+  connections = {},
+  reader = "organization",
   children,
 }: ConversationThreadProps) {
   const { messages, refresh, add } = useConversationMessages(conversationId, initialMessages);
   const [hasEarlier, setHasEarlier] = useState(initialMessages.length >= MESSAGES_PAGE_SIZE);
   const [loadingEarlier, startLoadingEarlier] = useTransition();
   const newestId = messages[0]?.id;
+  const router = useRouter();
+  const askedFor = useRef(new Set<string>());
+
+  // A typed message that arrived live has no card yet: the page is read again once for it, which brings its connection.
+  useEffect(() => {
+    const missing = messages.filter((message) => message.kind !== "text" && !connections[message.id] && !askedFor.current.has(message.id));
+    if (missing.length === 0) return;
+    for (const message of missing) askedFor.current.add(message.id);
+    router.refresh();
+  }, [messages, connections, router]);
 
   useEffect(() => {
     void markConversationRead(conversationId).then((marked) => {
@@ -98,6 +116,7 @@ export function ConversationThread({
                     <span className="font-medium text-foreground wrap-anywhere">{senderLabel(message)}</span>
                     <time dateTime={message.createdAt}>{formatDateTime(message.createdAt)}</time>
                   </p>
+                  <MessageCard lang={lang} card={typedMessageCard(message.kind, connections[message.id], reader)} />
                   <p className="text-body whitespace-pre-wrap wrap-anywhere">{message.body}</p>
                   {message.mine ? null : (
                     <p className="text-small">
@@ -126,4 +145,8 @@ export function ConversationThread({
       )}
     </div>
   );
+}
+
+function MessageCard({ lang, card }: { lang: string; card: ReturnType<typeof typedMessageCard> }) {
+  return card.kind === "text" ? null : <TypedMessageCard lang={lang} card={card} />;
 }

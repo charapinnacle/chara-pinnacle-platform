@@ -248,7 +248,10 @@ test.describe("Public partner profile (FR-K4)", () => {
     const partner = await listedPartner({ complete: false });
 
     await page.goto(profileUrl(partner.slug));
-    await expect(page.getByRole("link", { name: "Sign up to contact" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Sign in to contact" }), "FR-P2 AC9: a visitor signs in with a safe next value").toHaveAttribute(
+      "href",
+      `/en/login?next=${encodeURIComponent(profileUrl(partner.slug))}`,
+    );
     await expect(page.getByRole("link", { name: "Report company" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Edit profile" })).toHaveCount(0);
     await expect(page.getByRole("link", { name: `Follow ${partner.displayName}` }), "FR-L4 AC9: Follow leads a visitor to log in").toHaveAttribute(
@@ -259,9 +262,9 @@ test.describe("Public partner profile (FR-K4)", () => {
     for (let step = 0; step < 40 && reached.length < 2; step++) {
       await page.keyboard.press("Tab");
       const name = await page.evaluate(() => document.activeElement?.textContent?.trim() ?? "");
-      if (["Sign up to contact", "Report company"].includes(name) && !reached.includes(name)) reached.push(name);
+      if (["Sign in to contact", "Report company"].includes(name) && !reached.includes(name)) reached.push(name);
     }
-    expect(reached.sort()).toEqual(["Report company", "Sign up to contact"]);
+    expect(reached.sort()).toEqual(["Report company", "Sign in to contact"]);
 
     // FR-L4 roles: employers save and follow, candidates and other partners follow, the partner's own members do neither.
     const viewers: [string, TestUser, boolean, { save: number; follow: number }][] = [];
@@ -279,7 +282,7 @@ test.describe("Public partner profile (FR-K4)", () => {
       await viewerPage.waitForURL((url) => !url.pathname.endsWith("/login"));
       await viewerPage.goto(profileUrl(partner.slug));
       await expect(viewerPage.getByRole("heading", { level: 1 })).toHaveText(partner.displayName);
-      await expect(viewerPage.getByRole("link", { name: "Sign up to contact" }), label).toHaveCount(0);
+      await expect(viewerPage.getByRole("link", { name: "Sign in to contact" }), label).toHaveCount(0);
       await expect(viewerPage.getByRole("link", { name: "Report company" }), label).toHaveCount(member ? 0 : 1);
       await expect(viewerPage.getByRole("link", { name: "Report a fee demand" }), label).toHaveCount(member ? 0 : 1);
       await expect(viewerPage.getByRole("link", { name: "Edit profile" }), label).toHaveCount(member ? 1 : 0);

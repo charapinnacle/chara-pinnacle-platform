@@ -48,8 +48,8 @@ export const contextLabels: Record<ConversationContext, string> = {
 // The filters of the inbox, the contexts the viewer can take part in.
 export function inboxContexts(viewer: MessagingViewer): readonly PageContext[] {
   if (viewer.kind === "worker") return ["application", "candidate_submission", "contact_request"];
-  if (viewer.kind === "partner") return ["requirement_invitation", "partner_response", "contact_request"];
-  return ["application", "candidate_submission", "requirement_invitation", "partner_response", "contact_request"];
+  if (viewer.kind === "partner") return ["requirement_invitation", "partner_response", "contact_request", "inquiry"];
+  return ["application", "candidate_submission", "requirement_invitation", "partner_response", "contact_request", "inquiry"];
 }
 
 // The other party as FR-P1 AC11 names it: the candidate by name, an organisation by display name; an employer the partner

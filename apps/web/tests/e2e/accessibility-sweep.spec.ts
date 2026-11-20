@@ -158,6 +158,7 @@ const releasedPages = [
   "/[lang]/companies/[slug]",
   "/[lang]/contact-requests",
   "/[lang]/find-workers",
+  "/[lang]/request-workers",
   "/[lang]/following",
   "/[lang]/job-orders",
   "/[lang]/legal/ranking",

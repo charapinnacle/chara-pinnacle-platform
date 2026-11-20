@@ -156,7 +156,8 @@ select is(
   'FR-P1 AC8: no policy on realtime.messages allows insert, update or all, so no client sends on a conversation topic');
 select is(
   (select string_agg(tgname, ',' order by tgname) from pg_trigger
-   where tgrelid in ('public.messages'::regclass, 'public.conversation_reads'::regclass) and not tgisinternal),
+   where tgrelid in ('public.messages'::regclass, 'public.conversation_reads'::regclass) and not tgisinternal
+     and tgname like '%\_broadcast'),
   'conversation_reads_broadcast,messages_broadcast', 'one broadcast trigger on messages and one on read state');
 
 -- Who joins conversation:<id> (FR-P1 AC5, AC8; NFR-S8) --------------------------------------------------------------------

@@ -72,7 +72,8 @@ select set_eq(
     ('followed_company_activity'), ('requirement_closing_soon'), ('job_order_match'), ('invitation_received'),
     ('invitation_withdrawn'), ('requirement_changed'), ('requirement_closed'), ('response_received'), ('response_withdrawn'),
     ('response_decided'), ('submission_approved'), ('submission_withdrawn'), ('submission_stage_changed'),
-    ('visibility_confirmation'), ('contact_request_received'), ('contact_request_decided')$$,
+    ('visibility_confirmation'), ('contact_request_received'), ('contact_request_decided'), ('inquiry_received'),
+    ('workforce_request_received'), ('job_invitation')$$,
   'catalogue: of the Phase 1 kinds only application_received is optional, as Phase 1 treats it; the other optional kinds are those of Phase 2 (DATA_MODEL.md section 9)'
 );
 select is(

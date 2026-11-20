@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { isNotificationKind } from "@/emails/index";
 import { badgeText, bellLabel } from "@/lib/notifications/bell";
 import { presentedKinds, presentNotification } from "@/lib/notifications/present";
-import { appealPath, applicantPath, applicationPath, billingPath, companyPagePath, contactRequestsPath, dataExportPath, employerDashboardPath, findWorkersCardPath, homePath, invitationPath, jobOrderPath, jobPath, mfaPath, myReportsPath, orgContactRequestsPath, partnerSubmissionsPath, requirementPath, requirementResponsesPath, requirementSubmissionsPath, responsePath, settingsPath, submissionPath, workforceProfilePath } from "@/lib/routes";
+import { appealPath, applicantPath, applicationPath, billingPath, companyPagePath, contactRequestsPath, conversationPath, dataExportPath, employerDashboardPath, findWorkersCardPath, homePath, invitationPath, jobOrderPath, jobPath, mfaPath, myReportsPath, orgContactRequestsPath, partnerSubmissionsPath, requirementPath, requirementResponsesPath, requirementSubmissionsPath, responsePath, settingsPath, submissionPath, workforceProfilePath } from "@/lib/routes";
 
 const APP = "11111111-1111-4111-8111-111111111111";
 const JOB = "22222222-2222-4222-8222-222222222222";
@@ -117,6 +117,11 @@ describe("in-app notification items (FR-T1)", () => {
     ["contact_request_received", {}, worker, "A company would like to contact you", contactRequestsPath("en")],
     ["contact_request_decided", { decision: "accepted", org_slug: "acme" }, company, "A worker accepted your contact request", orgContactRequestsPath("en", "acme")],
     ["contact_request_decided", { decision: "declined", org_slug: "acme" }, company, "A worker declined your contact request", orgContactRequestsPath("en", "acme")],
+    ["inquiry_received", { org_name: "Acme Bau", conversation_id: APP, org_slug: "manila" }, company, "Acme Bau sent you an inquiry", conversationPath("en", "manila", APP)],
+    ["inquiry_received", {}, company, "An employer sent you an inquiry", null],
+    ["workforce_request_received", { org_name: "Acme Bau", occupation: "Welders", quantity: 25, country_name: "Germany", conversation_id: APP, org_slug: "manila" }, company, "Acme Bau requests workers: 25 × Welders in Germany", conversationPath("en", "manila", APP)],
+    ["job_invitation", { org_name: "Acme Bau", job_title: "Welder MIG/MAG", conversation_id: APP }, worker, 'Acme Bau invites you to apply to "Welder MIG/MAG"', conversationPath("en", null, APP)],
+    ["job_invitation", { conversation_id: "../billing" }, worker, "A company invites you to apply", null],
   ] as const)("%s reads as one sentence and opens its context page", (kind, payload, context, title, href) => {
     const presented = presentNotification({ kind, payload }, context);
     expect(presented.title).toBe(title);
@@ -164,7 +169,7 @@ describe("in-app notification items (FR-T1)", () => {
   });
 
   it("shows a kind of a later release without failing", () => {
-    expect(presentNotification({ kind: "inquiry_received", payload: { submission_id: APP } }, company)).toEqual({
+    expect(presentNotification({ kind: "corridor_update", payload: { submission_id: APP } }, company)).toEqual({
       title: "You have a new notification",
       kindLabel: "Notification",
       href: null,

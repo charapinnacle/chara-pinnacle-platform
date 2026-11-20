@@ -143,6 +143,12 @@ function proposedCandidate(payload: Record<string, unknown>): string {
   return payload.to_partner === true ? "A candidate you proposed" : `A candidate proposed by ${text(payload, "partner_name") ?? "a partner"}`;
 }
 
+// The conversation a connection notice names (V71), in the inbox of the recipient's organisation (slug) or the worker's own.
+function connectionConversationHref(lang: string, payload: Record<string, unknown>, slug: string | null): string | null {
+  const id = text(payload, "conversation_id");
+  return id && /^[0-9a-f-]{36}$/.test(id) ? conversationPath(lang, slug, id) : null;
+}
+
 function licencePath(lang: string, payload: Record<string, unknown>): string | null {
   const slug = text(payload, "org_slug");
   return slug ? `${workforceProfilePath(lang, slug)}#licences-heading` : null;
@@ -630,6 +636,39 @@ const PRESENTERS: Record<string, { label: string; present: Presenter }> = {
               ? "A worker declined your contact request"
               : "A worker answered your contact request",
         href: slug ? orgContactRequestsPath(lang, slug) : null,
+      };
+    },
+  },
+  // V71: an employer's inquiry to the partner, by the employer's name; never the text (FR-P2 AC11).
+  inquiry_received: {
+    label: "Inquiries",
+    present: (payload, { lang }) => ({
+      title: `${text(payload, "org_name") ?? "An employer"} sent you an inquiry`,
+      href: connectionConversationHref(lang, payload, text(payload, "org_slug") ?? null),
+    }),
+  },
+  // V71: what the employer asks the staffing partner for: occupation, number of workers and destination.
+  workforce_request_received: {
+    label: "Workforce requests",
+    present: (payload, { lang }) => {
+      const quantity = text(payload, "quantity");
+      const occupation = text(payload, "occupation");
+      const country = text(payload, "country_name");
+      const need = occupation ? `${quantity ? `${quantity} × ` : ""}${occupation}${country ? ` in ${country}` : ""}` : null;
+      return {
+        title: `${text(payload, "org_name") ?? "An employer"} requests workers${need ? `: ${need}` : ""}`,
+        href: connectionConversationHref(lang, payload, text(payload, "org_slug") ?? null),
+      };
+    },
+  },
+  // V71: a company invites the worker to apply to a vacancy; the Apply button is on the invitation in the conversation.
+  job_invitation: {
+    label: "Invitations to apply",
+    present: (payload, { lang }) => {
+      const job = text(payload, "job_title");
+      return {
+        title: `${text(payload, "org_name") ?? "A company"} invites you to apply${job ? ` to "${job}"` : ""}`,
+        href: connectionConversationHref(lang, payload, null),
       };
     },
   },

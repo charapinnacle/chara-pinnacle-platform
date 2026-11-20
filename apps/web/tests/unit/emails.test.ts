@@ -149,6 +149,29 @@ const SAMPLES: Record<NotificationKind, Record<string, unknown>> = {
   visibility_confirmation: { respond_by: "2027-12-17T01:35:00+00:00" },
   contact_request_received: { contact_request_id: APP, org_name: "Acme Bau", org_type: "employer", country_code: "DE", country_name: "Germany", job_title: "Welder MIG/MAG" },
   contact_request_decided: { contact_request_id: APP, decision: "accepted", org_slug: "acme-bau" },
+  inquiry_received: { connection_id: JOB, conversation_id: APP, org_name: "Acme Bau", org_slug: "manila-recruit" },
+  workforce_request_received: {
+    connection_id: JOB,
+    conversation_id: APP,
+    org_name: "Acme Bau",
+    requirement_id: JOB,
+    occupation: "Welders and flame cutters",
+    quantity: 25,
+    country_code: "DE",
+    country_name: "Germany",
+    start_date: "2027-03-01",
+    org_slug: "manila-recruit",
+  },
+  job_invitation: {
+    connection_id: JOB,
+    conversation_id: APP,
+    org_name: "Acme Bau",
+    job_id: JOB,
+    job_title: "Welder MIG/MAG",
+    city: "Hamburg",
+    country_code: "DE",
+    country_name: "Germany",
+  },
 };
 
 const LEAKS = {
@@ -273,6 +296,9 @@ describe("notification templates", () => {
       visibility_confirmation: findWorkersCardPath("en"),
       contact_request_received: contactRequestsPath("en"),
       contact_request_decided: orgContactRequestsPath("en", "acme-bau"),
+      inquiry_received: conversationPath("en", "manila-recruit", APP),
+      workforce_request_received: conversationPath("en", "manila-recruit", APP),
+      job_invitation: conversationPath("en", null, APP),
     };
     for (const [kind, path] of Object.entries(links)) {
       const email = await renderEmail(kind as NotificationKind, SAMPLES[kind as NotificationKind], SITE);
@@ -408,6 +434,23 @@ describe("notification templates", () => {
     expect(email.subject).toBe("Acme Bau would like to contact you");
     expect(email.text).toContain('Acme Bau (Germany) found your card in Find Workers and sent you a contact request with an invitation to apply to "Welder MIG/MAG".');
     for (const part of [email.subject, email.text, email.html]) expect(part).not.toContain("+49");
+  });
+
+  it("the connection notices name the sender and what it asks for, never the text (FR-P2 AC11)", async () => {
+    const text = { body: "SECRET-INQUIRY-BODY", message: "SECRET-INQUIRY-BODY" };
+    const inquiry = await renderEmail("inquiry_received", { ...SAMPLES.inquiry_received, ...text }, SITE);
+    expect(inquiry.subject).toBe("Acme Bau sent you an inquiry");
+    const request = await renderEmail("workforce_request_received", { ...SAMPLES.workforce_request_received, ...text }, SITE);
+    expect(request.subject).toBe("Acme Bau requests workers from you");
+    expect(request.text).toContain("25 × Welders and flame cutters in Germany from 2027-03-01");
+    const invitation = await renderEmail("job_invitation", { ...SAMPLES.job_invitation, ...text }, SITE);
+    expect(invitation.subject).toBe("Acme Bau invites you to apply");
+    expect(invitation.text).toContain('apply to "Welder MIG/MAG" in Hamburg, Germany');
+    for (const email of [inquiry, request, invitation]) {
+      for (const part of [email.subject, email.text, email.html]) expect(part).not.toContain("SECRET");
+    }
+    const foreign = await renderEmail("inquiry_received", { ...SAMPLES.inquiry_received, org_slug: "../billing" }, SITE);
+    expect(foreign.html).not.toContain("billing");
   });
 
   it("contact_request_decided says the answer without the worker's name and links only the recipient's own page (FR-Q3 AC8, NFR-S9)", async () => {

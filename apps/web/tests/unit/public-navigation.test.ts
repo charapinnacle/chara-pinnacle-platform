@@ -130,6 +130,7 @@ describe("the network items of the menu (FR-L5 AC4)", () => {
   const jobOrders = { path: "job-orders", label: "Job orders" };
   const findCompanies = { path: "companies", label: "Find companies" };
   const findWorkers = { path: "find-workers", label: "Find workers" };
+  const requestWorkers = { path: "request-workers", label: "Request workers" };
   const three = ["release_partner_directories", "release_job_orders", "release_find_workers"] as const;
   const combinations: ReleaseSwitch[][] = Array.from({ length: 8 }, (_, bits) => three.filter((_, index) => bits & (1 << index)));
 
@@ -151,10 +152,11 @@ describe("the network items of the menu (FR-L5 AC4)", () => {
     expect(networkFeatures.map(({ label }) => label)).toEqual(order);
     expect(networkMenu([]).later).toEqual(order);
     const all = networkMenu([...three, "release_candidate_submissions", "release_messaging"]);
-    expect(all.links).toEqual([findWorkers, findCompanies, ...directories, jobOrders]);
-    expect(all.later).toEqual(["Request workers", "Workforce corridors"]);
+    expect(all.links).toEqual([findWorkers, requestWorkers, findCompanies, ...directories, jobOrders]);
+    expect(all.later).toEqual(["Workforce corridors"]);
+    expect(networkMenu(["release_messaging"]).links).toEqual([requestWorkers]);
     expect(networkFeatures.filter(({ path }) => path !== null).map(({ path }) => path)).toEqual(
-      [findWorkers, findCompanies, ...directories, jobOrders].map(({ path }) => path),
+      [findWorkers, requestWorkers, findCompanies, ...directories, jobOrders].map(({ path }) => path),
     );
   });
 
