@@ -182,7 +182,7 @@ test.describe("Contact requests (FR-Q3)", () => {
     const dialog = page.getByRole("dialog", { name: "Send a contact request" });
     await dialog.getByLabel("Message to the worker").fill("We are hiring welders for our Vienna yard.");
     await dialog.getByRole("button", { name: "Send request" }).click();
-    await expect(page.getByText("Contact request sent")).toBeVisible();
+    await expect(page.getByText("Contact request sent", { exact: true })).toBeVisible();
     const [row] = query<{ destination_country: string }>(
       `select destination_country from public.contact_requests where organization_id = ${literal(acme.id)} and worker_user_id = ${literal(worker.id)}`,
     );
