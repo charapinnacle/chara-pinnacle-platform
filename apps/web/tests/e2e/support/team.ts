@@ -121,6 +121,7 @@ export async function signInAtAal2(page: Page, user: TestUser, secret: string, p
 // For a page that shows a notice at aal1 and does not redirect (the employer dashboard): opens the code page itself.
 export async function signInWithCode(page: Page, user: TestUser, secret: string, path: string): Promise<void> {
   await logIn(page, user, path);
+  await expect(page).toHaveURL(path);
   await page.goto(`/en/mfa?next=${encodeURIComponent(path)}`);
   await enterCode(page, secret);
   await expect(page).toHaveURL(path);
