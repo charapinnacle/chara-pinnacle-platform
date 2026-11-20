@@ -130,7 +130,7 @@ test.describe("release 2c journeys (NFR-O4, NFR-U4, NFR-P4)", () => {
     await dialog.getByLabel("Message to the worker").fill("We build ships in Hamburg and need TIG welders from March. Would you like to talk?");
     await expectNoAxeViolations(page);
     await dialog.getByRole("button", { name: "Send request" }).click();
-    await expect(page.getByText("Contact request sent")).toBeVisible();
+    await expect(page.getByText("Contact request sent", { exact: true })).toBeVisible();
     await page.reload();
     await expect(card).toContainText("Request sent on");
     await expect(card.getByRole("link", { name: "Waiting for the worker" })).toHaveAttribute("href", `/en/org/${team.slug}/contact-requests`);
@@ -298,7 +298,7 @@ test.describe("release 2c journeys (NFR-O4, NFR-U4, NFR-P4)", () => {
     await waitForHydration(block);
     await block.click();
     await page.getByRole("dialog", { name: "Block this conversation?" }).getByRole("button", { name: "Block conversation" }).click();
-    await expect(page.getByText("You blocked this conversation")).toBeVisible();
+    await expect(page.getByText("You blocked this conversation", { exact: true })).toBeVisible();
     await expect(page.getByRole("textbox")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Unblock conversation" })).toBeVisible();
     await expectAccessibleAtBothWidths(page);
