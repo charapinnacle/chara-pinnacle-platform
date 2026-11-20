@@ -2296,6 +2296,11 @@ isOneToOne: false
               "current_period_end": string,"past_due_since": string,"plan_name": string,"status": string,"subscription_ended": boolean,"trial_ends_at": string
             }[]
                            },
+"get_employer_network_dashboard":
+{ Args: { "p_org": string }; Returns: {
+              "draft_requirements": number,"followed_companies": number,"invitations_accepted": number,"invitations_declined": number,"invitations_responded": number,"invitations_waiting": number,"invited_partners": number,"invited_recruitment": number,"invited_staffing": number,"open_requirements": number,"paused_requirements": number,"requirements": Json,"responses_shortlisted": number,"responses_updated": number,"responses_waiting": number,"saved_partners": number,"selected_partners": number,"submission_stages": Json
+            }[]
+                           },
 "get_employer_submission":
 { Args: { "p_submission": string }; Returns: {
               "candidate_name": string,"id": string,"note": string,"organization_id": string,"partner_name": string,"partner_slug": string,"profile_snapshot": Json,"requirement_id": string,"requirement_title": string,"share_active": boolean,"status": Database["public"]['Enums']["submission_status"],"withdrawn_at": string,"worker_approved_at": string

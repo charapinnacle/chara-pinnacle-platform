@@ -148,11 +148,7 @@ export async function listFollowedCompanies(
   };
 }
 
-// The number of saved partners and followed companies a dashboard card shows: the total of the first row of the list.
-export async function countSavedPartners(organizationId: string): Promise<number> {
-  return (await listSavedPartners(organizationId, null, 1)).total;
-}
-
+// The number of followed companies a dashboard card shows: the total of the first row of the list.
 export async function countFollowedCompanies(): Promise<number> {
   return (await listFollowedCompanies(null, 1)).total;
 }

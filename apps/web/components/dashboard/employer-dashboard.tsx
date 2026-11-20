@@ -1,4 +1,12 @@
 import { Suspense } from "react";
+import {
+  EmployerSubmissionsCard,
+  FollowedCompaniesCard,
+  PartnersCard,
+  RequirementsCard,
+  ResponsesWaitingCard,
+  SavedPartnersCard,
+} from "@/components/dashboard/employer-network-blocks";
 import { Panel } from "@/components/dashboard/panel";
 import { PlanAlerts } from "@/components/dashboard/plan-alerts";
 import { PlanCard } from "@/components/dashboard/plan-card";
@@ -10,26 +18,20 @@ import { LinkButton } from "@/components/layout/link-button";
 import { PageHeader } from "@/components/layout/page-header";
 import { GuidedSteps } from "@/components/organization/guided-steps";
 import { RequirementUsage } from "@/components/requirements/requirement-usage";
-import { countFollowedCompanies, countSavedPartners } from "@/lib/dal/connections";
+import { EMPLOYER_NETWORK_QUESTION } from "@/lib/dashboard/employer-network";
 import { getFirstSteps, startDashboardLoad } from "@/lib/dal/dashboard";
+import { getEmployerNetwork } from "@/lib/dal/employer-network";
 import { getUsagePrompts } from "@/lib/dal/usage";
+import { RECRUITMENT_DIRECTORY_PATH } from "@/lib/public/navigation";
 import { ACTIVE_REQUIREMENTS } from "@/lib/requirements/limits";
-import {
-  applicantsPath,
-  billingPath,
-  followingPath,
-  jobsPath,
-  organizationProfilePath,
-  requirementsPath,
-  savedPartnersPath,
-} from "@/lib/routes";
+import { applicantsPath, billingPath, jobsPath, organizationProfilePath, requirementsPath } from "@/lib/routes";
 import type { MemberRole } from "@/lib/validation/team";
 
 type EmployerDashboardProps = {
   lang: string;
   organization: { id: string; slug: string; displayName: string; role: MemberRole };
   twoStepDone: boolean;
-  // Release 2a is on: the saved partners and followed companies are counted (FR-L4 AC10).
+  // Release 2a is on: the partner network part shows, with the saved partners and followed companies (FR-L4 AC10, FR-R5).
   network: boolean;
   // Release 2b is on: the workforce requirements are linked (FR-M1, SOP step Start).
   requirements: boolean;
@@ -65,17 +67,47 @@ function EmployerFigures({ lang, slug, loads }: { lang: string; slug: string; lo
   );
 }
 
-// The partners the organisation saved and the companies the user follows, each linked to its list (FR-L4 AC10).
-function NetworkFigures({ lang, organizationId, slug }: { lang: string; organizationId: string; slug: string }) {
+type PartnerNetworkProps = { lang: string; organizationId: string; slug: string; canManage: boolean; requirements: boolean };
+
+// "Who can help me fill my workforce requirement?" (spec §30, FR-R5) after the Phase 1 blocks (AC2): one read for every
+// figure of the partner network, so its failure leaves the hiring figures in place (AC10). The blocks of release 2b come
+// only with job orders and the submitted candidates only with candidate submissions (AC7).
+function PartnerNetwork({ lang, organizationId, slug, canManage, requirements }: PartnerNetworkProps) {
+  const findPartnersHref = `/${lang}/${RECRUITMENT_DIRECTORY_PATH}`;
   return (
-    <div className="animate-stagger grid gap-4 sm:grid-cols-2">
-      <Panel promise={countSavedPartners(organizationId)} errorTitle="The saved partners could not be counted">
-        {(count) => <SummaryCard label="Saved partners" value={count} href={savedPartnersPath(lang, slug)} />}
+    <section aria-labelledby="network-heading" className="grid gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
+        <h2 id="network-heading" className="text-h2">
+          {EMPLOYER_NETWORK_QUESTION}
+        </h2>
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-1">
+          {requirements && canManage ? (
+            <TextLink standalone href={`${requirementsPath(lang, slug)}/new`}>
+              Post workforce requirement
+            </TextLink>
+          ) : null}
+          <TextLink standalone href={findPartnersHref}>
+            Find partners
+          </TextLink>
+        </div>
+      </div>
+      <Panel promise={getEmployerNetwork(organizationId)} errorTitle="The partner network figures could not be loaded">
+        {(value) => (
+          <div className="animate-stagger grid items-start gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {value.requirements ? (
+              <>
+                <RequirementsCard figures={value.requirements} lang={lang} slug={slug} canManage={canManage} />
+                <ResponsesWaitingCard figures={value.requirements} lang={lang} slug={slug} />
+                <PartnersCard figures={value.requirements} findPartnersHref={findPartnersHref} />
+              </>
+            ) : null}
+            {value.submissionStages ? <EmployerSubmissionsCard stages={value.submissionStages} lang={lang} slug={slug} /> : null}
+            <SavedPartnersCard count={value.savedPartners} findPartnersHref={findPartnersHref} lang={lang} slug={slug} />
+            <FollowedCompaniesCard count={value.followedCompanies} findPartnersHref={findPartnersHref} lang={lang} />
+          </div>
+        )}
       </Panel>
-      <Panel promise={countFollowedCompanies()} errorTitle="The followed companies could not be counted">
-        {(count) => <SummaryCard label="Followed companies" value={count} href={followingPath(lang)} />}
-      </Panel>
-    </div>
+    </section>
   );
 }
 
@@ -128,7 +160,6 @@ export function EmployerDashboard({ lang, organization, twoStepDone, network, re
       </Panel>
 
       <EmployerFigures lang={lang} slug={slug} loads={{ applications, vacancies }} />
-      {network ? <NetworkFigures lang={lang} organizationId={organization.id} slug={slug} /> : null}
 
       <Panel promise={plan} errorTitle="The plan could not be loaded">
         {(value) => (
@@ -179,6 +210,10 @@ export function EmployerDashboard({ lang, organization, twoStepDone, network, re
           </div>
         ) : null}
       </div>
+
+      {network ? (
+        <PartnerNetwork lang={lang} organizationId={organization.id} slug={slug} canManage={manager} requirements={requirements} />
+      ) : null}
     </div>
   );
 }
