@@ -276,8 +276,8 @@ test.describe("Responding to a job order (FR-N2, FR-O2)", () => {
     await files.setInputFiles([pdf("exactly-15.pdf", 15 * 1024 * 1024)]);
     await expect(page.getByRole("button", { name: "Send response" })).toBeDisabled();
     await expect(page.getByRole("status").filter({ hasText: "A document is still being sent. You can send your response once it has arrived." })).toBeVisible();
+    // The held request goes on once released; removing the route while it waits would leave it hanging.
     release();
-    await page.unroute("**/storage/v1/object/upload/sign/**");
     const attached = page.getByRole("list", { name: "Attached documents" });
     await expect(attached.getByText("exactly-15.pdf", { exact: false })).toBeVisible({ timeout: 60_000 });
     // The name shows while the file is still being sent; the button waits for the whole 15 MB.
