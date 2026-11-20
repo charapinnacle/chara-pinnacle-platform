@@ -303,7 +303,7 @@ test.describe("Conversations and messages (FR-P1)", () => {
     const { team, member, candidate, applicationId, candidateName, employerName } = await applicantSetup();
     const conversationId = await openAs(member, "application", applicationId);
     await callAs(member, "send_message", { p_conversation: conversationId, p_body: "When can you start?" });
-    execute(`update public.job_applications set status = 'withdrawn' where id = ${literal(applicationId)}`);
+    execute(`select set_config('chara.actor_fn', 'withdraw_application', true); update public.job_applications set status = 'withdrawn' where id = ${literal(applicationId)}`);
 
     await signInAtAal1(page, member, `${orgInboxUrl(team.slug)}/${conversationId}`);
     await expect(logOf(page, candidateName).getByText("When can you start?")).toBeVisible();
