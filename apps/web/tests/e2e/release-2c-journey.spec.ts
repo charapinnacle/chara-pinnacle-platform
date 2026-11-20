@@ -8,7 +8,7 @@ import { uniqueToken } from "./support/organizations";
 import { partnerWithCompany } from "./support/partners";
 import { seedAllButCv, signIn } from "./support/passport";
 import { fillReport, sendReport } from "./support/reports";
-import { addMember, newTeam, newVisitor, signInAtAal1, signInAtAal2, subscribe, type Team } from "./support/team";
+import { addMember, newTeam, newVisitor, signInAtAal1, signInWithCode, subscribe, type Team } from "./support/team";
 import type { TestUser } from "./support/test-user";
 import { expect, test } from "./support/test";
 
@@ -247,7 +247,7 @@ test.describe("release 2c journeys (NFR-O4, NFR-U4, NFR-P4)", () => {
     // The partner's owner opens it from the notification: the typed card with its status and Decline as its next action.
     const partnerView = await newVisitor(browser);
     const pp = partnerView.page;
-    await signInAtAal2(pp, partner.owner, partnerSecret, "/en/notifications");
+    await signInWithCode(pp, partner.owner, partnerSecret, "/en/notifications");
     const item = pp.getByRole("link", { name: `${employer} sent you an inquiry` });
     await waitForHydration(item);
     await item.click();
