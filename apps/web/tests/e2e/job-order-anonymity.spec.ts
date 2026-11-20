@@ -230,8 +230,11 @@ test.describe("job orders without the employer's name (NFR-S11)", () => {
       `requirement_occupations?requirement_id=eq.${jobOrder}`,
       `requirement_invitations?requirement_id=eq.${jobOrder}`,
     ]) {
+      // Nothing comes back: either no row, or the table is not granted to the role at all.
       const answer = await dataApiAs(uninvited.owner, path);
-      expect(await answer.json(), path).toEqual([]);
+      const body: unknown = await answer.json();
+      if (answer.ok) expect(body, path).toEqual([]);
+      else expect(body, path).toMatchObject({ code: "42501" });
     }
     // Its own response row is readable without the employer's organisation, whose column is not granted.
     const ownRow = await dataApiAs(uninvited.owner, `partner_responses?id=eq.${response}&select=id,status,capacity`);
