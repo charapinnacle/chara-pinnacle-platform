@@ -39,8 +39,15 @@ export function InviteToJob(props: InviteToJobProps) {
   if (props.vacancies.length === 0) return null;
   return (
     <>
-      <FormButton type="button" variant="secondary" className="w-full sm:w-auto" onClick={() => setOpen(true)}>
-        Invite to job<span className="sr-only">: {props.workerLabel}</span>
+      {/* One label: a visually hidden span is a separate box, so the name would read "Invite to job : name". */}
+      <FormButton
+        type="button"
+        variant="secondary"
+        className="w-full sm:w-auto"
+        aria-label={`Invite to job: ${props.workerLabel}`}
+        onClick={() => setOpen(true)}
+      >
+        Invite to job
       </FormButton>
       <ModalDialog open={open} onClose={() => setOpen(false)} title="Invite to apply to a vacancy">
         <InviteForm {...props} onClose={() => setOpen(false)} />
