@@ -21,6 +21,7 @@ import {
   requirementPath,
   requirementResponsesComparePath,
   requirementResponsesPath,
+  reportPath,
   requirementsPath,
 } from "@/lib/routes";
 import { requirementIdSchema } from "@/lib/validation/requirement";
@@ -31,7 +32,8 @@ export const metadata: Metadata = { title: "Response", robots: { index: false } 
 // the partner, the status, the proposal, the documents (each opened through a 60-second link, the opening logged) and the
 // versions with what changed. Opening it marks the current version seen, so the badge Updated goes. Owners and admins
 // decide it here as on the comparison while the requirement is open or paused (FR-O3). A response to another requirement
-// or of another employer ends in the 404.
+// or of another employer ends in the 404, and so does one hidden by moderation. Every member may report the response to
+// Trust & Safety (FR-S1).
 export default async function RequirementResponsePage({ params }: PageProps<"/[lang]/org/[slug]/requirements/[id]/responses/[responseId]">) {
   const { lang, slug, id, responseId } = await params;
   if (!(await isReleased("release_job_orders"))) notFound();
@@ -147,6 +149,9 @@ export default async function RequirementResponsePage({ params }: PageProps<"/[l
       </section>
 
       <ResponseVersions versions={versions} />
+      <p>
+        <TextLink href={reportPath(lang, "partner_response", response.id)}>Report this response</TextLink>
+      </p>
     </div>
   );
 }

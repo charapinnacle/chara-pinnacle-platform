@@ -121,10 +121,10 @@ select is(
 );
 select ok(
   (select prosecdef and proconfig = array['search_path=""'] from pg_proc
-   where oid = 'public.submit_report(public.report_target_type, public.report_category, text, boolean, text, uuid, uuid, text, text, text, text)'::regprocedure)
-  and has_function_privilege('anon', 'public.submit_report(public.report_target_type, public.report_category, text, boolean, text, uuid, uuid, text, text, text, text)', 'execute')
-  and has_function_privilege('authenticated', 'public.submit_report(public.report_target_type, public.report_category, text, boolean, text, uuid, uuid, text, text, text, text)', 'execute')
-  and not has_function_privilege('service_role', 'public.submit_report(public.report_target_type, public.report_category, text, boolean, text, uuid, uuid, text, text, text, text)', 'execute'),
+   where oid = 'public.submit_report(public.report_target_type, public.report_category, text, boolean, text, uuid, uuid, text, text, text, text, uuid, uuid, uuid)'::regprocedure)
+  and has_function_privilege('anon', 'public.submit_report(public.report_target_type, public.report_category, text, boolean, text, uuid, uuid, text, text, text, text, uuid, uuid, uuid)', 'execute')
+  and has_function_privilege('authenticated', 'public.submit_report(public.report_target_type, public.report_category, text, boolean, text, uuid, uuid, text, text, text, text, uuid, uuid, uuid)', 'execute')
+  and not has_function_privilege('service_role', 'public.submit_report(public.report_target_type, public.report_category, text, boolean, text, uuid, uuid, text, text, text, text, uuid, uuid, uuid)', 'execute'),
   'submit_report with p_partner is a definer function with an empty search_path, open to visitors and signed-in users only'
 );
 select is(

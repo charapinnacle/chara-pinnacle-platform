@@ -17,6 +17,7 @@ import {
   jobPath,
   mfaPath,
   myReportsPath,
+  partnerSubmissionsPath,
   requirementPath,
   requirementResponsesPath,
   requirementSubmissionsPath,
@@ -74,6 +75,30 @@ function isApplicationStatus(value: string | undefined): value is ApplicationSta
 function decisionId(payload: Record<string, unknown>): number | null {
   const value = payload.moderation_action_id;
   return typeof value === "number" && Number.isInteger(value) && value > 0 ? value : null;
+}
+
+// A hidden or unhidden job order, response or submission of the recipient's organisation (V57): its kind as the
+// organisation calls it, its title as the organisation knows it, and the page where it reads the decision.
+const moderatedItemKinds: Record<string, string> = {
+  requirement: "requirement",
+  partner_response: "response to",
+  candidate_submission: "candidate submission for",
+};
+
+function moderatedItem(payload: Record<string, unknown>, lang: string, slug: string | undefined) {
+  const type = text(payload, "target_type");
+  const id = text(payload, "target_id");
+  const kind = type ? moderatedItemKinds[type] : undefined;
+  if (!type || !kind) return null;
+  const href =
+    !slug || !id
+      ? null
+      : type === "requirement"
+        ? requirementPath(lang, slug, id)
+        : type === "partner_response"
+          ? responsePath(lang, slug, id)
+          : partnerSubmissionsPath(lang, slug);
+  return { kind, title: text(payload, "title") ?? "a job order", href };
 }
 
 // The requirement a closing reminder names, on the page of the recipient's organisation.
@@ -367,9 +392,15 @@ const PRESENTERS: Record<string, { label: string; present: Presenter }> = {
           href: decision ? appealPath(lang, decision) : null,
         };
       }
-      // Only the public profile is hidden, not the company: the title names the profile, never the company alone.
       const slug = text(payload, "org_slug");
       const unhidden = text(payload, "decision") === "unhide";
+      const item = moderatedItem(payload, lang, slug);
+      if (item) {
+        return {
+          title: unhidden ? `Your ${item.kind} ${item.title} is shown again` : `Your ${item.kind} ${item.title} was hidden by moderation`,
+          href: item.href,
+        };
+      }
       return {
         title: unhidden ? "Your public profile is shown again" : "Your public profile was hidden by moderation",
         href: slug ? `${workforceProfilePath(lang, slug)}${unhidden ? "" : "#moderation-heading"}` : null,

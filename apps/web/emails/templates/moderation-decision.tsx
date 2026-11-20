@@ -13,7 +13,32 @@ function isAppealNotice(payload: Record<string, unknown>): boolean {
   return field(payload, "appeal_outcome") !== undefined;
 }
 
-const targetNames: Record<string, string> = { partner_profile: "partner profile", job: "vacancy", organization: "organisation" };
+const targetNames: Record<string, string> = {
+  partner_profile: "partner profile",
+  job: "vacancy",
+  organization: "organisation",
+  requirement: "requirement",
+  partner_response: "response to",
+  candidate_submission: "candidate submission for",
+};
+
+// A job order, response or submission of the organisation (V57): its kind, its title as the organisation knows it, and
+// the page where the organisation reads the decision.
+function moderatedItem(payload: Record<string, unknown>) {
+  const type = field(payload, "target_type");
+  if (type !== "requirement" && type !== "partner_response" && type !== "candidate_submission") return null;
+  const slug = field(payload, "org_slug");
+  const id = field(payload, "target_id");
+  const path =
+    !slug || !id
+      ? null
+      : type === "requirement"
+        ? `/org/${slug}/requirements/${id}`
+        : type === "partner_response"
+          ? `/org/${slug}/responses/${id}`
+          : `/org/${slug}/submissions`;
+  return { name: `${targetNames[type]} ${field(payload, "title") ?? "a job order"}`, path };
+}
 
 export const moderationDecision: Template = {
   subject: (payload) => {
@@ -22,6 +47,8 @@ export const moderationDecision: Template = {
       const about = field(payload, "title");
       return about ? `Your appeal about ${about} was decided` : "Your appeal was decided";
     }
+    const item = moderatedItem(payload);
+    if (item) return field(payload, "decision") === "unhide" ? `Your ${item.name} is shown again` : `Your ${item.name} was hidden by moderation`;
     return field(payload, "decision") === "unhide" ? "Your public profile is shown again" : "Your public profile was hidden by moderation";
   },
   Body: ({ payload, siteUrl }) => {
@@ -66,10 +93,40 @@ export const moderationDecision: Template = {
         </Layout>
       );
     }
-    const title = field(payload, "title") ?? "your partner profile";
     const reasons = field(payload, "reasons");
-    const slug = field(payload, "org_slug");
     const unhidden = field(payload, "decision") === "unhide";
+    const item = moderatedItem(payload);
+    if (item) {
+      return (
+        <Layout
+          preview={unhidden ? `Your ${item.name} is shown again` : `Your ${item.name} was hidden by moderation`}
+          heading={unhidden ? "Shown again after moderation" : "Hidden by moderation"}
+        >
+          <Paragraph>
+            {unhidden
+              ? `Our moderators made your ${item.name} visible again. The reasons:`
+              : `Our moderators hid your ${item.name}. The other party no longer sees it and it cannot be acted on. The reasons:`}
+          </Paragraph>
+          {reasons ? <Quote>{reasons}</Quote> : null}
+          {unhidden || !decision ? null : (
+            <>
+              <Paragraph>
+                If you think this was a mistake, the owner or an admin can appeal. A moderator who did not take the decision reviews the
+                appeal.
+              </Paragraph>
+              <Action href={url(siteUrl, `/appeals/${decision}`)}>Appeal this decision</Action>
+            </>
+          )}
+          {item.path ? (
+            <Paragraph>
+              <a href={url(siteUrl, item.path)}>Open it</a>
+            </Paragraph>
+          ) : null}
+        </Layout>
+      );
+    }
+    const title = field(payload, "title") ?? "your partner profile";
+    const slug = field(payload, "org_slug");
     return (
       <Layout
         preview={unhidden ? "Your public profile is shown again" : "Your public profile was hidden by moderation"}

@@ -9,7 +9,7 @@ import { Section } from "@/components/layout/section";
 import { getAppeal, type AppealDetail } from "@/lib/dal/admin-appeals";
 import { formatDateTime } from "@/lib/i18n/format";
 import { adminPath } from "@/lib/routes";
-import { appealableDecisionLabels, appealStatusLabels, appealStatusTones, appealTargetLabels } from "@/lib/validation/appeal";
+import { appealableDecisionLabel, appealStatusLabels, appealStatusTones, appealTargetLabels } from "@/lib/validation/appeal";
 
 // What a reversal undoes, as the dialog says it; a decision no longer in effect has nothing left to undo.
 const undoText: Record<string, string> = {
@@ -40,7 +40,7 @@ function targetLink(lang: string, appeal: AppealDetail) {
 export async function AppealView({ lang, id, canAct }: { lang: string; id: number; canAct: boolean }) {
   const appeal = await getAppeal(id);
   if (!appeal) notFound();
-  const subject = `${appealableDecisionLabels[appeal.action] ?? "Decision"}: ${appeal.title}`;
+  const subject = `${appealableDecisionLabel(appeal.action, appeal.targetType)}: ${appeal.title}`;
 
   return (
     <div className="grid gap-page">
@@ -52,7 +52,7 @@ export async function AppealView({ lang, id, canAct }: { lang: string; id: numbe
       <Section id="decision" title="The decision" description="As it was sent to the organisation.">
         <DetailList
           items={[
-            { label: "Decision", value: appealableDecisionLabels[appeal.action] ?? appeal.action },
+            { label: "Decision", value: appealableDecisionLabel(appeal.action, appeal.targetType) },
             { label: appealTargetLabels[appeal.targetType] ?? "About", value: appeal.title },
             { label: "Organisation", value: appeal.organizationName },
             { label: "Decided", value: formatDateTime(appeal.decidedOn) },

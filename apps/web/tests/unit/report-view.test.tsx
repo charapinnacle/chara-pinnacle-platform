@@ -31,6 +31,7 @@ const content = (contentPath: string): ReportDetail => ({
   overdue: false,
   decisionDueAt: "2026-10-08T10:00:00+00:00",
   decision: null,
+  item: null,
 });
 
 async function render(contentPath: string) {
@@ -174,5 +175,69 @@ describe("the decision on a report (FR-S1 AC10)", () => {
     expect(html).toContain("Statement of reasons");
     expect(html).toContain("Claims of placements never made.");
     expect(html).not.toContain("Decision due");
+  });
+});
+
+describe("the page of a report about a job order, response or submission (FR-S1, V57)", () => {
+  beforeEach(() => releasedMock.mockResolvedValue(true));
+  const ORG = "0b9c7a2e-3d4f-4e5a-8b6c-7d8e9f0a1b2c";
+  const ITEM = "6a7b8c9d-0e1f-4a2b-8c3d-4e5f6a7b8c9d";
+  const itemReport = (overrides: Partial<ReportDetail>): ReportDetail => ({
+    ...content("/en/jobs"),
+    status: "in_review",
+    contentPath: null,
+    resolutionNote: null,
+    handledAt: null,
+    organization: { id: ORG, name: "Manila Skills", slug: "manila-skills", status: "active", type: "recruitment_company", moderationState: "visible" },
+    ...overrides,
+  });
+
+  it("shows a response in context, with the partner and Hide, Suspend organisation and Dismiss", async () => {
+    getMock.mockResolvedValue(
+      itemReport({
+        targetType: "partner_response",
+        item: {
+          id: ITEM,
+          moderationState: "visible",
+          context: { requirement_title: "Welders for Hamburg", capacity: 12, experience_note: "We placed 40 welders in 2025.", fee_model: "fee_per_hire", fee_amount: 800, fee_currency: "EUR" },
+        },
+      }),
+    );
+    const html = renderToStaticMarkup(await ReportView({ lang: "en", id: 5, canAct: true }));
+    for (const text of ["Partner response", "Welders for Hamburg", "We placed 40 welders in 2025.", "EUR 800.00 per hire", "Manila Skills", ">Hide<", ">Suspend organisation<", ">Dismiss<"]) {
+      expect(html).toContain(text);
+    }
+    expect(html).not.toContain(">Mark actioned<");
+  });
+
+  it("never shows the candidate of a submission, and offers the hide in effect once it is hidden", async () => {
+    getMock.mockResolvedValue(
+      itemReport({
+        targetType: "candidate_submission",
+        category: "fee_demanded_from_worker",
+        item: { id: ITEM, moderationState: "hidden", context: { requirement_title: "Welders for Hamburg", status: "submitted", note: "Ready to travel." } },
+      }),
+    );
+    const html = renderToStaticMarkup(await ReportView({ lang: "en", id: 5, canAct: true }));
+    expect(html).toContain("Fee demand");
+    expect(html).toContain("The candidate is not shown to staff");
+    expect(html).toContain("Ready to travel.");
+    expect(html).toContain(">Hide (already hidden)<");
+  });
+
+  it("names a closed decision on a job order by its kind", async () => {
+    getMock.mockResolvedValue(
+      itemReport({
+        targetType: "requirement",
+        status: "actioned",
+        decision: "content_hidden",
+        resolutionNote: "Discriminatory wording in the job order.",
+        handledAt: "2026-10-06T10:00:00+00:00",
+        item: { id: ITEM, moderationState: "hidden", context: { title: "Welders for Hamburg", workers_needed: 30, country_code: "DE" } },
+      }),
+    );
+    const html = renderToStaticMarkup(await ReportView({ lang: "en", id: 5, canAct: true }));
+    expect(html).toContain("Job order hidden");
+    expect(html).not.toContain("Partner profile hidden");
   });
 });

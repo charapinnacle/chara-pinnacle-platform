@@ -32,6 +32,7 @@ export const RESPONSE_MESSAGES = {
   tooManyChanges: "Too many changes were made today. Try again tomorrow.",
   reason: "Write at most 500 characters, without special characters.",
   feeRules: "Check the amount and the currency for this fee model.",
+  hidden: "This response was hidden by moderation, so it can be neither changed nor withdrawn. The reasons and how to appeal are shown on the response.",
 } as const;
 
 // A refusal of respond_to_invitation or update_response: a field of the form; the plan's monthly limit, which the page
@@ -76,6 +77,7 @@ function sharedRefusal(error: RefusalError, notFound: string): { kind: "message"
 }
 
 function stateMessage(detail: string | null | undefined): string {
+  if (detail === "hidden") return RESPONSE_MESSAGES.hidden;
   if (detail === "requirement_not_open") return RESPONSE_MESSAGES.notOpen;
   if (detail === "requirement_closed") return RESPONSE_MESSAGES.closed;
   const status = statusOf(detail);
@@ -118,6 +120,7 @@ export function withdrawRefusal(
 ): { kind: "field"; message: string } | { kind: "message"; message: string } | { kind: "fault" } {
   if (error.message === "CHARA_INVALID_INPUT" && error.details === "p_reason") return { kind: "field", message: RESPONSE_MESSAGES.reason };
   if (error.message === "CHARA_INVALID_STATE") {
+    if (error.details === "hidden") return { kind: "message", message: RESPONSE_MESSAGES.hidden };
     const status = statusOf(error.details);
     return {
       kind: "message",

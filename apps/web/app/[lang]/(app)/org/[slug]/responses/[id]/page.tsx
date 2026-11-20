@@ -12,7 +12,10 @@ import { ResponseStatusBadge } from "@/components/responses/response-status";
 import { ResponseVersions } from "@/components/responses/response-versions";
 import { ResponseView } from "@/components/responses/response-view";
 import { WithdrawResponse } from "@/components/responses/withdraw-response";
+import { ItemModerationNotice } from "@/components/organization/item-moderation-notice";
 import { organizationCrumb } from "@/lib/app/navigation";
+import { listMyAppeals } from "@/lib/dal/appeals";
+import { getItemModeration } from "@/lib/dal/item-moderation";
 import { getCountries, getIndustries } from "@/lib/dal/reference";
 import { isReleased } from "@/lib/dal/release";
 import { getResponse, listResponseChanges, listResponseDocuments, listResponseVersions } from "@/lib/dal/responses";
@@ -39,7 +42,8 @@ export const metadata: Metadata = { title: "Response", robots: { index: false } 
 // the documents, the history of versions and the employer's changes to the requirement since the response; Change and
 // Withdraw while the employer has not decided; the employer's decision with its note and whether the company may submit
 // candidates (FR-O3 step Inform, AC5, AC7, AC8). The requirement is named as the partner knows it (NFR-S11): a shortlist or
-// selection names the employer. Another company's response and an unknown id end in the same 404.
+// selection names the employer. Another company's response and an unknown id end in the same 404. A response hidden by
+// moderation shows the badge, the statement of reasons and the appeal (FR-S1 AC12).
 export default async function ResponsePage({ params }: PageProps<"/[lang]/org/[slug]/responses/[id]">) {
   const { lang, slug, id } = await params;
   if (!(await isReleased("release_job_orders"))) notFound();
@@ -49,19 +53,23 @@ export default async function ResponsePage({ params }: PageProps<"/[lang]/org/[s
   if (!parsedId.success) notFound();
   const response = await getResponse(organization.id, parsedId.data);
   if (!response) notFound();
-  const [versions, documents, changes, countries, industries, submissions] = await Promise.all([
+  const [versions, documents, changes, countries, industries, submissions, moderation] = await Promise.all([
     listResponseVersions(organization.id, response.id).catch(() => null),
     listResponseDocuments({ responseId: response.id }).catch(() => null),
     listResponseChanges(organization.id, response.id).catch(() => null),
     getCountries(),
     getIndustries(),
     isReleased("release_candidate_submissions"),
+    getItemModeration(organization.id, "partner_response", response.id),
   ]);
+  const appeal = moderation?.decision ? await listMyAppeals(moderation.decision.id).catch(() => null) : null;
+  // A response hidden by moderation is neither changed nor withdrawn until a decision restores it (V57).
+  const hidden = moderation?.state === "hidden";
   const names = {
     countries: new Map(countries.map(({ code, name }) => [code, name])),
     industries: new Map(industries.map(({ code, name }) => [code, name])),
   };
-  const changeable = isLive(response.status) && response.requirementStatus !== "closed" && response.requirementStatus !== "filled";
+  const changeable = isLive(response.status) && response.requirementStatus !== "closed" && response.requirementStatus !== "filled" && !hidden;
   const requirementHref = response.invitationId ? invitationPath(lang, slug, response.invitationId) : jobOrderPath(lang, slug, response.requirementId);
 
   return (
@@ -76,6 +84,8 @@ export default async function ResponsePage({ params }: PageProps<"/[lang]/org/[s
           {employerLabel(response.employerName)} · Sent <time dateTime={response.createdAt}>{formatDate(response.createdAt)}</time>
         </p>
       </PageHeader>
+
+      <ItemModerationNotice lang={lang} kind="response" effect="The employer no longer sees it and cannot decide on it" moderation={moderation} appeal={appeal} />
 
       <section aria-labelledby="response-status-heading" className="grid gap-3">
         <h2 id="response-status-heading" className="text-h2">
@@ -115,13 +125,13 @@ export default async function ResponsePage({ params }: PageProps<"/[lang]/org/[s
             </TextLink>
           </div>
         ) : null}
-        {isLive(response.status) && response.requirementStatus !== "open" ? (
+        {isLive(response.status) && !hidden && response.requirementStatus !== "open" ? (
           <Notice tone="info" role="status">
             The requirement is {requirementStatusLabels[response.requirementStatus].toLowerCase()} at the moment.
             {changeable ? " You can still change or withdraw your response." : " You can still withdraw your response."}
           </Notice>
         ) : null}
-        {isLive(response.status) ? (
+        {isLive(response.status) && !hidden ? (
           <div className="flex flex-wrap gap-3">
             {changeable ? (
               <LinkButton href={responseEditPath(lang, slug, response.id)} size="default">

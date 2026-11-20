@@ -79,7 +79,7 @@ describe("the candidate's request page (FR-O4 AC5, AC8, AC11)", () => {
     ]) {
       expect(html).toContain(text);
     }
-    expect(html).toContain('href="/en/report?type=partner_profile&amp;partner=manila-recruit&amp;category=fee_demanded_from_worker"');
+    expect(html).toContain(`href="/en/report?type=candidate_submission&amp;submission=${ID}&amp;category=fee_demanded_from_worker"`);
   });
 
   it("offers only Decline when another company already submitted the candidate (AC8)", async () => {
@@ -209,7 +209,9 @@ describe("the submission components", () => {
     expect(renderToStaticMarkup(<SubmissionStatusBadge status="awaiting_candidate" view="candidate" />)).toContain("Waiting for your answer");
   });
 
-  it("the fee demand link needs the partner's profile", () => {
-    expect(renderToStaticMarkup(<WorkersNeverPay lang="en" partnerName="P" partnerSlug={null} />)).not.toContain("Report a fee demand");
+  it("reports the fee demand on the submission itself, whether or not the partner's profile is public (FR-J3 AC8, V57)", () => {
+    expect(renderToStaticMarkup(<WorkersNeverPay lang="en" partnerName="P" submissionId={ID} />)).toContain(
+      `href="/en/report?type=candidate_submission&amp;submission=${ID}&amp;category=fee_demanded_from_worker"`,
+    );
   });
 });

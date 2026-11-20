@@ -1,5 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
+import { ItemModerationNotice } from "@/components/organization/item-moderation-notice";
 import { ModerationNotice } from "@/components/organization/moderation-notice";
 import type { AppealableDecision } from "@/lib/dal/appeals";
 
@@ -88,5 +89,30 @@ describe("the moderation notice of a partner", () => {
   it("shows nothing while the profile is visible or hidden with a suspension", () => {
     expect(renderToStaticMarkup(<ModerationNotice lang="en" moderation={{ state: "visible", decision: null }} appeal={null} />)).toBe("");
     expect(renderToStaticMarkup(<ModerationNotice lang="en" moderation={{ state: "org_suspended", decision: null }} appeal={null} />)).toBe("");
+  });
+});
+
+// V57: a hidden job order, response or submission shows the same badge, reasons and appeal to its organisation.
+describe("the moderation notice of a job order, response or submission", () => {
+  const response = decision({ targetType: "partner_response", targetId: "resp-1", title: "Germany, 10 Welders" });
+
+  it("names the kind and what hiding does, quotes the reasons and offers the appeal to an owner or admin", () => {
+    const html = renderToStaticMarkup(
+      <ItemModerationNotice lang="en" kind="response" effect="The employer no longer sees it and cannot decide on it" moderation={hidden} appeal={response} />,
+    );
+    expect(html).toContain("Hidden by moderation");
+    expect(html).toContain("This response is hidden");
+    expect(html).toContain("The employer no longer sees it and cannot decide on it.");
+    expect(html).toContain("Claims of placements never made.");
+    expect(html).toContain(">Appeal</button>");
+  });
+
+  it("links the decisions when the appeal could not be read, and shows nothing while the item is visible or suspended", () => {
+    const html = renderToStaticMarkup(<ItemModerationNotice lang="en" kind="requirement" effect="Partners no longer see it" moderation={hidden} appeal={null} />);
+    expect(html).toContain('href="/en/appeals"');
+    for (const state of ["visible", "org_suspended"] as const) {
+      expect(renderToStaticMarkup(<ItemModerationNotice lang="en" kind="requirement" effect="x" moderation={{ state, decision: null }} appeal={null} />)).toBe("");
+    }
+    expect(renderToStaticMarkup(<ItemModerationNotice lang="en" kind="requirement" effect="x" moderation={null} appeal={null} />)).toBe("");
   });
 });

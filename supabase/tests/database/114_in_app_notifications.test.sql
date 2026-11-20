@@ -243,12 +243,14 @@ select pg_temp.call_as(:'adm', 'authenticated', $$select public.create_organizat
 select is(
   (select jsonb_agg(c ->> 'kind' order by c ->> 'kind') from jsonb_array_elements(pg_temp.json_as(:'adm', 'select * from public.notification_kind_catalogue()')) c),
   (select jsonb_agg(kind order by kind) from private.notification_kinds
-   where audience in ('company', 'all') and (organization_types is null or 'employer' = any (organization_types))),
+   where audience in ('company', 'all') and (organization_types is null or 'employer' = any (organization_types))
+     and (release_key is null or private.release_on(release_key))),
   'catalogue: a company user of an employer sees the company kinds, those of employers and those of all users, not those of partners only'
 );
 select is(
   (select jsonb_agg(c ->> 'kind' order by c ->> 'kind') from jsonb_array_elements(pg_temp.json_as(:'wkr', 'select * from public.notification_kind_catalogue()')) c),
-  (select jsonb_agg(kind order by kind) from private.notification_kinds where audience in ('worker', 'all')),
+  (select jsonb_agg(kind order by kind) from private.notification_kinds
+   where audience in ('worker', 'all') and (release_key is null or private.release_on(release_key))),
   'catalogue: a worker sees the worker kinds and those of all users, never erasure_paused'
 );
 select pg_temp.prefs_as(:'own1', '{"application_received": false}') as setup_own1 \gset

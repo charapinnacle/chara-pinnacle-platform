@@ -117,6 +117,32 @@ insert into catalogue values
   ('public.workforce_availability', 'cascade', 'an organisation listing kept while the partner lists it; stale listings are hidden (FR-K3)',
    'organisation data: the availability listings of a partner company');
 
+-- V58 applies the periods of the job order network, erases the candidate's submissions and exports the rows a user wrote.
+update catalogue k set erasure = v.erasure, retention = v.retention, export = v.export
+from (values
+  ('public.workforce_requirements', 'cascade', 'policy:closed_requirements', 'export:requirements'),
+  ('public.requirement_invitations', 'cascade',
+   'organisation data: an invitation is deleted with its requirement (closed_requirements); invited_by is cleared with the profile',
+   'organisation data: the invitations between an employer and a partner company; invited_by only names the member who sent one'),
+  ('public.requirement_versions', 'cascade',
+   'organisation data: a version is deleted with its requirement (closed_requirements); changed_by is cleared with the profile',
+   'organisation data: the edit history of an employer''s workforce requirements; changed_by only names the member who saved an edit'),
+  ('public.partner_responses', 'cascade', 'policy:partner_responses', 'export:partner_responses'),
+  ('public.partner_response_versions', 'cascade',
+   'organisation data: a version is deleted with its response (partner_responses); created_by is cleared with the profile',
+   'organisation data: the version history of a partner company''s proposal; created_by only names the member who wrote a version'),
+  ('public.partner_response_documents', 'cascade',
+   'organisation data: a supporting document is deleted with its response (partner_responses) and its file queued for removal; staged files that never reach a response are dropped by the daily clean-up; uploaded_by is cleared with the profile',
+   'organisation data: the supporting documents of a partner company''s proposal; uploaded_by only names the member who added one'),
+  ('public.candidate_submissions', 'erase_user', 'policy:candidate_submissions', 'export:submissions'),
+  ('public.submission_events', 'cascade',
+   'an event is deleted with its submission (candidate_submissions); actor_id is cleared with the profile', 'export:submissions'),
+  ('public.submission_notes', 'cascade',
+   'an internal note is deleted with its submission (candidate_submissions); author_id is cleared with the profile',
+   'organisation data: the employer''s internal notes on a submitted candidate, never shown to the candidate (as application_notes); author_id only names the member who wrote one')
+) as v (tbl, erasure, retention, export)
+where k.tbl = v.tbl;
+
 -- The user columns of every table of the five application schemas, extension tables left out.
 create function pg_temp.user_columns() returns table (tbl text, col text, refers_on_delete "char")
 language sql stable as $$

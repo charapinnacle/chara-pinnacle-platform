@@ -203,8 +203,8 @@ select is(
   (select array_agg(k order by k) from jsonb_object_keys((:'data'::jsonb) -> 'sections') k),
   array['account', 'activity', 'appeals', 'applications', 'consents', 'data_exports', 'document_access', 'documents',
         'followed_companies', 'notification_preferences', 'notifications', 'organization_invitations',
-        'organization_memberships', 'ownership_transfers', 'passport', 'passport_shares', 'platform_roles', 'reports',
-        'saved_vacancies'],
+        'organization_memberships', 'ownership_transfers', 'partner_responses', 'passport', 'passport_shares',
+        'platform_roles', 'reports', 'requirements', 'saved_vacancies', 'submissions'],
   'AC7: one section per kind of data, each written as <section>.json'
 );
 select is((:'data'::jsonb) #>> '{sections,account,email}', (select email::text from auth.users where id = :'wa'),

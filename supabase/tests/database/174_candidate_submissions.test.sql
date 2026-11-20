@@ -409,7 +409,7 @@ select is(
   (select string_agg(attname::text, ',' order by attname) from pg_attribute
    where attrelid = 'public.candidate_submissions'::regclass and attnum > 0 and not attisdropped
      and has_column_privilege('authenticated', attrelid, attnum, 'select')),
-  'created_at,decided_at,id,note,organization_id,requirement_id,response_id,status,updated_at,withdrawn_at,worker_approved_at',
+  'created_at,decided_at,id,moderation_state,note,organization_id,requirement_id,response_id,status,updated_at,withdrawn_at,worker_approved_at',
   'NFR-S9: the address, the worker id, the employer, the member, the share and the snapshot are not readable through the Data API');
 select is(
   (select string_agg(attname::text, ',' order by attname) from pg_attribute

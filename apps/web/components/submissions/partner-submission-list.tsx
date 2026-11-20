@@ -1,12 +1,13 @@
 import { UserRoundPlus } from "lucide-react";
 import { EmptyState } from "@/components/feedback/empty-state";
+import { StatusBadge } from "@/components/feedback/status-badge";
 import { Notice } from "@/components/forms/notice";
 import { TextLink } from "@/components/forms/text-link";
 import { SubmissionStatusBadge } from "@/components/submissions/submission-status";
 import { listPartnerSubmissions } from "@/lib/dal/submissions";
 import { formatDate } from "@/lib/i18n/format";
 import { partnerNextSteps, partnerSubmissionLabels, submissionCountText } from "@/lib/submissions/presentation";
-import { partnerSubmissionsPath, requirementSubmissionsPath, responsesPath } from "@/lib/routes";
+import { appealPath, appealsPath, partnerSubmissionsPath, requirementSubmissionsPath, responsesPath } from "@/lib/routes";
 
 type PartnerSubmissionListProps = {
   lang: string;
@@ -19,7 +20,8 @@ type PartnerSubmissionListProps = {
 
 // One page of the candidates the partner asked to submit, newest first (FR-O4 AC12, NFR-U4): the address entered until
 // the candidate approves and the candidate's name after it, the status in words with what it means, and the dates, with
-// each stage the employer moved the candidate to and when (FR-O5 AC10), never the employer's notes or reasons.
+// each stage the employer moved the candidate to and when (FR-O5 AC10), never the employer's notes or reasons. A
+// submission hidden by moderation says so and leads to the decision and its appeal (FR-S1 AC12, V57).
 export async function PartnerSubmissionList({ lang, slug, organizationId, requirementId, cursor }: PartnerSubmissionListProps) {
   const { submissions, nextCursor, cursorIgnored } = await listPartnerSubmissions(organizationId, requirementId, cursor);
   const pagePath = (next?: string) =>
@@ -63,6 +65,15 @@ export async function PartnerSubmissionList({ lang, slug, organizationId, requir
                 <TextLink href={requirementSubmissionsPath(lang, slug, submission.requirementId)}>{submission.title}</TextLink>
               </p>
             )}
+            {submission.hidden ? (
+              <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-body">
+                <StatusBadge status="danger">Hidden by moderation</StatusBadge>
+                <span>The employer no longer sees this candidate.</span>
+                <TextLink href={submission.hidden.decisionId ? appealPath(lang, submission.hidden.decisionId) : appealsPath(lang)}>
+                  See the reasons and how to appeal
+                </TextLink>
+              </p>
+            ) : null}
             <p className="max-w-[65ch] text-body leading-relaxed">{partnerNextSteps[submission.status]}</p>
             {submission.note ? <p className="text-small break-words whitespace-pre-line text-muted-foreground">Your note: {submission.note}</p> : null}
             <p className="text-small text-muted-foreground">

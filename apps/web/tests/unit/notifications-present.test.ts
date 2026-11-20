@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { isNotificationKind } from "@/emails/index";
 import { badgeText, bellLabel } from "@/lib/notifications/bell";
 import { presentedKinds, presentNotification } from "@/lib/notifications/present";
-import { appealPath, applicantPath, applicationPath, billingPath, companyPagePath, dataExportPath, employerDashboardPath, homePath, invitationPath, jobOrderPath, jobPath, mfaPath, myReportsPath, requirementPath, requirementResponsesPath, requirementSubmissionsPath, responsePath, settingsPath, submissionPath, workforceProfilePath } from "@/lib/routes";
+import { appealPath, applicantPath, applicationPath, billingPath, companyPagePath, dataExportPath, employerDashboardPath, homePath, invitationPath, jobOrderPath, jobPath, mfaPath, myReportsPath, partnerSubmissionsPath, requirementPath, requirementResponsesPath, requirementSubmissionsPath, responsePath, settingsPath, submissionPath, workforceProfilePath } from "@/lib/routes";
 
 const APP = "11111111-1111-4111-8111-111111111111";
 const JOB = "22222222-2222-4222-8222-222222222222";
@@ -60,6 +60,10 @@ describe("in-app notification items (FR-T1)", () => {
     ["moderation_decision", {}, company, "Your public profile was hidden by moderation", null],
     ["moderation_decision", { target_type: "partner_profile", title: "Manila Recruit", appeal_id: 7, appeal_outcome: "restored", moderation_action_id: 42 }, company, "Your appeal about Manila Recruit was decided: the decision was reversed", appealPath("en", 42)],
     ["moderation_decision", { target_type: "job", appeal_id: 7, appeal_outcome: "upheld" }, company, "Your appeal was decided: the decision was upheld", null],
+    ["moderation_decision", { target_type: "requirement", target_id: JOB, title: "Hamburg welders", org_slug: "acme", decision: "hide" }, company, "Your requirement Hamburg welders was hidden by moderation", requirementPath("en", "acme", JOB)],
+    ["moderation_decision", { target_type: "partner_response", target_id: APP, title: "Germany, 10 Welders", org_slug: "manila", decision: "unhide" }, company, "Your response to Germany, 10 Welders is shown again", responsePath("en", "manila", APP)],
+    ["moderation_decision", { target_type: "candidate_submission", target_id: APP, title: "Germany, 10 Welders", org_slug: "manila", decision: "hide" }, company, "Your candidate submission for Germany, 10 Welders was hidden by moderation", partnerSubmissionsPath("en", "manila")],
+    ["moderation_decision", { target_type: "partner_response", decision: "hide" }, company, "Your response to a job order was hidden by moderation", null],
     ["data_export_ready", { export_id: APP, expires_at: "2026-12-17T08:00:00+00:00" }, worker, "Your data is ready to download until 17 December 2026", dataExportPath("en")],
     ["data_export_ready", {}, company, "Your data is ready to download", dataExportPath("en")],
     ["requirement_closing_soon", { requirement_id: JOB, title: "Welders for Hamburg", closes_on: "2027-04-10", org_slug: "acme" }, company, '"Welders for Hamburg" closes on 10 April 2027', requirementPath("en", "acme", JOB)],

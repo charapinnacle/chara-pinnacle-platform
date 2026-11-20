@@ -471,8 +471,32 @@ describe("the reports of Trust & Safety", () => {
       overdue: false,
       decisionDueAt: "2026-10-08T10:00:00+00:00",
       decision: null,
+      item: null,
     });
     expect(rpcMock).toHaveBeenCalledWith("admin_get_report", { p_id: 7 });
+  });
+
+  it("reads the job order, response or submission of a report with its state and context (V57)", async () => {
+    const { getReport } = await reports();
+    rpcMock.mockResolvedValue({
+      data: [
+        {
+          id: 8, reference: "R-000008", target_type: "partner_response", category: "misleading_or_fraud", details: "Text of the report.",
+          status: "new", reporter_kind: "account", reporter_email: null, content_path: null, job_id: null, job_title: null, job_status: null,
+          job_moderation_state: null, organization_id: OTHER, organization_name: "Manila Skills", organization_status: "active",
+          organization_slug: "manila-skills", resolution_note: null, handled_at: null, created_at: "2026-10-01T10:00:00+00:00", priority: 2,
+          due_at: "2026-10-05T10:00:00+00:00", overdue: false, organization_type: "recruitment_company", organization_moderation_state: "visible",
+          decision_due_at: "2026-10-08T10:00:00+00:00", decision: null, item_id: ID, item_moderation_state: "visible",
+          item_context: { requirement_title: "Welders for Hamburg", capacity: 12, experience_note: "Ten years.", fee_model: "on_request", fee_amount: null, fee_currency: null },
+        },
+      ],
+      error: null,
+    });
+    expect((await getReport(8))?.item).toEqual({
+      id: ID,
+      moderationState: "visible",
+      context: { requirement_title: "Welders for Hamburg", capacity: 12, experience_note: "Ten years.", fee_model: "on_request", fee_amount: null, fee_currency: null },
+    });
   });
 
   it("reads every listing of a partner for staff, stale ones flagged, and the decisions with their report (DATA_MODEL 11.13)", async () => {

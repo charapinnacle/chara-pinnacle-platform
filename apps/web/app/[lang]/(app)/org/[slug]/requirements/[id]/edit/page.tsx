@@ -8,6 +8,7 @@ import { SuspendedOrganization } from "@/components/layout/suspended-organizatio
 import { RequirementForm } from "@/components/requirements/requirement-form";
 import { organizationCrumb } from "@/lib/app/navigation";
 import { getCountries, getCurrencies, getIndustries, getOccupations } from "@/lib/dal/reference";
+import { getItemModeration } from "@/lib/dal/item-moderation";
 import { isReleased } from "@/lib/dal/release";
 import { getMultiCountryPlan, getRequirement, toRequirementFormInput } from "@/lib/dal/requirements";
 import { requireOrgRole } from "@/lib/dal/session";
@@ -37,7 +38,8 @@ export default async function EditRequirementPage({ params }: PageProps<"/[lang]
   ]);
   if (!requirement) notFound();
   const requirementHref = requirementPath(lang, slug, requirement.id);
-  const editable = isRequirementEditable(requirement.status);
+  const hidden = (await getItemModeration(organization.id, "requirement", requirement.id))?.state === "hidden";
+  const editable = isRequirementEditable(requirement.status) && !hidden;
 
   return (
     <div className="grid w-full max-w-3xl gap-section">
@@ -75,7 +77,14 @@ export default async function EditRequirementPage({ params }: PageProps<"/[lang]
         />
       ) : (
         <Notice tone="info" role="status">
-          This workforce requirement is closed or filled, so it can no longer be changed.
+          {hidden ? (
+            <>
+              This workforce requirement was hidden by moderation, so it cannot be changed.{" "}
+              <TextLink href={requirementHref}>See the reasons and how to appeal</TextLink>
+            </>
+          ) : (
+            "This workforce requirement is closed or filled, so it can no longer be changed."
+          )}
         </Notice>
       )}
       <TextLink standalone href={requirementHref}>

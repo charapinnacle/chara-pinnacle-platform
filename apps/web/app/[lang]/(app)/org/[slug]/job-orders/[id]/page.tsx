@@ -17,7 +17,7 @@ import { isReleased } from "@/lib/dal/release";
 import { getResponseEligibility } from "@/lib/dal/responses";
 import { requireOrgRole } from "@/lib/dal/session";
 import { employerLabel } from "@/lib/job-orders/presentation";
-import { companyPagePath, jobOrderRespondPath, jobOrdersPath } from "@/lib/routes";
+import { companyPagePath, jobOrderRespondPath, jobOrdersPath, reportPath } from "@/lib/routes";
 import { requirementIdSchema } from "@/lib/validation/requirement";
 
 // The title of the tab and every tag of the page say only "Job order": no title, employer or place leaves the page in
@@ -27,7 +27,7 @@ export const metadata: Metadata = { title: "Job order", robots: { index: false }
 // One job order for a member of a recruitment or staffing company (FR-N1 AC2, AC3, AC5, AC9), while release 2b is on. A
 // job order that is no longer open says so and shows none of its fields. A job order shown in full has the eligibility
 // panel (FR-N2 AC1, AC4, AC12): Respond, or the condition that is missing; a failed read of it shows a toast and a retry
-// instead of Respond.
+// instead of Respond. Every member may report the job order to Trust & Safety (FR-S1).
 export default async function JobOrderPage({ params }: PageProps<"/[lang]/org/[slug]/job-orders/[id]">) {
   const { lang, slug, id } = await params;
   if (!(await isReleased("release_job_orders"))) notFound();
@@ -48,7 +48,7 @@ export default async function JobOrderPage({ params }: PageProps<"/[lang]/org/[s
         {result.state === "closed" ? (
           <Notice tone="info" role="status">
             <p className="font-semibold">This job order is no longer open</p>
-            <p>The employer paused, closed or filled it.</p>
+            <p>The employer paused, closed or filled it, or it was removed by moderation.</p>
           </Notice>
         ) : result.state === "rate_limited" ? (
           <Notice tone="warning" role="alert">
@@ -105,6 +105,9 @@ export default async function JobOrderPage({ params }: PageProps<"/[lang]/org/[s
         />
       ) : null}
       <JobOrderView order={order} names={names} context={{ lang, slug, canManage: organization.role !== "member" }} />
+      <p>
+        <TextLink href={reportPath(lang, "requirement", order.id)}>Report this job order</TextLink>
+      </p>
     </div>
   );
 }

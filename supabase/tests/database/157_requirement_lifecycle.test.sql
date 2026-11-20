@@ -131,8 +131,8 @@ select columns_are('public', 'workforce_requirements', array[
   'experience_years', 'start_date', 'duration_months', 'employment_type', 'salary_min', 'salary_max', 'salary_currency',
   'salary_period', 'accommodation', 'work_permit_support', 'visa_support', 'recruitment_preference', 'partner_need', 'status',
   'visibility', 'show_identity', 'created_by', 'created_at', 'updated_at', 'published_at', 'closes_on', 'close_reason',
-  'status_changed_at', 'closing_reminder_for', 'max_capacity_over_percent'
-], 'the lifecycle columns of DATA_MODEL section 6 are added (moderation_state V57; max_capacity_over_percent came with V44)');
+  'status_changed_at', 'closing_reminder_for', 'max_capacity_over_percent', 'moderation_state'
+], 'the lifecycle columns of DATA_MODEL section 6 are added (max_capacity_over_percent came with V44, moderation_state with V57)');
 select has_trigger('public', 'workforce_requirements', 'workforce_requirements_guard_transition', 'the guard trigger exists');
 select is((select tgenabled::text from pg_trigger where tgname = 'workforce_requirements_guard_transition'), 'A',
   'the guard fires always, also for a replica session');

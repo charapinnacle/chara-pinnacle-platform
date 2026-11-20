@@ -8,6 +8,7 @@ import { ResponseForm } from "@/components/responses/response-form";
 import { organizationCrumb } from "@/lib/app/navigation";
 import { getCommitmentBlock } from "@/lib/dal/commitment";
 import { getCurrencies } from "@/lib/dal/reference";
+import { getItemModeration } from "@/lib/dal/item-moderation";
 import { isReleased } from "@/lib/dal/release";
 import { getResponse, getResponseDocumentsMax, listResponseDocuments } from "@/lib/dal/responses";
 import { requireOrgRole } from "@/lib/dal/session";
@@ -32,7 +33,8 @@ export default async function EditResponsePage({ params }: PageProps<"/[lang]/or
   if (!parsedId.success) notFound();
   const response = await getResponse(organization.id, parsedId.data);
   if (!response) notFound();
-  if (!isLive(response.status) || response.requirementStatus === "closed" || response.requirementStatus === "filled") {
+  const hidden = (await getItemModeration(organization.id, "partner_response", response.id))?.state === "hidden";
+  if (hidden || !isLive(response.status) || response.requirementStatus === "closed" || response.requirementStatus === "filled") {
     redirect(responsePath(lang, slug, response.id));
   }
   const [currencies, documents, documentsMax, commitment] = await Promise.all([

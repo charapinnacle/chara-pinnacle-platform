@@ -6,7 +6,7 @@ import {
   requirementActions,
   requirementClosesOn,
 } from "@/lib/requirements/lifecycle";
-import { LIFECYCLE_MESSAGES, lifecycleRefusal } from "@/lib/requirements/refusal";
+import { LIFECYCLE_MESSAGES, lifecycleRefusal, REQUIREMENT_MESSAGES, requirementRefusal, vacanciesRefusal } from "@/lib/requirements/refusal";
 import { closeFormSchema, publishFormSchema } from "@/lib/validation/requirement-status";
 import { statusChangeSchema } from "@/lib/validation/requirement-status-input";
 
@@ -118,6 +118,15 @@ describe("lifecycleRefusal", () => {
     [refusal("CHARA_RATE_LIMITED", null).error, "Too many changes were made today. Try again tomorrow."],
   ])("maps %j to its message", (error, message) => {
     expect(lifecycleRefusal(error)).toEqual({ kind: "message", message });
+  });
+
+  it("V57: a requirement hidden by moderation is refused for every action with the moderation message", () => {
+    const hidden = refusal("CHARA_INVALID_STATE", "hidden").error;
+    const message = { kind: "message", message: REQUIREMENT_MESSAGES.hidden };
+    expect(lifecycleRefusal(hidden)).toEqual(message);
+    expect(requirementRefusal(hidden)).toEqual(message);
+    expect(vacanciesRefusal(hidden)).toEqual(message);
+    expect(REQUIREMENT_MESSAGES.hidden).toContain("hidden by moderation");
   });
 
   it("leaves anything else a fault", () => {

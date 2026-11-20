@@ -60,7 +60,18 @@ export const appealTargetLabels: Record<string, string> = {
   partner_profile: "Partner profile",
   job: "Vacancy",
   organization: "Organisation",
+  requirement: "Workforce requirement",
+  partner_response: "Response",
+  candidate_submission: "Candidate submission",
 };
+
+// The decision as a heading: a hidden job order, response or submission (V57) is named by its kind, not as a profile.
+export function appealableDecisionLabel(action: string, targetType: string): string {
+  if (action === "content_hidden" && targetType !== "partner_profile" && appealTargetLabels[targetType]) {
+    return `${appealTargetLabels[targetType]} hidden`;
+  }
+  return appealableDecisionLabels[action] ?? "Moderation decision";
+}
 
 export const appealListStatuses = ["open", "decided", "all"] as const;
 

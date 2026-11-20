@@ -40,6 +40,9 @@ describe("submitReport", () => {
       p_application: undefined,
       p_path: undefined,
       p_partner: undefined,
+      p_requirement: undefined,
+      p_response: undefined,
+      p_submission: undefined,
       p_category: "misleading_or_fraud",
       p_details: DETAILS,
       p_good_faith: true,
@@ -79,6 +82,28 @@ describe("submitReport", () => {
     expect(await submitReport({ ...base, type: "partner_profile", target: "gone-partner" })).toEqual(notPublic);
     expect(await submitReport({ ...base, type: "partner_profile", target: "Not A Slug!" })).toEqual(notPublic);
     expect(rpcMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("V57: sends a job order, a response or a submission by its id, each in its own parameter", async () => {
+    await submitReport({ ...base, type: "requirement", target: ID });
+    await submitReport({ ...base, type: "partner_response", target: ID });
+    await submitReport({ ...base, type: "candidate_submission", target: ID, category: "fee_demanded_from_worker" });
+    const sent = rpcMock.mock.calls.map(([, args]) => [args.p_target_type, args.p_requirement, args.p_response, args.p_submission, args.p_job]);
+    expect(sent).toEqual([
+      ["requirement", ID, undefined, undefined, undefined],
+      ["partner_response", undefined, ID, undefined, undefined],
+      ["candidate_submission", undefined, undefined, ID, undefined],
+    ]);
+  });
+
+  it("V57: says the same for an item that is not the caller's or does not exist, and asks a visitor to sign in", async () => {
+    const notShared = { message: "This cannot be reported from your account. It may have been removed or it is not shared with you." };
+    expect(await submitReport({ ...base, type: "partner_response", target: "not-an-id" })).toEqual(notShared);
+    expect(rpcMock).not.toHaveBeenCalled();
+    rpcMock.mockResolvedValue(failure("CHARA_NOT_FOUND"));
+    expect(await submitReport({ ...base, type: "requirement", target: ID })).toEqual(notShared);
+    rpcMock.mockResolvedValue(failure("CHARA_FORBIDDEN", "sign_in_required"));
+    expect(await submitReport({ ...base, type: "candidate_submission", target: ID })).toEqual({ message: "Sign in to report this." });
   });
 
   it("returns the field errors of an invalid report without calling the database", async () => {
