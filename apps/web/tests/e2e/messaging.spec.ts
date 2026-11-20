@@ -1,12 +1,4 @@
-  // query wraps its SQL in a subquery, which an update cannot be: the snapshot is written first, then read.
-  execute(
-    `update public.job_applications a set profile_snapshot = jsonb_build_object('first_name', w.first_name, 'last_name', w.last_name)
-     from public.worker_profiles w where a.id = ${literal(applicationId)} and w.user_id = a.worker_user_id`,
-  );
-  const [{ name }] = query<{ name: string }>(
-    `select w.first_name || ' ' || w.last_name as name from public.job_applications a
-     join public.worker_profiles w on w.user_id = a.worker_user_id where a.id = ${literal(applicationId)}`,
-  );import { randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import type { Page } from "@playwright/test";
 import { callAs, dataApiAs } from "./support/accounts";
 import { displayName, expectAccessibleAtBothWidths, newApplicant, seedApplication } from "./support/applications";
@@ -63,10 +55,14 @@ async function applicantSetup(): Promise<ApplicantSetup> {
   const candidate = await newApplicant();
   const jobId = seedJob(team, { title: "Welder Luxembourg", status: "open" });
   const applicationId = seedApplication(candidate.id, jobId, team.id, { status: "viewed" });
-  const [{ name }] = query<{ name: string }>(
+  // query wraps its SQL in a subquery, which an update cannot be: the snapshot is written first, then read.
+  execute(
     `update public.job_applications a set profile_snapshot = jsonb_build_object('first_name', w.first_name, 'last_name', w.last_name)
-     from public.worker_profiles w where a.id = ${literal(applicationId)} and w.user_id = a.worker_user_id
-     returning w.first_name || ' ' || w.last_name as name`,
+     from public.worker_profiles w where a.id = ${literal(applicationId)} and w.user_id = a.worker_user_id`,
+  );
+  const [{ name }] = query<{ name: string }>(
+    `select w.first_name || ' ' || w.last_name as name from public.job_applications a
+     join public.worker_profiles w on w.user_id = a.worker_user_id where a.id = ${literal(applicationId)}`,
   );
   return { team, member, candidate, applicationId, candidateName: name, employerName: displayName(team.id) };
 }
