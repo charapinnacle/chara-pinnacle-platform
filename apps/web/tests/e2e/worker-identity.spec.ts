@@ -99,8 +99,10 @@ test.describe("worker identity before a contact request is accepted (NFR-S9)", (
     subscribe(team, "employer_starter");
     ({ user: member } = await addMember(team, "member"));
     token = `ibis${uniqueToken()}`;
-    declining = await visibleWorker(token, "Abenaqua", `Osei${uniqueToken()}`);
-    accepting = await visibleWorker(token, "Kwabenor", `Mensah${uniqueToken()}`);
+    // A person's name holds no digits (private.is_person_name): the unique part is spelled in letters.
+    const letters = () => uniqueToken().replace(/\d/g, (digit) => "abcdefghij"[Number(digit)]);
+    declining = await visibleWorker(token, "Abenaqua", `Osei${letters()}`);
+    accepting = await visibleWorker(token, "Kwabenor", `Mensah${letters()}`);
   });
   test.afterAll(() => setReleases(false));
 
