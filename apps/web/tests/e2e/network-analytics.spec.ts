@@ -113,6 +113,12 @@ test.describe("Network analytics (FR-R6, release 2a and 2b)", () => {
   test("FR-R6 AC8: Professional sees the tables by country and occupation, fewer than 5 in place of small counts", async ({ browser }) => {
     test.setTimeout(120_000);
     const s = await partnerOnPlan("staffing_company", "staffing_professional");
+    // With Austria the only small count, the smallest shown country would be hidden as well (complementary suppression);
+    // France, smaller than Germany, takes that place so Germany is shown.
+    execute(
+      `insert into private.org_analytics_daily (organization_id, day, metric, country_code, occupation_id, value)
+       values (${literal(s.id)}, current_date - 3, 'profile_views', 'FR', null, 9)`,
+    );
     const member = await signedIn(browser, await joinAsMember(s, "staffing_company"));
     await member.page.goto(analyticsUrl(s.slug));
     const byCountry = member.page.getByRole("region", { name: "By country" });
