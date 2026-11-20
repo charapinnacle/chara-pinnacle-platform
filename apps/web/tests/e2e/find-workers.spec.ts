@@ -9,7 +9,7 @@ import { logIn } from "./support/login-page";
 import { uniqueToken } from "./support/organizations";
 import { seedAllButCv, signIn } from "./support/passport";
 import { setPartnerRelease } from "./support/partners";
-import { newTeam, newVisitor, signInAtAal1, type Team } from "./support/team";
+import { enforceLimits, newTeam, newVisitor, restoreLimits, signInAtAal1, type Team } from "./support/team";
 import type { TestUser } from "./support/test-user";
 import { expect, test } from "./support/test";
 
@@ -77,6 +77,7 @@ test.beforeAll(() => {
   );
 });
 test.afterAll(() => {
+  restoreLimits();
   execute(`grant execute on function ${SEARCH_WORKERS} to authenticated`);
   execute(`delete from public.direct_hiring_rules where legal_opinion_ref = 'E2E-V69'`);
   setRelease("release_find_workers", false);
@@ -104,6 +105,8 @@ test.describe("Find Workers (FR-Q2)", () => {
     page.on("response", (response) => {
       if (baseURL && response.url().startsWith(baseURL)) responses.push(response);
     });
+    // Until billing is live every plan has every feature; Starter's filters are locked once the limits apply.
+    enforceLimits();
     await signInAtAal1(page, acme.owner, searchUrl(acme.slug));
     await expect(page.getByRole("heading", { name: "Find workers", level: 1 })).toBeVisible();
     const box = page.getByLabel("Search workers", { exact: true });
@@ -112,6 +115,7 @@ test.describe("Find Workers (FR-Q2)", () => {
       await expect(page.getByLabel(label, { exact: true })).toBeVisible();
     }
     await expect(page.getByRole("group", { name: "More filters" })).toContainText("available on Professional and Enterprise");
+    restoreLimits();
 
     await waitForHydration(box);
     await box.fill(token);
