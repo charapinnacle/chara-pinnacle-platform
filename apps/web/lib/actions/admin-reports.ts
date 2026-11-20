@@ -3,12 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { adminRefusal, type AdminResult } from "@/lib/actions/admin-errors";
 import { adminClient } from "@/lib/dal/admin";
+import { getReportedMessage, type ReportedMessage } from "@/lib/dal/admin-reports";
 import { requirePlatformRole } from "@/lib/dal/session";
 import { defaultLocale } from "@/lib/i18n/locale";
 import { adminPath } from "@/lib/routes";
 import { jobModerationInputSchema } from "@/lib/validation/admin";
 import {
   reportDecisionInputSchema,
+  reportIdSchema,
   reportMoveInputSchema,
   reportStatusLabels,
   type ReportDecisionInput,
@@ -75,6 +77,26 @@ export async function decideReport(input: ReportDecisionInput): Promise<AdminRes
   if (error) return adminRefusal(error, path, { ...REPORT_CHANGED, ...TARGET_CHANGED });
   revalidatePath(path);
   return { done: true };
+}
+
+const MESSAGE_REFUSALS = {
+  CHARA_FORBIDDEN: { message: "Only the Trust & Safety Administrator who put this report in review can open the message." },
+  "CHARA_FORBIDDEN:release_off": { message: "Messages are not live yet." },
+  "CHARA_INVALID_STATE:new": { message: "Put the report in review first. The message opens for the person who does." },
+  "CHARA_INVALID_STATE:actioned": changed("actioned"),
+  "CHARA_INVALID_STATE:dismissed": changed("dismissed"),
+  "CHARA_NOT_FOUND:message_gone": { message: "The message has been deleted since it was reported (retention or erasure)." },
+} as const;
+
+// Opens the reported message and the ten around it for the handler of the report (FR-P3 AC7). Each call is one opening,
+// which the database audits, so the page asks for it only when the handler chooses to read the message.
+export async function openReportedMessage(id: number): Promise<AdminResult & { messages?: ReportedMessage[] }> {
+  const parsed = reportIdSchema.safeParse(id);
+  if (!parsed.success) return { message: "This record no longer exists." };
+  await requirePlatformRole(defaultLocale, ["trust_safety"]);
+  const result = await getReportedMessage(parsed.data);
+  if (!result.ok) return adminRefusal(result.error, adminPath(defaultLocale, `reports/${parsed.data}`), MESSAGE_REFUSALS);
+  return { done: true, messages: result.messages };
 }
 
 type PartnerProfileInput = { id: string; action: "hide" | "unhide"; reason: string };

@@ -236,6 +236,21 @@ export function responseEditPath(lang: string, slug: string, id: string): string
   return `${responsePath(lang, slug, id)}/edit`;
 }
 
+// The conversations of the candidate, or of the organisation slug (FR-P1), with the context filter and the page of the
+// inbox, and one conversation.
+export function messagesPath(lang: string, slug: string | null, { context, before }: { context?: string | null; before?: string } = {}): string {
+  const path = slug ? `/${lang}/org/${slug}/messages` : `/${lang}/messages`;
+  const query = new URLSearchParams();
+  if (context) query.set("context", context);
+  if (before) query.set("before", before);
+  const text = query.toString();
+  return text ? `${path}?${text}` : path;
+}
+
+export function conversationPath(lang: string, slug: string | null, id: string): string {
+  return `${messagesPath(lang, slug)}/${id}`;
+}
+
 // The partners an employer saved (FR-L4), optionally from a keyset cursor on.
 export function savedPartnersPath(lang: string, slug: string, cursor?: string): string {
   const path = `/${lang}/org/${slug}/saved-partners`;
@@ -337,10 +352,11 @@ const reportTargetParams = {
   requirement: "requirement",
   partner_response: "response",
   candidate_submission: "submission",
+  message: "message",
 } as const;
 
 // The report form of a kind of target, with the target when the page knows it (the vacancy, the path, the slug of a
-// partner profile, or the id of a job order, response or submission) and a category to preselect, as "Report a fee
+// partner profile, or the id of a job order, response, submission or message) and a category to preselect, as "Report a fee
 // demand" does.
 export function reportPath(
   lang: string,

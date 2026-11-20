@@ -50,6 +50,7 @@ const linkLabels = {
   requirement: { label: "", description: "" },
   partner_response: { label: "", description: "" },
   candidate_submission: { label: "", description: "" },
+  message: { label: "", description: "" },
 } as const;
 
 const FAILURE = "The report was not sent";

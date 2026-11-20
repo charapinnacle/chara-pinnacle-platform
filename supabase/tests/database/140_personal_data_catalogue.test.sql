@@ -134,6 +134,9 @@ insert into catalogue values
   ('public.conversation_reads', 'cascade',
    'a read row lives with its conversation (conversations, applied from V74) and goes with the profile',
    'when the user last opened a conversation: a technical marker for unread counts, not content of the user''s'),
+  ('public.conversation_blocks', 'cascade',
+   'a block lives with its conversation (conversations, applied from V74) and goes with the blocker''s profile, which only the blocker could lift',
+   'a safety setting of the conversation, not content of the user''s; the conversations themselves are exported from V74'),
   ('public.workforce_availability', 'cascade', 'an organisation listing kept while the partner lists it; stale listings are hidden (FR-K3)',
    'organisation data: the availability listings of a partner company');
 

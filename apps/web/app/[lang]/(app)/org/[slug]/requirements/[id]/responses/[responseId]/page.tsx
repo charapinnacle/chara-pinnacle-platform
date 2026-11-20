@@ -4,6 +4,7 @@ import { Notice } from "@/components/forms/notice";
 import { TextLink } from "@/components/forms/text-link";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { PageHeader } from "@/components/layout/page-header";
+import { MessageButton } from "@/components/messaging/message-button";
 import { SuspendedOrganization } from "@/components/layout/suspended-organization";
 import { DecisionControls } from "@/components/responses/decision-controls";
 import { ResponseDocumentList } from "@/components/responses/response-document-list";
@@ -45,10 +46,11 @@ export default async function RequirementResponsePage({ params }: PageProps<"/[l
   if (!parsedRequirement.success || !parsedResponse.success) notFound();
   const response = await getResponse(organization.id, parsedResponse.data);
   if (!response || response.requirementId !== parsedRequirement.data) notFound();
-  const [versions, documents, responses] = await Promise.all([
+  const [versions, documents, responses, messaging] = await Promise.all([
     listResponseVersions(organization.id, response.id).catch(() => null),
     listResponseDocuments({ responseId: response.id }).catch(() => null),
     listRequirementResponses(organization.id, response.requirementId).catch(() => null),
+    isReleased("release_messaging"),
   ]);
   // The comparison needs another response that is not withdrawn; when the list could not be read the link stays.
   const comparable = responses === null || responses.some((other) => other.id !== response.id && other.status !== "withdrawn");
@@ -58,6 +60,11 @@ export default async function RequirementResponsePage({ params }: PageProps<"/[l
     <div className="grid w-full max-w-3xl gap-section">
       <PageHeader
         title={partnerName}
+        actions={
+          messaging && response.status !== "withdrawn" ? (
+            <MessageButton contextType="partner_response" contextId={response.id} slug={slug} recipient={partnerName} />
+          ) : undefined
+        }
         breadcrumb={
           <Breadcrumbs
             items={[

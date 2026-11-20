@@ -7,7 +7,7 @@ import { submitReport as storeReport } from "@/lib/dal/reports";
 import { defaultLocale } from "@/lib/i18n/locale";
 import { contentPathFrom, vacancyIdFrom } from "@/lib/reports/target";
 import { mfaPath } from "@/lib/routes";
-import { PAGE_LINK, VACANCY_LINK, isReportItem, reportInputSchema, type ReportInput } from "@/lib/validation/report";
+import { PAGE_LINK, VACANCY_LINK, isParticipantReport, reportInputSchema, type ReportInput } from "@/lib/validation/report";
 import { fieldErrors, type FieldErrors } from "@/lib/validation/sign-up";
 import { slugSchema } from "@/lib/validation/team";
 
@@ -31,11 +31,12 @@ const fieldByDetail: Record<string, string> = {
 };
 
 function resolveTarget(type: ReportInput["type"], target: string) {
-  if (isReportItem(type)) {
+  if (isParticipantReport(type)) {
     const id = z.uuid().safeParse(target);
     if (!id.success) return null;
     if (type === "requirement") return { type, requirement: id.data } as const;
     if (type === "partner_response") return { type, response: id.data } as const;
+    if (type === "message") return { type, message: id.data } as const;
     return { type, submission: id.data } as const;
   }
   if (type === "partner_profile") {
@@ -56,7 +57,7 @@ function resolveTarget(type: ReportInput["type"], target: string) {
 
 // Anyone may report: a visitor, a candidate, a member of a company. The database decides what can be reported by whom
 // (a public vacancy, a company through one, a page, a public partner profile, an applicant of the caller's own
-// organisation, or a job order, response or submission the caller takes part in) and counts the attempt against the
+// organisation, or a job order, response, submission or message the caller takes part in) and counts the attempt against the
 // visitor throttle, so nothing here repeats those rules.
 export async function submitReport(input: ReportInput): Promise<ReportResult> {
   const parsed = reportInputSchema.safeParse(input);
@@ -64,7 +65,7 @@ export async function submitReport(input: ReportInput): Promise<ReportResult> {
   const { type, target, category, details, email } = parsed.data;
   const resolved = resolveTarget(type, target);
   if (!resolved) {
-    if (isReportItem(type)) return { message: ITEM_NOT_FOUND };
+    if (isParticipantReport(type)) return { message: ITEM_NOT_FOUND };
     return type === "partner_profile" ? { message: PARTNER_NOT_PUBLIC } : { errors: { link: type === "content" ? PAGE_LINK : VACANCY_LINK } };
   }
 
@@ -74,13 +75,13 @@ export async function submitReport(input: ReportInput): Promise<ReportResult> {
 
   if (error.message === "CHARA_RATE_LIMITED") return { message: RATE_LIMITED };
   if (error.message === "CHARA_NOT_FOUND") {
-    if (isReportItem(type)) return { message: ITEM_NOT_FOUND };
+    if (isParticipantReport(type)) return { message: ITEM_NOT_FOUND };
     if (type === "partner_profile") return { message: PARTNER_NOT_PUBLIC };
     return type === "profile" ? { message: APPLICANT_NOT_FOUND } : { errors: { link: VACANCY_NOT_PUBLIC } };
   }
   if (error.message === "CHARA_FORBIDDEN") {
     if (error.details === "aal2_required") redirect(mfaPath(defaultLocale));
-    if (error.details === "sign_in_required" && isReportItem(type)) return { message: SIGN_IN_TO_REPORT };
+    if (error.details === "sign_in_required" && isParticipantReport(type)) return { message: SIGN_IN_TO_REPORT };
     // A failed proof of the throttle is also CHARA_FORBIDDEN; it is a fault of ours and is never put on a member.
     if (error.details === "sign_in_required" || (type === "profile" && error.details !== "p_proof")) return { message: MEMBERS_ONLY };
   }

@@ -24,6 +24,9 @@ vi.mock("@/lib/actions/submissions", () => ({
 }));
 vi.mock("@/lib/actions/limits", () => ({ recordLimitPrompt: async () => undefined }));
 vi.mock("@/lib/dal/release", () => ({ isReleased: releasedMock }));
+vi.mock("@/components/messaging/message-button", () => ({
+  MessageButton: ({ contextType, recipient }: { contextType: string; recipient: string }) => `[message ${contextType} ${recipient}]`,
+}));
 vi.mock("@/lib/dal/session", () => ({ requireCandidate: async () => ({ id: "w", accountKind: "worker" }) }));
 vi.mock("@/lib/dal/submissions", () => ({ getMySubmission: getMySubmissionMock }));
 vi.mock("@/lib/dal/submission-pipeline", () => ({ listSubmissionEvents: listEventsMock }));

@@ -6,6 +6,7 @@ import { TextLink } from "@/components/forms/text-link";
 import { Card } from "@/components/layout/card";
 import { DetailList } from "@/components/layout/detail-list";
 import { PageHeader } from "@/components/layout/page-header";
+import { MessageButton } from "@/components/messaging/message-button";
 import { ApproveRequestForm } from "@/components/submissions/approve-request-form";
 import { DeclineRequest } from "@/components/submissions/decline-request";
 import { SubmissionStatusBadge } from "@/components/submissions/submission-status";
@@ -62,10 +63,25 @@ export default async function SubmissionPage({ params }: PageProps<"/[lang]/subm
 
   if (found.kind === "answered") {
     const { submission } = found;
-    const history = submission.approvedAt ? await listSubmissionEvents(submission.id) : [];
+    const [history, messaging] = await Promise.all([
+      submission.approvedAt ? listSubmissionEvents(submission.id) : [],
+      isReleased("release_messaging"),
+    ]);
     return (
       <div className="grid w-full max-w-3xl gap-section">
-        <PageHeader title={submission.title}>
+        <PageHeader
+          title={submission.title}
+          actions={
+            messaging && submission.approvedAt && submission.status !== "withdrawn" ? (
+              <MessageButton
+                contextType="candidate_submission"
+                contextId={submission.id}
+                slug={null}
+                recipient={submission.employerName ?? "the employer"}
+              />
+            ) : undefined
+          }
+        >
           <p className="text-body wrap-anywhere">
             Proposed by {submission.partnerName} · {submission.employerName ? `${submission.employerName}, ` : ""}
             {submission.countryName}

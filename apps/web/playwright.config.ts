@@ -172,6 +172,7 @@ const config = defineConfig({
         "**/network-analytics.spec.ts",
         "**/release-2b-journey.spec.ts",
         "**/job-order-anonymity.spec.ts",
+        "**/messaging.spec.ts",
       ],
     },
     {
@@ -699,13 +700,21 @@ const config = defineConfig({
       testMatch: "**/job-order-anonymity.spec.ts",
       dependencies: ["release-2b-journey"],
     },
+    // The messaging pages (V65) set releases 2a, 2b and 2c for the whole database, so they follow the release 2b
+    // projects.
+    {
+      name: "messaging-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/messaging.spec.ts",
+      dependencies: ["job-order-anonymity-release"],
+    },
     // The sitemap is compared with every public vacancy of the database, so no other spec may open or close one while
     // these tests run: they follow every other project.
     {
       name: "sitemap",
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/search-engine-sitemap.spec.ts",
-      dependencies: ["job-order-anonymity-release"],
+      dependencies: ["messaging-release"],
     },
     // The load times of the performance smoke are measured when no other spec loads the server: last of all.
     {

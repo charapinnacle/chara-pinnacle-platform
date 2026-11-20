@@ -8,6 +8,7 @@ import {
   applicantsPath,
   applicationPath,
   billingPath,
+  conversationPath,
   dataExportPath,
   invitationPath,
   jobOrderPath,
@@ -136,6 +137,7 @@ const SAMPLES: Record<NotificationKind, Record<string, unknown>> = {
   response_received: { response_id: APP, requirement_id: JOB, title: "Hamburg yard welders", partner_name: "Manila Recruit", org_slug: "acme-bau" },
   response_withdrawn: { response_id: APP, requirement_id: JOB, title: "Hamburg yard welders", partner_name: "Manila Recruit", org_slug: "acme-bau" },
   response_decided: { response_id: APP, requirement_id: JOB, title: "Hamburg yard welders", employer_name: "Acme Bau", decision: "selected", org_slug: "manila-recruit" },
+  new_message: { conversation_id: APP, context_type: "application", sender_kind: "worker", sender_name: "Amina Okafor", context_title: "Welder MIG/MAG", unread: 3, org_slug: "acme-bau" },
   submission_request: { submission_id: APP, partner_name: "Manila Recruit", title: "Hamburg yard welders", country_name: "Germany", start_date: "2027-03-01", employer_name: "Acme Bau" },
   submission_request_signup: { partner_name: "Manila Recruit", title: "Germany, 10 Welders", country_name: "Germany", start_date: "2027-03-01" },
   submission_approved: { submission_id: APP, requirement_id: JOB, title: "Hamburg yard welders", partner_name: "Manila Recruit", org_slug: "acme-bau" },
@@ -256,6 +258,7 @@ describe("notification templates", () => {
       response_received: requirementResponsesPath("en", "acme-bau", JOB),
       response_withdrawn: requirementResponsesPath("en", "acme-bau", JOB),
       response_decided: responsePath("en", "manila-recruit", APP),
+      new_message: conversationPath("en", "acme-bau", APP),
       submission_request: submissionPath("en", APP),
       submission_request_signup: signUpPath("en", "worker"),
       submission_approved: requirementSubmissionsPath("en", "acme-bau", JOB),
@@ -369,6 +372,26 @@ describe("notification templates", () => {
     expect(foreign.html).not.toContain("billing");
     const untitled = await renderEmail("response_withdrawn", {}, SITE);
     expect(untitled.subject).toBe("A partner withdrew its response to your workforce requirement");
+  });
+
+  it("new_message names the sender, the context and the unread count, links the conversation once and carries no message text (FR-P4 AC10)", async () => {
+    const email = await renderEmail("new_message", { ...SAMPLES.new_message, body: "Please pay 200 EUR for the visa" }, SITE);
+    expect(email.subject).toBe("You have 3 unread messages from Amina Okafor");
+    expect(email.text).toContain('Amina Okafor sent you 3 unread messages about "Welder MIG/MAG".');
+    expect(email.text).toContain(BRAND_NAME);
+    const conversation = `${SITE}${conversationPath("en", "acme-bau", APP)}`;
+    expect(email.html.split(`href="${conversation}"`)).toHaveLength(2);
+    expect(email.html).toMatch(new RegExp(`href="${SITE}/en/settings/notifications"[^>]*>Turn off message emails<`));
+    for (const part of [email.subject, email.text, email.html]) {
+      expect(part).not.toContain("visa");
+      expect(part).not.toContain("200 EUR");
+    }
+    const worker = await renderEmail("new_message", { conversation_id: APP, sender_name: "Acme Bau", unread: 1 }, SITE);
+    expect(worker.subject).toBe("You have 1 unread message from Acme Bau");
+    expect(worker.text).toContain(`${SITE}${conversationPath("en", null, APP)}`);
+    const foreign = await renderEmail("new_message", { ...SAMPLES.new_message, org_slug: "../billing", conversation_id: "../billing" }, SITE);
+    expect(foreign.html).not.toContain("billing\"");
+    expect(foreign.html).not.toContain("Read the conversation");
   });
 
   it("response_decided tells the partner its own decision, never the note, and names the employer only when the payload does (FR-O3 AC7, NFR-S11)", async () => {

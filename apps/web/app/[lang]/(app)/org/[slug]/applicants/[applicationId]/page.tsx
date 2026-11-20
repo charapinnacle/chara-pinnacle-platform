@@ -10,6 +10,7 @@ import { StageChange } from "@/components/applicants/stage-change";
 import { Card } from "@/components/layout/card";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { PageHeader } from "@/components/layout/page-header";
+import { MessageButton } from "@/components/messaging/message-button";
 import { SuspendedOrganization } from "@/components/layout/suspended-organization";
 import { ReadOnlyPlanNotice } from "@/components/billing/read-only-plan";
 import { Notice } from "@/components/forms/notice";
@@ -25,6 +26,7 @@ import {
 import { getApplicant, listApplicantEvents, markApplicationViewed } from "@/lib/dal/applicants";
 import { isSubscriptionEnded } from "@/lib/dal/hiring";
 import { getCountries, getLanguages } from "@/lib/dal/reference";
+import { isReleased } from "@/lib/dal/release";
 import { organizationCrumb } from "@/lib/app/navigation";
 import { requireOrgRole, requireUser } from "@/lib/dal/session";
 import { formatDateTime, formatShortDate } from "@/lib/i18n/format";
@@ -56,7 +58,7 @@ export default async function ApplicantPage({ params, searchParams }: PageProps<
   if (!first || first.organizationId !== organization.id) notFound();
   const firstOpen = first.status === "applied";
   if (firstOpen) await markApplicationViewed(id.data);
-  const [reread, events, profile, documents, changed, notesPage, countries, languages] = await Promise.all([
+  const [reread, events, profile, documents, changed, notesPage, countries, languages, messaging] = await Promise.all([
     firstOpen ? getApplicant(id.data) : first,
     listApplicantEvents(id.data),
     getApplicantProfile(id.data),
@@ -65,6 +67,7 @@ export default async function ApplicantPage({ params, searchParams }: PageProps<
     listApplicationNotes(id.data, before.success ? before.data : undefined),
     getCountries(),
     getLanguages(),
+    isReleased("release_messaging"),
   ]);
   if (!profile) notFound();
   const applicant = reread ?? first;
@@ -80,6 +83,11 @@ export default async function ApplicantPage({ params, searchParams }: PageProps<
     <div className="grid w-full max-w-3xl gap-page">
       <PageHeader
         title={name}
+        actions={
+          messaging && applicant.applicantName && applicant.status !== "withdrawn" ? (
+            <MessageButton contextType="application" contextId={applicant.id} slug={slug} recipient={name} />
+          ) : undefined
+        }
         breadcrumb={
           <Breadcrumbs
             items={[

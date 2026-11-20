@@ -96,6 +96,10 @@ describe("in-app notification items (FR-T1)", () => {
     ["response_decided", { response_id: APP, title: "Hamburg welders", employer_name: "Acme Bau", decision: "selected", org_slug: "manila" }, company, 'Acme Bau selected your company for "Hamburg welders"', responsePath("en", "manila", APP)],
     ["response_decided", { response_id: APP, decision: "submissions_allowed", org_slug: "manila" }, company, "The employer allows your company to submit candidates for a workforce requirement", responsePath("en", "manila", APP)],
     ["response_decided", { response_id: "../x", decision: "constructor", org_slug: "manila" }, company, "The employer decided your response to a workforce requirement", null],
+    ["new_message", { conversation_id: APP, sender_name: "Amina Okafor", context_title: "Welder", unread: 3, org_slug: "acme" }, company, 'Amina Okafor sent you 3 unread messages about "Welder"', `/en/org/acme/messages/${APP}`],
+    ["new_message", { conversation_id: APP, sender_name: "Acme Bau", unread: 1 }, worker, "Acme Bau sent you 1 unread message", `/en/messages/${APP}`],
+    ["new_message", { conversation_id: APP, unread: "many" }, company, "The other party sent you new messages", null],
+    ["new_message", { conversation_id: "../billing", org_slug: "acme" }, company, "The other party sent you new messages", null],
     ["submission_request", { submission_id: APP, partner_name: "Manila Recruit", title: "Hamburg welders" }, worker, 'Manila Recruit would like to propose you for "Hamburg welders"', submissionPath("en", APP)],
     ["submission_request", { submission_id: "../x" }, worker, "A recruitment company would like to propose you for a job", null],
     ["submission_approved", { requirement_id: JOB, title: "Hamburg welders", partner_name: "Manila Recruit", org_slug: "acme" }, company, 'A candidate proposed by Manila Recruit was submitted for "Hamburg welders"', requirementSubmissionsPath("en", "acme", JOB)],
@@ -154,7 +158,7 @@ describe("in-app notification items (FR-T1)", () => {
   });
 
   it("shows a kind of a later release without failing", () => {
-    expect(presentNotification({ kind: "new_message", payload: { submission_id: APP } }, company)).toEqual({
+    expect(presentNotification({ kind: "contact_request_received", payload: { submission_id: APP } }, company)).toEqual({
       title: "You have a new notification",
       kindLabel: "Notification",
       href: null,

@@ -68,7 +68,7 @@ select set_eq(
 );
 select set_eq(
   $$select kind from private.notification_kinds where not mandatory$$,
-  $$values ('application_received'), ('licence_expiring'), ('partner_licence_expired'), ('listing_confirmation_due'),
+  $$values ('application_received'), ('new_message'), ('licence_expiring'), ('partner_licence_expired'), ('listing_confirmation_due'),
     ('followed_company_activity'), ('requirement_closing_soon'), ('job_order_match'), ('invitation_received'),
     ('invitation_withdrawn'), ('requirement_changed'), ('requirement_closed'), ('response_received'), ('response_withdrawn'),
     ('response_decided'), ('submission_approved'), ('submission_withdrawn'), ('submission_stage_changed')$$,
