@@ -199,7 +199,7 @@ test.describe("Structured connection actions (FR-P2)", () => {
     await expectNoAxeViolations(page);
     await dialog.getByLabel("Vacancy").selectOption({ label: "Welder MIG/MAG" });
     await dialog.getByRole("button", { name: "Send invitation" }).click();
-    await expect(page.getByText("Invitation sent")).toBeVisible();
+    await expect(page.getByText("Invitation sent", { exact: true })).toBeVisible();
     await expect(page.getByRole("log")).toContainText("Invitation to apply");
     await expect(page.getByRole("log")).toContainText("Not applied yet");
 
