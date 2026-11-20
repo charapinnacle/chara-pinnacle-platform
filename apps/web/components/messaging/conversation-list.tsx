@@ -63,10 +63,11 @@ export function ConversationList({ userId, side, items, initialUnread }: Convers
             <p className={cn("text-body wrap-anywhere", unread > 0 ? "font-semibold" : "font-medium")}>
               <Link
                 href={item.href}
+                // One label: a visually hidden span is a separate box, so the name would read "Name , 1 unread".
+                aria-label={unread > 0 ? `${name}, ${unread} unread` : undefined}
                 className="rounded-sm underline decoration-transparent decoration-[1.5px] underline-offset-4 transition-colors duration-150 hover:decoration-foreground focus-visible:decoration-foreground"
               >
                 {name}
-                {unread > 0 ? <span className="sr-only">, {unread} unread</span> : null}
               </Link>
             </p>
             <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
