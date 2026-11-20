@@ -162,7 +162,7 @@ test.describe("release 2c journeys (NFR-O4, NFR-U4, NFR-P4)", () => {
     await expect(wp).toHaveURL("/en/contact-requests");
     const waiting = wp.getByRole("region", { name: "Waiting for your answer" }).getByRole("listitem").filter({ hasText: employer });
     await expect(waiting).toContainText("Waiting for your answer");
-    await expect(waiting).toContainText("Accept to share your first and last name with this company and start a conversation, or decline.");
+    await expect(waiting).toContainText(`Accepting shares your first and last name with ${employer} only and opens a conversation.`);
     await expect(waiting).toContainText("We build ships in Hamburg");
     await expectAccessibleAtBothWidths(wp);
     await wp.setViewportSize({ width: 1280, height: 900 });
