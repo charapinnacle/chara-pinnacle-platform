@@ -107,7 +107,7 @@ test.describe("What you offer (FR-K2)", () => {
     await pickWithKeys(page, INDUSTRIES, "manuf", "Manufacturing");
     await pickWithKeys(page, INDUSTRIES, "constr", "Construction");
     await pickWithKeys(page, LANGUAGES, "engl", "English");
-    await pickWithKeys(page, LANGUAGES, "filip", "Filipino");
+    await pickWithKeys(page, LANGUAGES, "tagal", "Filipino (Tagalog)");
     await pickWithKeys(page, LANGUAGES, "arab", "Arabic");
     await recruitmentType.getByRole("radio", { name: "International", exact: true }).check();
 
@@ -133,7 +133,7 @@ test.describe("What you offer (FR-K2)", () => {
       execute(`grant execute on function ${SET_OFFER} to authenticated`);
     }
     await expect(chips(page, OCCUPATIONS)).toHaveText(["Welders and flame cutters", "Plumbers and pipe fitters"]);
-    await expect(chips(page, LANGUAGES)).toHaveText(["English", "Filipino", "Arabic"]);
+    await expect(chips(page, LANGUAGES)).toHaveText(["English", "Filipino (Tagalog)", "Arabic"]);
     await expect(staffingTypes.getByRole("checkbox", { name: "Temporary" })).toBeChecked();
     expect(offer(id)).toBe("||||");
 
