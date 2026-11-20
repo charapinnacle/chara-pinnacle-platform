@@ -127,7 +127,7 @@ test.describe("Contact requests (FR-Q3)", () => {
     await expect(dialog).toContainText(`${text.length}/1,000 characters`);
     await vacancy.selectOption({ label: "Welder MIG/MAG" });
     await dialog.getByRole("button", { name: "Send request" }).click();
-    await expect(page.getByText("Contact request sent")).toBeVisible();
+    await expect(page.getByText("Contact request sent", { exact: true })).toBeVisible();
     await expect(dialog).toHaveCount(0);
 
     await page.reload();
@@ -191,7 +191,7 @@ test.describe("Contact requests (FR-Q3)", () => {
     await expect(confirm).toContainText("cannot contact you again for 90 days");
     await expectNoAxeViolations(page);
     await confirm.getByRole("button", { name: "Decline request" }).click();
-    await expect(page.getByText("Request declined")).toBeVisible();
+    await expect(page.getByText("Request declined", { exact: true })).toBeVisible();
     const earlier = page.getByRole("region", { name: "Earlier requests" });
     await expect(earlier.getByRole("listitem").filter({ hasText: betaName })).toContainText("Declined");
 
@@ -229,7 +229,7 @@ test.describe("Contact requests (FR-Q3)", () => {
     const withdraw = waitingItem.getByRole("button", { name: /^Withdraw the contact request: / });
     await waitForHydration(withdraw);
     await withdraw.click();
-    await expect(page.getByText("Contact request withdrawn")).toBeVisible();
+    await expect(page.getByText("Contact request withdrawn", { exact: true })).toBeVisible();
     await expect(page.getByRole("listitem").filter({ hasText: "Waiting request." })).toContainText("Withdrawn");
 
     await page.goto(`/en/org/${acme.slug}/contact-requests?status=expired`);
