@@ -208,9 +208,9 @@ test.describe("Contact requests (FR-Q3)", () => {
     expect(conversation).toEqual({ context_type: "contact_request" });
 
     const outsider = await newVisitor(browser);
-    // The page streams behind its loading state, so the not-found page comes with status 200: what it shows is checked.
+    // A signed-out visitor is asked to log in first, and reads nothing of the organisation.
     await outsider.page.goto(`/en/org/${acme.slug}/contact-requests`);
-    await expect(outsider.page.getByRole("heading", { name: "Page not found" })).toBeVisible();
+    await expect(outsider.page).toHaveURL(`/en/login?next=${encodeURIComponent(`/en/org/${acme.slug}/contact-requests`)}`);
     await outsider.context.close();
   });
 
