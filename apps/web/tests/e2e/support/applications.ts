@@ -138,11 +138,12 @@ export function seedManyApplications(workerId: string, company: Company, count: 
 }
 
 // NFR-U1 and NFR-U2: the state on screen has no serious WCAG 2.2 A/AA violation and no horizontal scroll at 1280 and 360 px.
-export async function expectAccessibleAtBothWidths(page: Page): Promise<void> {
+// A page whose end leaves a control under the sticky header is measured from the top instead.
+export async function expectAccessibleAtBothWidths(page: Page, { from = "end" }: { from?: "top" | "end" } = {}): Promise<void> {
   for (const [width, height] of [[1280, 900], [360, 800]] as const) {
     await page.setViewportSize({ width, height });
     // At the end of the page the sticky onboarding button covers no control that axe measures.
-    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    await page.evaluate((top) => window.scrollTo(0, top ? 0 : document.documentElement.scrollHeight), from === "top");
     expect(await overflow(page), `Horizontal overflow at ${width}px on ${page.url()}`).toBeLessThanOrEqual(0);
     await expectNoAxeViolations(page);
   }
