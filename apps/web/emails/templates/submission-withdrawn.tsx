@@ -18,8 +18,8 @@ export const submissionWithdrawn: Template = {
     return (
       <Layout preview="A candidate withdrew a submission" heading="A candidate withdrew">
         <Paragraph>
-          A candidate proposed by {partner ?? "a partner"} withdrew from {title ? `"${title}"` : "a workforce requirement"}. The
-          documents the candidate shared can no longer be opened.
+          {payload.to_partner === true ? "A candidate you proposed" : `A candidate proposed by ${partner ?? "a partner"}`} withdrew
+          from {title ? `"${title}"` : "a workforce requirement"}. The documents the candidate shared can no longer be opened.
         </Paragraph>
         {slug && id && /^[0-9a-f-]{36}$/.test(id) ? (
           <Action href={url(siteUrl, `/org/${slug}/requirements/${id}/submissions`)}>See the candidates</Action>

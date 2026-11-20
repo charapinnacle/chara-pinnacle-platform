@@ -6,6 +6,7 @@ import { execute, literal, query } from "./support/db";
 import { seedDocument } from "./support/documents";
 import { waitForHydration } from "./support/hydration";
 import { signIn } from "./support/passport";
+import { runNotify } from "./support/notify";
 import { partnerWithCompany, setPartnerRelease } from "./support/partners";
 import { enforceLimits, newTeam, newVisitor, restoreLimits, signInAtAal1, signInAtAal2, type Team } from "./support/team";
 import type { TestUser } from "./support/test-user";
@@ -151,6 +152,12 @@ test.describe("Candidate submissions (FR-O4)", () => {
     await page.getByRole("link", { name: "Submit a candidate" }).click();
     await expect(page).toHaveURL(newUrl(s1.slug, requirement));
     await expect(page.getByRole("heading", { name: "Submit a candidate", level: 1 })).toBeVisible();
+    // The breadcrumb and the logo lead to the partner's own dashboard, not through the employer dashboard.
+    await expect(page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("link").first()).toHaveAttribute(
+      "href",
+      `/en/dashboard/recruitment?org=${s1.slug}`,
+    );
+    await expect(page.getByRole("link", { name: "Chara Pinnacle" }).first()).toHaveAttribute("href", "/en/dashboard/recruitment");
     await expect(page.getByText("0 of 25 submissions used this month")).toBeVisible();
     await expect(page.getByText(WORKERS_NEVER_PAY)).toBeVisible();
 
@@ -186,6 +193,27 @@ test.describe("Candidate submissions (FR-O4)", () => {
     await page.reload();
     await expect(page.getByText("2 of 25 submissions used this month")).toBeVisible();
     await expectAccessibleAtBothWidths(page);
+
+    // At the month's limit Send request is disabled with the upgrade prompt as its reason, shown once (FR-R1). A limit
+    // override only applies on an Enterprise plan (private.org_limit).
+    execute(
+      `update billing.subscriptions set plan_code = 'recruitment_enterprise' where organization_id = ${literal(s1.id)};
+       insert into billing.organization_limit_overrides (organization_id, limit_key, limit_value)
+       values (${literal(s1.id)}, 'candidate_submissions_per_month', 2)`,
+    );
+    try {
+      await page.reload();
+      const blocked = page.getByRole("button", { name: "Send request" });
+      await expect(blocked).toBeDisabled();
+      await expect(blocked).toHaveAccessibleDescription(/2 of 2 .*submissions/);
+      await expect(page.getByRole("link", { name: "Upgrade your plan" })).toHaveCount(1);
+      await expectAccessibleAtBothWidths(page);
+    } finally {
+      execute(
+        `delete from billing.organization_limit_overrides where organization_id = ${literal(s1.id)} and limit_key = 'candidate_submissions_per_month';
+         update billing.subscriptions set plan_code = 'recruitment_partner' where organization_id = ${literal(s1.id)}`,
+      );
+    }
 
     // The list shows the address entered until the candidate approves, with the status in words (AC2, AC12).
     await page.goto(partnerListUrl(s1.slug));
@@ -236,7 +264,12 @@ test.describe("Candidate submissions (FR-O4)", () => {
     expect(submissionRow(id).status).toBe("awaiting_candidate");
     await page.getByRole("checkbox", { name: "Welding certificate" }).check();
     await page.getByRole("checkbox", { name: "Reference letter" }).check();
-    await page.getByRole("checkbox", { name: /I agree to share my profile/ }).check();
+    await page
+      .getByRole("checkbox", {
+        name: "I agree to share my profile and the selected documents with the employer for this submission, as the sharing notice describes",
+        exact: true,
+      })
+      .check();
     await approve.click();
     await expect(page.getByText("Request approved", { exact: true })).toBeVisible();
     await expect(page.getByText("Submitted", { exact: true })).toBeVisible();
@@ -276,6 +309,11 @@ test.describe("Candidate submissions (FR-O4)", () => {
     await expect(partner.page.getByRole("heading", { name: "Test Candidate" })).toBeVisible();
     await expect(partner.page.getByText("Submitted", { exact: true })).toBeVisible();
     await expect(partner.page.getByText(worker.email)).toHaveCount(0);
+    // The partner's own notice speaks of the candidate it proposed, not of its own company.
+    await runNotify();
+    await partner.page.goto("/en/notifications");
+    await expect(partner.page.getByRole("link", { name: /^A candidate you proposed was submitted for / })).toBeVisible();
+    await expect(partner.page.getByText(`A candidate proposed by ${s1.displayName}`)).toHaveCount(0);
     await partner.context.close();
 
     // AC9: Withdraw after a confirmation; the share is revoked at once.

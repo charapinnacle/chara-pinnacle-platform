@@ -426,6 +426,17 @@ describe("notification templates", () => {
     expect(withdrawn.text).toContain("The documents the candidate shared can no longer be opened.");
   });
 
+  it("the partner's own approval and withdrawal speak of the candidate it proposed, not of its own name (FR-O4 AC5, AC9)", async () => {
+    const approved = await renderEmail("submission_approved", { ...SAMPLES.submission_approved, to_partner: true }, SITE);
+    expect(approved.text).toContain('A candidate you proposed approved the submission for "Hamburg yard welders".');
+    expect(approved.text).not.toContain("Manila Recruit");
+    const withdrawn = await renderEmail("submission_withdrawn", { ...SAMPLES.submission_withdrawn, to_partner: true }, SITE);
+    expect(withdrawn.text).toContain('A candidate you proposed withdrew from "Hamburg yard welders".');
+    expect(withdrawn.text).not.toContain("Manila Recruit");
+    const employer = await renderEmail("submission_withdrawn", { ...SAMPLES.submission_withdrawn, to_partner: false }, SITE);
+    expect(employer.text).toContain('A candidate proposed by Manila Recruit withdrew from "Hamburg yard welders".');
+  });
+
   it("a submitted candidate's stage names the partner to the candidate and the stage alone to the partner (FR-O5 AC9, AC10)", async () => {
     const candidate = await renderEmail(
       "status_changed",

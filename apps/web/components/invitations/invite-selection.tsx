@@ -119,7 +119,8 @@ export function InviteSelection({ organizationId, slug, requirementId, billingHr
   );
 }
 
-// The checkbox of one suggestion card, named "Invite <partner name>" (FR-M3 AC7, FR-O1 AC12).
+// The checkbox of one suggestion card, labelled "Invite <partner name>" in full, so each box of the list has its own name in
+// every assistive technology (FR-M3 AC7, FR-O1 AC12).
 export function InviteCheckbox({ partnerId, name }: { partnerId: string; name: string }) {
   const { control } = useFormContext<InviteSelectionInput>();
   const { field } = useController({ control, name: "partners" });
@@ -135,8 +136,8 @@ export function InviteCheckbox({ partnerId, name }: { partnerId: string; name: s
           field.onChange(event.target.checked ? [...field.value, partnerId] : field.value.filter((value) => value !== partnerId))
         }
       />
-      <label htmlFor={id} className="cursor-pointer text-body">
-        Invite<span className="sr-only"> {name}</span>
+      <label htmlFor={id} className="cursor-pointer text-body wrap-anywhere">
+        Invite {name}
       </label>
     </div>
   );

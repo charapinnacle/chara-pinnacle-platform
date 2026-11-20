@@ -3,12 +3,15 @@ import { shownLimit } from "@/lib/billing/limits";
 import {
   dashboardTarget,
   nextActions,
+  outcomeText,
+  planUsageKeys,
   profileViewsText,
-  segmentOf,
+  submissionStageLines,
   usageAttention,
   usageLine,
   type PartnerFigures,
 } from "@/lib/dashboard/partner-dashboard";
+import { segmentOf } from "@/lib/dashboard/segments";
 import { listingFreshness } from "@/lib/validation/workforce-availability";
 
 const r = { slug: "r", type: "recruitment_company" as const };
@@ -62,6 +65,8 @@ const figures = (over: Partial<PartnerFigures> = {}): PartnerFigures => ({
   profileViews: 0,
   profileViewsFewerThan: null,
   profileViewsInPlan: true,
+  network: null,
+  submissionStages: null,
   ...over,
 });
 
@@ -194,5 +199,44 @@ describe("listing staleness at the boundary (FR-R4 AC4)", () => {
     expect(listingFreshness(ago(60 * DAY + 60_000), now, rules).state).toBe("hidden");
     expect(listingFreshness(ago(200 * DAY), now, rules).state).toBe("hidden");
     expect(listingFreshness(ago(60 * DAY), now, rules).state).toBe("hidden");
+  });
+});
+
+describe("submission stages and outcomes (FR-R3 AC5, FR-O5 AC10)", () => {
+  it("lists the statuses that hold a submission in the order a submission moves", () => {
+    const stages = {
+      awaiting_candidate: 2,
+      declined_by_candidate: 0,
+      expired: 1,
+      submitted: 0,
+      viewed: 0,
+      shortlisted: 0,
+      interview: 1,
+      offer: 0,
+      hired: 1,
+      rejected: 1,
+      withdrawn: 0,
+    };
+    expect(submissionStageLines(stages).map((line) => `${line.label}: ${line.count}`)).toEqual([
+      "Waiting for the worker's agreement: 2",
+      "Interview: 1",
+      "Hired: 1",
+      "Not selected: 1",
+      "Expired: 1",
+    ]);
+  });
+
+  it("says the outcomes of a requirement without the parts at 0", () => {
+    const outcome = { requirementId: "r", title: "t", submitted: 5, inProgress: 2, hired: 1, notSelected: 1, withdrawn: 1, lastChangeAt: "" };
+    expect(outcomeText(outcome)).toBe("5 submitted: 1 hired, 1 not selected, 2 in progress, 1 withdrawn");
+    expect(outcomeText({ ...outcome, submitted: 1, inProgress: 0, hired: 0, notSelected: 0, withdrawn: 0 })).toBe("1 submitted");
+  });
+
+  it("adds the monthly limits of the released features to the plan block", () => {
+    expect(planUsageKeys({ jobOrders: false, submissions: false })).toEqual(["markets", "listed_occupations", "workforce_listings", "members"]);
+    expect(planUsageKeys({ jobOrders: true, submissions: true }).slice(4)).toEqual([
+      "job_order_responses_per_month",
+      "candidate_submissions_per_month",
+    ]);
   });
 });

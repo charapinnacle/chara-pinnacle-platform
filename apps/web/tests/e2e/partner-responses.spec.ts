@@ -394,6 +394,7 @@ test.describe("Responding to a job order (FR-N2, FR-O2)", () => {
     await waitForHydration(accept);
     await accept.focus();
     await page.keyboard.press("Enter");
+    await page.getByRole("dialog", { name: "Accept this invitation?" }).getByRole("button", { name: "Accept invitation" }).click();
     await expect(page).toHaveURL(`/en/org/${p1.slug}/invitations/${invitation}/respond`);
     await expect(page.getByRole("heading", { name: "Respond to this invitation", level: 1 })).toBeVisible();
     await waitForHydration(page.getByRole("button", { name: "Send response" }));

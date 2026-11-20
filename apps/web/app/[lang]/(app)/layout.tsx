@@ -4,11 +4,11 @@ import { AppSidebar } from "@/components/layout/app-sidebar";
 import { FooterLinks } from "@/components/layout/footer-links";
 import { getUnreadNotificationCount } from "@/lib/dal/notifications";
 import { getMyOrganizations } from "@/lib/dal/organizations";
-import { partnerSegments } from "@/lib/dashboard/partner-dashboard";
+import { partnerSegments } from "@/lib/dashboard/segments";
 import { isReleased } from "@/lib/dal/release";
 import { getCurrentUser } from "@/lib/dal/session";
 import { appFooterLinks } from "@/lib/public/navigation";
-import { homePath } from "@/lib/routes";
+import { companyDashboardPath, homePath } from "@/lib/routes";
 import { roleLabels } from "@/lib/validation/team";
 
 // A failed read of the organisations leaves the header without organisation links instead of replacing the whole page:
@@ -81,9 +81,19 @@ export default async function AppLayout({ children, params }: LayoutProps<"/[lan
       }
     : null;
 
+  // The logo of a company account leads straight to the dashboard of the type of its first organisation, which is the one
+  // that dashboard shows, instead of through the employer dashboard's redirect.
+  const firstOrganization = navigation?.organizations[0];
+  const homeHref =
+    accountKind === "company" && firstOrganization?.partnerSegment
+      ? companyDashboardPath(lang, firstOrganization.partnerSegment)
+      : accountKind
+        ? homePath(lang, accountKind)
+        : "/";
+
   return (
     <AppShell
-      homeHref={accountKind ? homePath(lang, accountKind) : "/"}
+      homeHref={homeHref}
       headerActions={navigation ? <AppNav {...navigation} /> : null}
       sidebar={navigation ? <AppSidebar {...navigation} /> : null}
       footerLinks={<FooterLinks lang={lang} label="Legal" links={appFooterLinks} />}

@@ -24,7 +24,8 @@ type Row = { label: string; cell: (response: ComparedResponse) => React.ReactNod
 // The responses that are not withdrawn side by side (FR-O3 step Compare, AC1, AC2): one column per partner, headed by its
 // name with a link to its profile, and the same rows in the same order for each, so every partner is compared on equal
 // terms. The table scrolls inside its own container with the row headers held at the left, so a small screen never
-// scrolls the page sideways. Owners and admins decide in the last row; members only compare. No licence detail.
+// scrolls the page sideways; the container is positioned so the visually hidden text in the cells is clipped by it too
+// instead of stretching the page. Owners and admins decide in the last row; members only compare. No licence detail.
 export function ResponseComparison({ lang, slug, requirementId, responses, documents, countryNames, canDecide }: ResponseComparisonProps) {
   const rows: Row[] = [
     { label: "Status", cell: (response) => <ResponseStatusBadge status={response.status} view="employer" updatedUnseen={response.updatedUnseen} /> },

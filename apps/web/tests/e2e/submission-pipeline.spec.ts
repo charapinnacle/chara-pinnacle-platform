@@ -245,7 +245,7 @@ test.describe("Submission review pipeline (FR-O5)", () => {
     const dialog = page.getByRole("dialog", { name: "Review the bulk action" });
     await expect(dialog.getByText("6 candidates")).toBeVisible();
     await expect(dialog.getByText(`(Submitted by ${s1.displayName})`)).toHaveCount(6);
-    await expect(dialog.getByText("Withdrawn candidates and moves their stage does not allow will be skipped.", { exact: false })).toBeVisible();
+    await expect(dialog.getByText("Candidates who withdrew, and candidates who cannot move to this stage from their current one, are skipped.", { exact: false })).toBeVisible();
     await expectNoAxeViolations(page);
     await dialog.getByRole("button", { name: "Confirm" }).click();
     await expect(page.getByText("3 moved, 3 skipped")).toBeVisible();

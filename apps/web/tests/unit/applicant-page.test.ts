@@ -135,7 +135,8 @@ describe("the applicant page of FR-D5", () => {
 
   it("shows the profile as submitted, with the date and the cover note, and no indicator when nothing changed", async () => {
     const html = renderToStaticMarkup(await ApplicantPage(props()));
-    expect(html).toContain("Submitted 3 October 2026");
+    expect(html).toContain('Submitted <time dateTime="2026-10-03T10:00:00Z">3 Oct 2026</time>');
+    expect(html).not.toContain("2026-10-03<");
     for (const text of ["Welder", "Portugal", "6 years", "Available from 1 November 2026", "MIG welding", "English, C1", "valid until 1 May 2030", "I weld every day."]) {
       expect(html).toContain(text);
     }

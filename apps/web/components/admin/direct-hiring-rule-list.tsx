@@ -13,7 +13,8 @@ import { destinationText, ruleAgeText, ruleLabels, type DirectHiringRuleValue } 
 const ruleTones = { allowed: "success", licensed_partner_required: "warning", blocked: "danger" } as const satisfies Record<DirectHiringRuleValue, string>;
 
 // The direct-hiring rules with their notice, legal opinion reference and age (FR-Q5 AC10, SOP P2-34 step 6). A rule
-// unchanged for the review period is flagged "Review due".
+// unchanged for the review period is flagged "Review due". The columns keep a readable width and the table scrolls in its
+// region on a narrow console rather than squeezing them.
 export async function DirectHiringRuleList() {
   const [rules, countries] = await Promise.all([listDirectHiringRules(), getCountries()]);
   const now = new Date();
@@ -33,16 +34,16 @@ export async function DirectHiringRuleList() {
         <ResultsTable caption="Direct-hiring rules" columns={["Countries", "Rule", "Notice", "Legal opinion", "Last change", "Actions"]}>
           {rules.map((rule) => (
             <tr key={rule.id}>
-              <td className={`${cell} break-words`}>
+              <td className={`${cell} min-w-32 break-words`}>
                 <span className="block font-medium">{rule.sourceName}</span>
                 <span className="block text-small text-muted-foreground">to {destinationText(rule.destinationName)}</span>
               </td>
-              <td className={cell}>
+              <td className={`${cell} min-w-36`}>
                 <StatusBadge status={ruleTones[rule.rule]}>{ruleLabels[rule.rule]}</StatusBadge>
               </td>
-              <td className={`${cell} min-w-48 break-words`}>{rule.notice}</td>
-              <td className={`${cell} break-words`}>{rule.legalOpinionRef}</td>
-              <td className={`${cell} min-w-40`}>
+              <td className={`${cell} min-w-44 break-words`}>{rule.notice}</td>
+              <td className={`${cell} min-w-28 break-words`}>{rule.legalOpinionRef}</td>
+              <td className={`${cell} min-w-36`}>
                 <span className="block">{ruleAgeText(rule.updatedAt, now)}</span>
                 <span className="block text-small text-muted-foreground">
                   <time dateTime={rule.updatedAt}>{formatDate(rule.updatedAt)}</time>

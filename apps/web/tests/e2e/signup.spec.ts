@@ -190,6 +190,7 @@ test.describe("sign-up form", () => {
       }
       const box = documentBox(page, title);
       await expect(box).not.toBeChecked();
+      await expect(box).toHaveAccessibleName(`${consentVerb(slug)} ${displayTitle(title)}`);
       const label = page.locator("label", { has: page.locator(`a[href="/en/legal/${slug}"]`) });
       await expect(label).toContainText(`${consentVerb(slug)} ${displayTitle(title)}`);
       await expect(label).not.toContainText("DRAFT");
