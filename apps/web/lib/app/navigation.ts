@@ -1,4 +1,5 @@
 import {
+  analyticsPath,
   applicantsPath,
   applicationsPath,
   billingPath,
@@ -40,6 +41,7 @@ export type NavIcon =
   | "invitations"
   | "responses"
   | "submissions"
+  | "analytics"
   | "billing"
   | "reports"
   | "settings";
@@ -63,6 +65,8 @@ export type NavOrganization = {
   jobOrders?: true;
   // Set while candidate submissions are released: the candidates a partner asked to submit (FR-O4).
   candidateSubmissions?: true;
+  // Set while release 2a is on: the analytics of the organisation (FR-R6).
+  analytics?: true;
 };
 
 // The pages of a candidate. Each of them asks for the candidate itself; the list only decides what is offered. While
@@ -86,7 +90,7 @@ export function workerLinks(lang: string, { submissions = false }: { submissions
 // its dashboard, its workforce profile and its team instead of vacancies and applicants (FR-J1, FR-K1). While release 2b
 // is on, an employer has its workforce requirements, where it follows its invitations and the responses, and a partner the
 // job order marketplace, Find employers, the invitations it received and the responses it sent (FR-N1, FR-L3, FR-O1,
-// FR-O2).
+// FR-O2). While release 2a is on, both have their analytics (FR-R6).
 export function organizationLinks(
   lang: string,
   {
@@ -96,10 +100,14 @@ export function organizationLinks(
     partnerSegment,
     jobOrders,
     candidateSubmissions,
-  }: Pick<NavOrganization, "slug" | "role" | "suspended" | "partnerSegment" | "jobOrders" | "candidateSubmissions">,
+    analytics,
+  }: Pick<NavOrganization, "slug" | "role" | "suspended" | "partnerSegment" | "jobOrders" | "candidateSubmissions" | "analytics">,
 ): NavLink[] {
   if (suspended) return [];
   const team: NavLink = { label: "Team", href: membersPath(lang, slug), match: membersPath(lang, slug), icon: "team" };
+  const analyticsLinks: NavLink[] = analytics
+    ? [{ label: "Analytics", href: analyticsPath(lang, slug), match: analyticsPath(lang, slug), icon: "analytics" }]
+    : [];
   const links: NavLink[] = partnerSegment
     ? [
         {
@@ -127,6 +135,7 @@ export function organizationLinks(
               } as const,
             ]
           : []),
+        ...analyticsLinks,
         team,
       ]
     : [
@@ -136,6 +145,7 @@ export function organizationLinks(
         ...(jobOrders
           ? [{ label: "Requirements", href: requirementsPath(lang, slug), match: requirementsPath(lang, slug), icon: "requirements" } as const]
           : []),
+        ...analyticsLinks,
         team,
       ];
   if (role !== "member") links.push({ label: "Billing", href: billingPath(lang, slug), match: billingPath(lang, slug), icon: "billing" });
