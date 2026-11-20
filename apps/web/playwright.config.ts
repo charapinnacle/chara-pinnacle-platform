@@ -170,6 +170,8 @@ const config = defineConfig({
         "**/employer-network-dashboard.spec.ts",
         "**/moderation-job-orders.spec.ts",
         "**/network-analytics.spec.ts",
+        "**/release-2b-journey.spec.ts",
+        "**/job-order-anonymity.spec.ts",
       ],
     },
     {
@@ -680,13 +682,30 @@ const config = defineConfig({
       testMatch: "**/network-analytics.spec.ts",
       dependencies: ["moderation-job-orders-release"],
     },
+    // The journeys of release 2b from a requirement to a selection and from a candidate submission to the employer's
+    // pipeline (NFR-O4, V79) set releases 2a and 2b and candidate submissions for the whole database, so they follow the
+    // release 2b projects.
+    {
+      name: "release-2b-journey",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/release-2b-journey.spec.ts",
+      dependencies: ["network-analytics-release"],
+    },
+    // The checks that a job order without its employer's name names it nowhere for an uninvited partner (NFR-S11, V79)
+    // set releases 2a and 2b for the whole database, so they follow the journeys.
+    {
+      name: "job-order-anonymity-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/job-order-anonymity.spec.ts",
+      dependencies: ["release-2b-journey"],
+    },
     // The sitemap is compared with every public vacancy of the database, so no other spec may open or close one while
     // these tests run: they follow every other project.
     {
       name: "sitemap",
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/search-engine-sitemap.spec.ts",
-      dependencies: ["network-analytics-release"],
+      dependencies: ["job-order-anonymity-release"],
     },
     // The load times of the performance smoke are measured when no other spec loads the server: last of all.
     {

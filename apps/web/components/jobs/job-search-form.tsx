@@ -36,7 +36,9 @@ const recruitmentOptions = [
   { value: "international", label: recruitmentPreferenceLabels.international },
 ];
 
-const FILTER_FIELDS = ["occupation", "industry", "employment_type", "recruitment", "employer", "salary_min", "accommodation", "visa_support"] as const;
+const FILTER_FIELDS = [
+  "occupation", "industry", "employment_type", "recruitment", "employer", "experience", "salary_min", "accommodation", "visa_support",
+] as const;
 
 // The address is the state of the search: the form only edits it. Submitting writes the filters to the address, which
 // shows the first page of the new search; going back to an earlier address puts its filters back into the form.
@@ -157,13 +159,22 @@ export function JobSearchForm({ lang, query, occupations, industries, countries,
               options={recruitmentOptions}
             />
           </div>
-          <div className="sm:max-w-sm">
+          <div className="grid gap-3 sm:grid-cols-2">
             <InputField
               control={control}
               name="employer"
               id="search-employer"
               label="Employer"
               description="Part of the name of the company, at least 2 characters."
+              autoComplete="off"
+            />
+            <InputField
+              control={control}
+              name="experience"
+              id="search-experience"
+              label="My experience (years)"
+              description="Shows the vacancies that ask for this many years or fewer, and those that ask for none."
+              inputMode="numeric"
               autoComplete="off"
             />
           </div>

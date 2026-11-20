@@ -51,6 +51,16 @@ export const submissionTones: Record<SubmissionStatus, StatusTone> = {
   withdrawn: "neutral",
 };
 
+// A request that ended because the partner may no longer submit candidates for the requirement (its response declined or
+// withdrawn, or submissions closed by the employer), not because the candidate did not answer (submissions_closed).
+export const CLOSED_SUBMISSION_LABEL = "Closed";
+
+export const CANDIDATE_CLOSED_NEXT_STEP =
+  "This request is no longer open because the employer is no longer taking candidates from this partner. Nothing was shared with the employer.";
+
+export const PARTNER_CLOSED_NEXT_STEP =
+  "Candidate submissions are closed for your company on this requirement, so this request ended before the candidate answered. Nothing was shared with the employer.";
+
 // The candidate's next step on an answered submission (NFR-U4).
 export const candidateNextSteps: Record<Exclude<SubmissionStatus, "awaiting_candidate">, string> = {
   declined_by_candidate: "You declined this request. Nothing was shared with the employer.",

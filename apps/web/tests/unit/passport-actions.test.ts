@@ -242,11 +242,92 @@ describe("languages, countries and work authorisations", () => {
   });
 });
 
+describe("passport extensions (FR-Q4)", () => {
+  const entryId = "0a1b2c3d-0000-4000-8000-000000000002";
+  const training = { course: " Welding MIG/MAG level 2 ", provider: "", yearCompleted: "2021" };
+  const employment = { role: "Pipe welder", employerName: "", country: "de", fromMonth: "2019-03", toMonth: "", current: true };
+
+  it("adds a training entry for the signed-in candidate with an empty provider as null", async () => {
+    await expect(actions.addTraining(training)).resolves.toEqual({});
+    expect(calls).toEqual([
+      {
+        table: "worker_training",
+        operation: "insert",
+        values: { worker_user_id: userId, course: "Welding MIG/MAG level 2", provider: null, year_completed: 2021 },
+        filters: {},
+      },
+    ]);
+    expect(revalidateMock).toHaveBeenCalledWith("/en/passport");
+  });
+
+  it("edits only an own entry and says so when the entry is gone", async () => {
+    outcome = { data: [{ id: entryId }], error: null };
+    await expect(actions.updateTraining(entryId, { ...training, provider: "TÜV Nord" })).resolves.toEqual({});
+    expect(calls[0]).toMatchObject({
+      table: "worker_training",
+      operation: "update",
+      values: { course: "Welding MIG/MAG level 2", provider: "TÜV Nord", year_completed: 2021 },
+      filters: { worker_user_id: userId, id: entryId },
+    });
+    outcome = { data: [], error: null };
+    await expect(actions.updateTraining(entryId, training)).resolves.toEqual({
+      message: "This entry is no longer in your passport. Reload the page.",
+    });
+    await expect(actions.updateTraining("1 or 1=1", training)).resolves.toEqual({ message: GENERIC });
+    expect(calls).toHaveLength(2);
+  });
+
+  it("removes a training entry by id", async () => {
+    await actions.removeTraining(entryId);
+    expect(calls).toEqual([{ table: "worker_training", operation: "delete", filters: { worker_user_id: userId, id: entryId } }]);
+  });
+
+  it("refuses a year in the future before the database is reached", async () => {
+    const next = String(Number(todayUtc().slice(0, 4)) + 1);
+    const result = await actions.addTraining({ ...training, yearCompleted: next });
+    expect(result.errors).toHaveProperty("yearCompleted");
+    expect(calls).toHaveLength(0);
+  });
+
+  it("adds a current employment with months as first days, edits and removes it", async () => {
+    outcome = { data: [{ id: entryId }], error: null };
+    await actions.addEmployment(employment);
+    await actions.updateEmployment(entryId, { ...employment, current: false, toMonth: "2022-11", employerName: "Acme" });
+    await actions.removeEmployment(entryId);
+    expect(calls.map((call) => call.values ?? call.filters)).toEqual([
+      { worker_user_id: userId, role: "Pipe welder", employer_name: null, country_code: "DE", from_month: "2019-03-01", to_month: null },
+      { role: "Pipe welder", employer_name: "Acme", country_code: "DE", from_month: "2019-03-01", to_month: "2022-11-01" },
+      { worker_user_id: userId, id: entryId },
+    ]);
+  });
+
+  it("adds and removes a preferred industry and employment type, and refuses values outside the lists", async () => {
+    await actions.addPreferredIndustry({ industry: "c" });
+    await actions.removePreferredIndustry("C");
+    await actions.addPreferredEmploymentType({ employmentType: "seasonal" });
+    await actions.removePreferredEmploymentType("seasonal");
+    expect(calls.map((call) => [call.table, call.operation, call.values ?? call.filters])).toEqual([
+      ["worker_preferred_industries", "insert", { worker_user_id: userId, industry_code: "C" }],
+      ["worker_preferred_industries", "delete", { worker_user_id: userId, industry_code: "C" }],
+      ["worker_preferred_employment_types", "insert", { worker_user_id: userId, employment_type: "seasonal" }],
+      ["worker_preferred_employment_types", "delete", { worker_user_id: userId, employment_type: "seasonal" }],
+    ]);
+    expect((await actions.addPreferredIndustry({ industry: "Z9" })).errors).toHaveProperty("industry");
+    expect((await actions.addPreferredEmploymentType({ employmentType: "hourly" })).errors).toHaveProperty("employmentType");
+    await expect(actions.removePreferredIndustry("C; drop")).resolves.toEqual({ message: GENERIC });
+    await expect(actions.removePreferredEmploymentType("hourly")).resolves.toEqual({ message: GENERIC });
+    expect(calls).toHaveLength(4);
+  });
+});
+
 describe("refusals of the database", () => {
   it.each([
     ["worker_skills", "You have reached the limit for skills in your passport."],
     ["worker_languages", "You have reached the limit for languages in your passport."],
     ["worker_preferred_countries", "You have reached the limit for preferred countries in your passport."],
+    ["worker_training", "You have reached the limit for training entries in your passport."],
+    ["worker_employment_history", "You have reached the limit for employment history entries in your passport."],
+    ["worker_preferred_industries", "You have reached the limit for preferred industries in your passport."],
   ])("names the limit of %s", async (table, message) => {
     outcome = failure("CHARA_LIMIT_REACHED", "P0001", table);
     await expect(actions.addPreferredCountry({ country: "DE" })).resolves.toEqual({ message });

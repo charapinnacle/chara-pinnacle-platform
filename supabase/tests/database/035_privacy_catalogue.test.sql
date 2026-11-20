@@ -5,7 +5,9 @@ select plan(9);
 
 create function pg_temp.candidate_tables() returns regclass[] language sql as $$
   select array['public.worker_profiles', 'public.worker_skills', 'public.worker_languages', 'public.worker_preferred_countries',
-               'public.worker_work_authorizations', 'public.worker_documents', 'public.passport_shares']::regclass[]
+               'public.worker_work_authorizations', 'public.worker_documents', 'public.passport_shares', 'public.worker_training',
+               'public.worker_employment_history', 'public.worker_preferred_industries',
+               'public.worker_preferred_employment_types']::regclass[]
 $$;
 
 -- AC10: the functions the API roles can run that read candidate data, directly or through one private helper, are exactly
@@ -24,11 +26,11 @@ select set_eq(
     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'public'
       and (has_function_privilege('anon', p.oid, 'execute') or has_function_privilege('authenticated', p.oid, 'execute'))
-      and (p.prosrc ~* '(worker_profiles|worker_skills|worker_languages|worker_preferred_countries|worker_work_authorizations|worker_documents|passport_shares)'
+      and (p.prosrc ~* '(worker_profiles|worker_skills|worker_languages|worker_preferred_countries|worker_work_authorizations|worker_documents|passport_shares|worker_training|worker_employment_history|worker_preferred_industries|worker_preferred_employment_types)'
         or exists (
           select 1 from pg_proc q
           where q.pronamespace = 'private'::regnamespace
-            and q.prosrc ~* '(worker_profiles|worker_skills|worker_languages|worker_preferred_countries|worker_work_authorizations|worker_documents|passport_shares)'
+            and q.prosrc ~* '(worker_profiles|worker_skills|worker_languages|worker_preferred_countries|worker_work_authorizations|worker_documents|passport_shares|worker_training|worker_employment_history|worker_preferred_industries|worker_preferred_employment_types)'
             and p.prosrc ~* ('private\.' || q.proname || '\s*\(')))$$,
   $$values ('application_documents'), ('application_profile_changed'), ('apply_to_job'), ('approve_submission'), ('create_worker_passport'), ('delete_worker_document'), ('document_access_grant'), ('get_employer_submission'), ('mark_application_viewed'), ('mark_submission_viewed'), ('passport_limits'), ('submission_documents'), ('withdraw_application'), ('withdraw_submission')$$,
   'AC10: the functions open to the API roles that read candidate data are on the allow-list'

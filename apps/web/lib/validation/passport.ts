@@ -31,7 +31,7 @@ export const availabilityOptions = [
 ] as const satisfies readonly { value: (typeof availabilityValues)[number]; label: string }[];
 
 const NAME_PATTERN = /^[\p{L}\p{M}][\p{L}\p{M} '’.-]*$/u;
-const CONTROL_CHARACTER = /[\p{Cc}\p{Zl}\p{Zp}]/u;
+export const CONTROL_CHARACTER = /[\p{Cc}\p{Zl}\p{Zp}]/u;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 function personName(label: string) {
@@ -63,7 +63,7 @@ const yearsText = z
     error: YEARS_MESSAGE,
   });
 
-const countryCodeSchema = z
+export const countryCodeSchema = z
   .string({ error: "Choose a country." })
   .trim()
   .toUpperCase()

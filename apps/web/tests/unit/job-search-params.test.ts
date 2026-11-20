@@ -42,6 +42,20 @@ describe("parseSearchParams", () => {
     expect(parse({ employer: "   " }).errors).toEqual({});
   });
 
+  it("keeps an experience of 0 to 40 whole years and drops any other value with an error naming experience (FR-Q4 AC11)", () => {
+    expect(parse({ experience: "5" }).filters.experience).toBe(5);
+    expect(parse({ experience: " 0 " }).filters.experience).toBe(0);
+    expect(parse({ experience: "40" }).errors).toEqual({});
+    for (const value of ["41", "-1", "2.5", "five", "100"]) {
+      const result = parse({ experience: value });
+      expect(Object.keys(result.errors)).toEqual(["experience"]);
+      expect(result.errors.experience).toMatch(/experience/);
+      expect(result.filters.experience).toBeUndefined();
+    }
+    expect(parse({ experience: "" }).filters.experience).toBeUndefined();
+    expect(parse({ experience: "" }).errors).toEqual({});
+  });
+
   it("trims the keyword and treats an empty one as not set", () => {
     expect(parse({ q: "  welder  " }).filters.q).toBe("welder");
     const blank = parse({ q: "   ", city: "" });
@@ -184,6 +198,7 @@ describe("searchQuery", () => {
     country: "DE",
     city: "München",
     employer: "Acme & Söhne",
+    experience: 5,
     occupation: "7212",
     industry: "C",
     employment_type: "full_time",
@@ -240,6 +255,7 @@ describe("usedFilters", () => {
       "accommodation",
     ]);
     expect(usedFilters(parse({ employer: "Acme" }).filters)).toEqual(["employer"]);
+    expect(usedFilters(parse({ experience: "0" }).filters)).toEqual(["experience"]);
   });
 
   it("does not name an option the address could not carry", () => {
@@ -250,9 +266,15 @@ describe("usedFilters", () => {
 describe("formDefaults", () => {
   it("shows the filters of an address in the form and leaves the rest empty", () => {
     expect(formDefaults("country=DE&salary_min=3000&salary_currency=EUR&salary_period=month&visa_support=true")).toEqual({
-      q: "", country: "DE", city: "", employer: "", occupation: "", industry: "", employment_type: "", salary_min: "3000",
+      q: "", country: "DE", city: "", employer: "", experience: "", occupation: "", industry: "", employment_type: "", salary_min: "3000",
       salary_currency: "EUR", salary_period: "month", accommodation: false, visa_support: true, recruitment: "",
     });
+  });
+
+  it("puts the experience of the address back into the form, as Back does", () => {
+    expect(formDefaults("experience=5").experience).toBe("5");
+    expect(formDefaults("experience=0").experience).toBe("0");
+    expect(formDefaults("experience=41").experience).toBe("");
   });
 
   it("drops what the address cannot carry, so the form never shows an invalid value", () => {
@@ -263,7 +285,7 @@ describe("formDefaults", () => {
 
 describe("searchFormSchema", () => {
   const empty = {
-    q: "", country: "", city: "", employer: "", occupation: "", industry: "", employment_type: "", salary_min: "",
+    q: "", country: "", city: "", employer: "", experience: "", occupation: "", industry: "", employment_type: "", salary_min: "",
     salary_currency: "", salary_period: "", accommodation: false, visa_support: false, recruitment: "",
   };
 
@@ -279,6 +301,15 @@ describe("searchFormSchema", () => {
       "salary_currency",
       "salary_period",
     ]);
+  });
+
+  it("writes the experience to the address as experience=5 and refuses 41 in the form", () => {
+    const result = searchFormSchema.safeParse({ ...empty, experience: "5" });
+    expect(result.success && searchQuery(formFilters(result.data))).toBe("experience=5");
+    const zero = searchFormSchema.safeParse({ ...empty, experience: "0" });
+    expect(zero.success && searchQuery(formFilters(zero.data))).toBe("experience=0");
+    const tooMany = searchFormSchema.safeParse({ ...empty, experience: "41" });
+    expect(!tooMany.success && tooMany.error.issues.map((issue) => issue.path[0])).toEqual(["experience"]);
   });
 
   it("produces the address of the criteria", () => {

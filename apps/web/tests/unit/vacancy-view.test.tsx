@@ -27,6 +27,7 @@ const job: PublicJob = {
   accommodation: true,
   visaSupport: true,
   recruitmentPreference: "both",
+  requiredExperienceYears: null,
   publishedAt: "2026-10-06T10:00:00+00:00",
   createdAt: "2026-10-05T10:00:00+00:00",
   employer: {
@@ -88,6 +89,15 @@ describe("VacancyView", () => {
     const plain = renderToStaticMarkup(<VacancyView job={job} employer={job.employer} />);
     expect(plain).toMatch(/<h2 id="job-employer-heading"[^>]*>Acme<\/h2>/);
     expect(plain).not.toContain("/companies/");
+  });
+
+  it("shows the required experience when the vacancy states it, and nothing when it does not (FR-Q4 AC11)", () => {
+    const html = render({ ...job, requiredExperienceYears: 3 });
+    expect(html).toContain("<dt class=\"text-small text-muted-foreground\">Experience</dt>");
+    expect(html).toContain("At least 3 years of experience");
+    const none = render(job);
+    expect(none).not.toContain(">Experience</dt>");
+    expect(none).not.toContain("of experience");
   });
 
   it("shows no employer card, date or actions when the page gives none", () => {

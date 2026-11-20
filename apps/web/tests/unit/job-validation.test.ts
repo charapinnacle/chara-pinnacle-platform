@@ -24,6 +24,7 @@ const valid: JobFormInput = {
   accommodation: true,
   visaSupport: true,
   recruitmentPreference: "both",
+  requiredExperience: "",
 };
 
 function errorsFor(values: Partial<Record<keyof JobFormInput, unknown>>): Record<string, string> {
@@ -172,7 +173,18 @@ describe("the insert payload (FR-C1 AC2)", () => {
       accommodation: true,
       visa_support: true,
       recruitment_preference: "both",
+      required_experience_years: null,
     });
+  });
+
+  it("maps the required experience to a whole number, and an empty one to none (FR-Q4 AC9)", () => {
+    expect(toJobInsert(jobFormSchema.parse({ ...valid, requiredExperience: " 3 " }), organizationId).required_experience_years).toBe(3);
+    expect(toJobUpdate(jobFormSchema.parse({ ...valid, requiredExperience: "0" })).required_experience_years).toBe(0);
+    expect(toJobUpdate(jobFormSchema.parse({ ...valid, requiredExperience: "40" })).required_experience_years).toBe(40);
+  });
+
+  it.each(["41", "-1", "2.5", "three", "040"])("refuses %s years of required experience on the field", (value) => {
+    expect(Object.keys(errorsFor({ requiredExperience: value }))).toEqual(["requiredExperience"]);
   });
 
   it("never carries a column the server owns, even when the input names it", () => {

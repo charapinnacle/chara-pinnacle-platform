@@ -3,7 +3,7 @@ import { Card } from "@/components/layout/card";
 import { PageHeader } from "@/components/layout/page-header";
 import type { Employer, VacancyDetails } from "@/lib/dal/hiring";
 import { formatDate } from "@/lib/i18n/format";
-import { formatSalary, publicWebsite } from "@/lib/jobs/presentation";
+import { formatRequiredExperience, formatSalary, publicWebsite } from "@/lib/jobs/presentation";
 import { cn } from "@/lib/utils";
 import { employmentTypeLabels, recruitmentPreferenceLabels } from "@/lib/validation/job";
 
@@ -24,11 +24,13 @@ function yesNo(value: boolean): string {
 // of publication and the actions come from the pages that own them: a draft has no date, and the actions differ.
 export function VacancyView({ job, employer = null, employerHref = null, publishedAt, actions }: VacancyViewProps) {
   const salary = formatSalary(job);
+  const experience = formatRequiredExperience(job.requiredExperienceYears);
   const details: (readonly [string, React.ReactNode])[] = [
     ["Occupation", job.occupation],
     ["Industry", job.industry],
     ["Location", `${job.city}, ${job.country}`],
     ["Employment type", employmentTypeLabels[job.employmentType]],
+    ...(experience ? [["Experience", experience] as const] : []),
     ["Salary", salary ?? "Not stated"],
     ["Accommodation", yesNo(job.accommodation)],
     ["Visa support", yesNo(job.visaSupport)],

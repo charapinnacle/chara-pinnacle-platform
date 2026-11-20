@@ -79,11 +79,12 @@ export default async function DashboardPage({ params, searchParams }: PageProps<
     </Suspense>
   );
   if (kind === "worker") {
-    const [passport, reminders, hasCv, network] = await Promise.all([
+    const [passport, reminders, hasCv, network, findWorkers] = await Promise.all([
       getPassport(user.id),
       getDocumentReminders(),
       hasUsableCv(),
       isReleased("release_partner_directories"),
+      isReleased("release_find_workers"),
     ]);
     if (!passport) redirect(`/${lang}/onboarding`);
     const today = todayUtc();
@@ -92,7 +93,7 @@ export default async function DashboardPage({ params, searchParams }: PageProps<
         {outcomes}
         <WorkerDashboard
           lang={lang}
-          completeness={computeCompleteness({ ...passport, hasCv }, today)}
+          completeness={computeCompleteness({ ...passport, hasCv }, today, findWorkers)}
           availability={passport.availability}
           availableFrom={passport.availableFrom}
           reminders={reminders}

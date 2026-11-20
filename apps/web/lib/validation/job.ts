@@ -23,6 +23,7 @@ type JobInsert = Pick<
   | "accommodation"
   | "visa_support"
   | "recruitment_preference"
+  | "required_experience_years"
 >;
 
 // The organization is fixed at creation: the update grant leaves it out, so an update that named it would be refused.
@@ -60,6 +61,8 @@ export const recruitmentPreferenceOptions = recruitmentPreferences.map((value) =
 }));
 
 const MAX_AMOUNT = 9_999_999.99;
+export const MAX_REQUIRED_EXPERIENCE = 40;
+const REQUIRED_EXPERIENCE_FORMAT = `Enter a whole number of years from 0 to ${MAX_REQUIRED_EXPERIENCE}, or leave it empty.`;
 const AMOUNT_FORMAT = "Enter an amount of 0 or more, for example 2800 or 2800.50.";
 
 export const CONTROL_CHARACTER = /[\p{Cc}\p{Zl}\p{Zp}]/u;
@@ -139,6 +142,12 @@ export const jobFormSchema = z
     recruitmentPreference: z
       .string({ error: "Select a recruitment preference." })
       .pipe(z.enum(recruitmentPreferences, { error: "Select a recruitment preference." })),
+    requiredExperience: z
+      .string()
+      .trim()
+      .refine((value) => value === "" || (/^\d{1,2}$/.test(value) && Number(value) <= MAX_REQUIRED_EXPERIENCE), {
+        error: REQUIRED_EXPERIENCE_FORMAT,
+      }),
   })
   .check((context) => salaryIssues(context.value, (path, message) =>
     context.issues.push({ code: "custom", input: context.value, path: [path], message }),
@@ -182,6 +191,7 @@ export function toJobUpdate(values: JobFormValues): JobUpdate {
     accommodation: values.accommodation,
     visa_support: values.visaSupport,
     recruitment_preference: values.recruitmentPreference,
+    required_experience_years: values.requiredExperience === "" ? null : Number(values.requiredExperience),
   };
 }
 

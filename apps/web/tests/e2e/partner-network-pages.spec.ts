@@ -3,10 +3,12 @@ import { signInStaff } from "./support/admin";
 import { signedInPage } from "./support/app-shell";
 import { expectAccessibleAtBothWidths } from "./support/applications";
 import { expectNoAxeViolations } from "./support/axe";
-import { execute, query } from "./support/db";
+import { execute, literal, query } from "./support/db";
+import { seedDocument } from "./support/documents";
 import { createCommittedUser } from "./support/login";
 import { newCompany } from "./support/jobs";
 import { partnerWithCompany, setPartnerRelease } from "./support/partners";
+import { seedAllButCv, signIn } from "./support/passport";
 import { MENU_LINKS } from "./support/public-pages";
 import { SITE } from "./support/seo";
 import { expect, test } from "./support/test";
@@ -128,6 +130,34 @@ test.describe("the public partner network pages (FR-L5)", () => {
     expect(off).not.toContain("/en/partners/recruitment</loc>");
     expect(off).not.toContain("/en/partners/staffing</loc>");
     setPartnerRelease(true);
+  });
+
+  test("FR-Q4 AC7: the passport completeness takes the weights of release 2c only while release_find_workers is on", async ({ page }) => {
+    const user = await createCommittedUser("worker");
+    seedAllButCv(user.id);
+    await seedDocument(user.id, { title: "My CV", object: false });
+    await signIn(page, user);
+    await expect(page.getByText("100% complete", { exact: true })).toBeVisible();
+
+    setRelease("release_find_workers", true);
+    try {
+      await page.goto("/en/passport");
+      await expect(page.getByText("90% complete", { exact: true })).toBeVisible();
+      await expect(page.getByText("Next:")).toContainText("Training");
+      await expect(page.getByText("Training: 5 points", { exact: true })).toBeAttached();
+      await expect(page.getByText("Skills: 10 points", { exact: true })).toBeAttached();
+      execute(
+        `insert into public.worker_training (worker_user_id, course, year_completed) values (${literal(user.id)}, 'Electrical safety', 2020)`,
+      );
+      await page.goto("/en/dashboard/worker");
+      await expect(page.getByText("95% complete", { exact: true })).toBeVisible();
+      await expect(page.getByText("Next:")).toContainText("Employment history");
+    } finally {
+      setRelease("release_find_workers", false);
+    }
+
+    await page.reload();
+    await expect(page.getByText("100% complete", { exact: true })).toBeVisible();
   });
 
   test("AC9, AC10: home, How it works and For employers explain the partner network, the job orders without a link, with one h1 and no axe violation", async ({ page }) => {

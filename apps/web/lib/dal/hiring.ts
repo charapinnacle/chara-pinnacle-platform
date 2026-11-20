@@ -32,6 +32,7 @@ export type Job = {
   accommodation: boolean;
   visaSupport: boolean;
   recruitmentPreference: Enums["recruitment_preference"];
+  requiredExperienceYears: number | null;
   status: Enums["job_status"];
   moderationState: Enums["job_moderation_state"];
   statusChangedAt: string;
@@ -101,7 +102,7 @@ const selectJob = (supabase: Client) =>
   supabase
     .from("jobs")
     .select(
-      "id, title, description, occupation_id, industry_code, country_code, city, employment_type, salary_min, salary_max, salary_currency, salary_period, accommodation, visa_support, recruitment_preference, status, moderation_state, status_changed_at, created_at, occupations(label), industries(name), countries(name)",
+      "id, title, description, occupation_id, industry_code, country_code, city, employment_type, salary_min, salary_max, salary_currency, salary_period, accommodation, visa_support, recruitment_preference, required_experience_years, status, moderation_state, status_changed_at, created_at, occupations(label), industries(name), countries(name)",
     );
 
 type JobRow = QueryData<ReturnType<typeof selectJob>>[number];
@@ -126,6 +127,7 @@ function toJob(row: JobRow): Job {
     accommodation: row.accommodation,
     visaSupport: row.visa_support,
     recruitmentPreference: row.recruitment_preference,
+    requiredExperienceYears: row.required_experience_years,
     status: row.status,
     moderationState: row.moderation_state,
     statusChangedAt: row.status_changed_at,
@@ -152,6 +154,7 @@ export function toJobFormInput(job: Job): JobFormInput {
     accommodation: job.accommodation,
     visaSupport: job.visaSupport,
     recruitmentPreference: job.recruitmentPreference,
+    requiredExperience: job.requiredExperienceYears === null ? "" : String(job.requiredExperienceYears),
   };
 }
 
@@ -192,6 +195,7 @@ export const getPublicJob = cache(async (id: string): Promise<PublicJob | null> 
     accommodation: row.accommodation,
     visaSupport: row.visa_support,
     recruitmentPreference: row.recruitment_preference,
+    requiredExperienceYears: row.required_experience_years ?? null,
     publishedAt: row.published_at,
     createdAt: row.created_at,
     employer: {
@@ -325,6 +329,7 @@ export async function searchJobs(
     p_visa_support: filters.visa_support,
     p_recruitment: filters.recruitment,
     p_employer: filters.employer,
+    p_experience: filters.experience,
     p_cursor: filters.cursor,
     p_limit: filters.limit,
   });

@@ -59,8 +59,8 @@ export default async function RankingPage({ params }: PageProps<"/[lang]/legal/r
         </ul>
         {suggestions ? (
           <p>
-            It also describes the partners suggested to an employer for a workforce requirement, and the order of the job
-            orders that recruitment and staffing companies see.
+            It also describes the partners suggested to an employer for a workforce requirement, the order of the job
+            orders that recruitment and staffing companies see, and the order of their Find Employers results.
           </p>
         ) : null}
       </ContentSection>
@@ -168,6 +168,7 @@ export default async function RankingPage({ params }: PageProps<"/[lang]/legal/r
       {suggestions ? (
         <ContentSection heading="Job orders">
           <p>{jobOrderCopy.selection}</p>
+          <p>{jobOrderCopy.access}</p>
           <p>Job orders are sorted by these parameters, in this order:</p>
           <ol className="grid list-decimal gap-2 ps-5">
             <li>The time the employer published the job order, newest first.</li>
@@ -178,6 +179,7 @@ export default async function RankingPage({ params }: PageProps<"/[lang]/legal/r
           </ol>
           <p>{jobOrderCopy.details}</p>
           <p>{jobOrderCopy.filters}</p>
+          <p>{jobOrderCopy.named}</p>
           <p>{jobOrderCopy.payment}</p>
           <p>{jobOrderCopy.paging}</p>
         </ContentSection>

@@ -264,9 +264,24 @@ test.describe("Responding to a job order (FR-N2, FR-O2)", () => {
     await files.setInputFiles([pdf("too-large.pdf", 15 * 1024 * 1024 + 1)]);
     await expect(page.getByRole("alert").filter({ hasText: "too-large.pdf" })).toContainText("Choose a PDF file of up to 15 MB.");
     expect(documentRows(p1.id, id)).toHaveLength(0);
+    // While a file is being sent the response waits for it, so the file cannot be left out (the bytes are held here).
+    let release = () => {};
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await page.route("**/storage/v1/object/upload/sign/**", async (route) => {
+      await held;
+      await route.continue();
+    });
     await files.setInputFiles([pdf("exactly-15.pdf", 15 * 1024 * 1024)]);
+    await expect(page.getByRole("button", { name: "Send response" })).toBeDisabled();
+    await expect(page.getByRole("status").filter({ hasText: "A document is still being sent. You can send your response once it has arrived." })).toBeVisible();
+    // The held request goes on once released; removing the route while it waits would leave it hanging.
+    release();
     const attached = page.getByRole("list", { name: "Attached documents" });
     await expect(attached.getByText("exactly-15.pdf", { exact: false })).toBeVisible({ timeout: 60_000 });
+    // The name shows while the file is still being sent; the button waits for the whole 15 MB.
+    await expect(page.getByRole("button", { name: "Send response" })).toBeEnabled({ timeout: 60_000 });
 
     // A PNG renamed to .pdf is sent and refused by the scan's content check.
     await files.setInputFiles([{ name: "photo.pdf", mimeType: "application/pdf", buffer: Buffer.from("\x89PNG\r\n\x1a\nnot a pdf at all") }]);
