@@ -83,7 +83,8 @@ async function rpc(user: TestUser, name: string, body: Record<string, unknown>):
   return response.text();
 }
 
-const cards = (page: Page) => page.getByRole("list", { name: "Workers" }).locator(":scope > li");
+// Exact: "Saved workers" is a list as well.
+const cards = (page: Page) => page.getByRole("list", { name: "Workers", exact: true }).locator(":scope > li");
 
 let team: Team;
 let member: TestUser;
