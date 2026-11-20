@@ -129,7 +129,8 @@ test.describe("Moderation of job orders, responses and submissions (V57)", () =>
     await signInStaff(staff.page, "trust_safety", `/en/admin/reports/${stored.id}`);
     await expect(staff.page.getByRole("heading", { name: `Report ${reference}`, level: 1 })).toBeVisible();
     const target = staff.page.locator("#target");
-    await expect(target).toContainText("Candidate submission");
+    // The kind of item is in the summary of the report (About); the section below holds the item itself.
+    await expect(staff.page.getByRole("term").filter({ hasText: /^About$/ }).locator("xpath=following-sibling::dd[1]")).toHaveText("Candidate submission");
     await expect(target).toContainText("Strong welder, ready to travel.");
     await expect(target).toContainText(alpha.displayName);
     await expect(target).toContainText("The candidate is not shown to staff");
