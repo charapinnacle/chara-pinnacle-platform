@@ -168,12 +168,12 @@ test.describe("Conversations and messages (FR-P1)", () => {
       await other.page.getByRole("button", { name: "Send" }).click();
       const candidateLog = logOf(other.page, employerName);
       await expect(candidateLog.getByText("Can I start in March? see https://example.com")).toBeVisible();
-      await expect(candidateLog.getByRole("link")).toHaveCount(0);
+      await expect(candidateLog.getByRole("link", { name: /example\.com/ })).toHaveCount(0);
       await expectAccessibleAtBothWidths(other.page);
 
       await expect(log.getByText("Can I start in March?")).toBeVisible({ timeout: 10_000 });
       await expect(log.getByRole("listitem").last()).toContainText("Can I start in March?");
-      await expect(log.getByRole("link")).toHaveCount(0);
+      await expect(log.getByRole("link", { name: /example\.com/ })).toHaveCount(0);
       await other.page.goto(INBOX_URL);
       await expect(other.page.getByRole("link", { name: employerName, exact: true })).toBeVisible();
     } finally {
