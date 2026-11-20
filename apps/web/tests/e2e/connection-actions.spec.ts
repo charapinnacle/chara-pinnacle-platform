@@ -232,6 +232,7 @@ test.describe("Structured connection actions (FR-P2)", () => {
        insert into public.messages (conversation_id, sender_organization_id, kind, body, connection_id)
        select ${literal(conversation)}, ${literal(acme.id)}, 'invite_to_job', 'Invitation to apply: Pipe fitter', id
        from public.connections where job_id = ${literal(fitter)};
+       select set_config('request.jwt.claims', json_build_object('sub', ${literal(acme.owner.id)}, 'role', 'authenticated')::text, true);
        update public.jobs set status = 'closed' where id = ${literal(fitter)}`,
     );
     await workerPage.reload();
