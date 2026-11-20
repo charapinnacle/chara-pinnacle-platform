@@ -123,6 +123,20 @@ test.describe("Structured connection actions (FR-P2)", () => {
     );
     expect(row).toEqual({ kind: "inquiry", status: "sent" });
 
+    // While the first inquiry waits, a second one is refused and points to the conversation.
+    await page.goto(profileUrl(rekrut.slug));
+    const again = page.getByRole("button", { name: `Send inquiry to ${rekrut.name}` });
+    await waitForHydration(again);
+    await again.click();
+    const second = page.getByRole("dialog", { name: `Send an inquiry to ${rekrut.name}` });
+    await second.getByLabel("Your inquiry").fill("A second question about the same welders, while the first waits.");
+    await second.getByRole("button", { name: "Send inquiry" }).click();
+    await expect(second.getByRole("alert").first()).toContainText("still waiting for an answer");
+    await expect(second.getByRole("link", { name: `Open the conversation with ${rekrut.name}` })).toHaveAttribute("href", conversationUrl);
+    await expect(second.getByLabel("Your inquiry")).toHaveValue("A second question about the same welders, while the first waits.");
+
+    // Once the partner answers, the inquiry reads Answered in the conversation.
+    await page.goto(conversationUrl);
     const reply = "Yes, we can send twenty welders from April.";
     execute(
       `insert into public.messages (conversation_id, sender_user_id, sender_organization_id, body)
@@ -133,17 +147,6 @@ test.describe("Structured connection actions (FR-P2)", () => {
     await expect(thread).toContainText(reply);
     await expect(thread).toContainText("Answered");
     await expect(thread).not.toContainText("Waiting for an answer");
-
-    await page.goto(profileUrl(rekrut.slug));
-    const again = page.getByRole("button", { name: `Send inquiry to ${rekrut.name}` });
-    await waitForHydration(again);
-    await again.click();
-    const second = page.getByRole("dialog", { name: `Send an inquiry to ${rekrut.name}` });
-    await second.getByLabel("Your inquiry").fill("A second question about the same welders, while the first waits.");
-    await second.getByRole("button", { name: "Send inquiry" }).click();
-    await expect(second.getByRole("alert")).toContainText("still waiting for an answer");
-    await expect(second.getByRole("link", { name: `Open the conversation with ${rekrut.name}` })).toHaveAttribute("href", conversationUrl);
-    await expect(second.getByLabel("Your inquiry")).toHaveValue("A second question about the same welders, while the first waits.");
   });
 
   test("AC3, AC9: an owner at aal2 requests workforce from a staffing company and finds the request in the conversation", async ({ page }) => {
