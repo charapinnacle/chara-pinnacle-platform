@@ -329,7 +329,7 @@ test.describe("release 2b journeys (NFR-O4, NFR-U4)", () => {
     await expect(ep.getByText(`Submitted by ${partner.displayName}`).first()).toBeVisible();
     await expect(ep.getByText("Viewed", { exact: true }).first()).toBeVisible();
     await expect(ep.getByRole("button", { name: "Change stage" })).toBeVisible();
-    await expect(ep.getByText(certificate.title)).toBeVisible();
+    await expect(ep.getByRole("button", { name: `Open ${certificate.title}` })).toBeVisible();
     await expectAccessibleAtBothWidths(ep);
     await employerView.context.close();
     expect(query<{ status: string }>(`select status::text from public.candidate_submissions where id = ${literal(submission.id)}`)[0].status).toBe(
