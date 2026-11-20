@@ -224,7 +224,9 @@ test.describe("Contact requests (FR-Q3)", () => {
 
     await signInAtAal1(page, member, `/en/org/${acme.slug}/contact-requests`);
     await expect(page.getByRole("heading", { name: "Contact requests", level: 1 })).toBeVisible();
-    await expect(page.getByRole("heading", { name: `${FIRST} ${LAST}`, level: 2 })).toHaveCount(1);
+    // Every worker of this file has the same name, and an earlier test leaves an accepted request: this card is read.
+    const acceptedItem = page.getByRole("listitem").filter({ hasText: "Accepted request." });
+    await expect(acceptedItem.getByRole("heading", { name: `${FIRST} ${LAST}`, level: 2 })).toHaveCount(1);
     const waitingItem = page.getByRole("listitem").filter({ hasText: "Waiting request." });
     await expect(waitingItem).toContainText("Waiting for the worker");
     await expect(waitingItem).not.toContainText(FIRST);
