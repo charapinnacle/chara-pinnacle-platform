@@ -197,12 +197,14 @@ test.describe("Find Workers (FR-Q2)", () => {
 
     const worker = await newVisitor(browser);
     await signIn(worker.page, nigeria);
-    const asWorker = await worker.page.goto(searchUrl(acme.slug));
-    expect(asWorker?.status()).toBe(404);
+    // The page streams behind its loading state, so the not-found page comes with status 200: what it shows is checked.
+    await worker.page.goto(searchUrl(acme.slug));
+    await expect(worker.page.getByRole("heading", { name: "Page not found" })).toBeVisible();
     await worker.context.close();
 
     const visitor = await newVisitor(browser);
-    expect((await visitor.page.goto(searchUrl(acme.slug)))?.status()).toBe(404);
+    await visitor.page.goto(searchUrl(acme.slug));
+    await expect(visitor.page.getByRole("heading", { name: "Page not found" })).toBeVisible();
     await visitor.page.goto("/en/find-workers");
     await expect(visitor.page.getByRole("heading", { name: "Find workers", level: 1 })).toBeVisible();
     const main = visitor.page.getByRole("main");
