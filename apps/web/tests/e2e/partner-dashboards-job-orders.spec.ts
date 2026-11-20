@@ -79,6 +79,8 @@ async function signedIn(browser: Browser, user: TestUser): Promise<{ page: Page;
 
 async function expectInOrder(page: Page, names: readonly string[]): Promise<void> {
   const header = page.getByRole("main").locator("header").first();
+  // allTextContents does not wait: after a reload the header may not be there yet.
+  await expect(header.getByRole("link").first()).toBeVisible();
   const links = await header.getByRole("link").allTextContents();
   const positions = names.map((name) => links.findIndex((text) => text.trim() === name));
   expect(positions.every((position) => position >= 0), `${names.join(", ")} in ${links.join(", ")}`).toBe(true);
