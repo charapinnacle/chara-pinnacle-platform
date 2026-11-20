@@ -157,9 +157,11 @@ test.describe("Licence prompt of Where you serve (FR-K1 AC8)", () => {
     await prompt.getByRole("button", { name: /^Later/ }).click();
     await expect(prompt).toHaveCount(0);
 
+    // The notice of the save before must be gone, or it would stand for this save before the removal is stored.
+    await expect(page.getByText("Countries saved", { exact: true })).toHaveCount(0, { timeout: 15_000 });
     await page.getByRole("button", { name: "Remove Saudi Arabia" }).click();
     await page.getByRole("button", { name: "Save countries" }).click();
-    await expect(page.getByText("Countries saved", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("Countries saved", { exact: true })).toBeVisible();
     await pickWithKeys(page, RECRUITS_FOR, "saudi", "Saudi Arabia");
     await page.getByRole("button", { name: "Save countries" }).click();
     await prompt.getByRole("button", { name: /^Add licence/ }).click();
