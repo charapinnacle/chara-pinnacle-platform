@@ -1,9 +1,11 @@
+import { HiringRuleNotice } from "@/components/applications/hiring-rule-notice";
 import { FormButton } from "@/components/forms/form-button";
 import { TextLink } from "@/components/forms/text-link";
 import { ApplyButton } from "@/components/jobs/apply-button";
 import { SaveJob } from "@/components/jobs/save-job";
 import { applicationStatusLabels } from "@/lib/applications/presentation";
 import type { ApplicationState } from "@/lib/dal/applications";
+import type { HiringRule } from "@/lib/dal/hiring-rules";
 import { formatShortDate } from "@/lib/i18n/format";
 import type { Viewer } from "@/lib/jobs/viewer";
 import { applicationPath } from "@/lib/routes";
@@ -14,6 +16,8 @@ type VacancyActionsProps = {
   viewer: Viewer;
   saved: boolean;
   application: ApplicationState | null;
+  // The direct-hiring rule of the candidate's country for the vacancy's, as the apply page shows it (FR-Q5 AC7).
+  hiringRule?: HiringRule | null;
 };
 
 const noteClassName = "text-small text-muted-foreground";
@@ -67,7 +71,7 @@ function CandidateApply({ job, lang, next, application }: { job: { id: string; t
 
 // Apply and Save on the public page. A visitor is sent to log in and comes back here; only a candidate can use them, and
 // a company user is told so instead of being offered buttons.
-export function VacancyActions({ job, lang, viewer, saved, application }: VacancyActionsProps) {
+export function VacancyActions({ job, lang, viewer, saved, application, hiringRule = null }: VacancyActionsProps) {
   if (viewer === "company") {
     return <p className={noteClassName}>Only candidates can apply for vacancies or save them.</p>;
   }
@@ -85,6 +89,7 @@ export function VacancyActions({ job, lang, viewer, saved, application }: Vacanc
       {viewer === "visitor" ? (
         <p className={noteClassName}>You log in as a candidate to apply or save, and come back to this vacancy.</p>
       ) : null}
+      {viewer === "candidate" && hiringRule ? <HiringRuleNotice lang={lang} hiringRule={hiringRule} /> : null}
     </div>
   );
 }

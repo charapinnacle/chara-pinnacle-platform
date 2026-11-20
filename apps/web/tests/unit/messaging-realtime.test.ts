@@ -41,13 +41,14 @@ vi.mock("@/lib/supabase/lazy-browser", () => ({
   }),
 }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ rpc: rpcMock }) }));
+vi.mock("@/lib/dal/reference", () => ({ getCountries: async () => [{ code: "DE", name: "Germany" }] }));
 
 const { listenOnTopic } = await import("@/lib/realtime/topic");
 const { subscribeUnreadCount } = await import("@/lib/notifications/unread-channel");
 const { followLive, subscribeConversation, subscribeUnreadMessages } = await import("@/lib/messaging/live");
 const { mergeLatest, mergeMessages } = await import("@/lib/messaging/thread");
 const { totalUnread } = await import("@/lib/messaging/unread");
-const { fetchLatestMessages, fetchUnreadMessageCounts } = await import("@/lib/actions/messaging");
+const { fetchConversationConnections, fetchLatestMessages, fetchUnreadMessageCounts } = await import("@/lib/actions/messaging");
 
 const CONVERSATION = "11111111-1111-4111-8111-111111111111";
 
@@ -62,6 +63,7 @@ function message(id: string, createdAt: string) {
     senderName: "Amina Okafor",
     senderOrganizationName: null,
     senderErased: false,
+    hiddenBy: null,
   };
 }
 
@@ -329,6 +331,7 @@ describe("the reads behind the hooks", () => {
         senderName: null,
         senderOrganizationName: null,
         senderErased: false,
+        hiddenBy: null,
       },
     ]);
     expect(rpcMock).toHaveBeenCalledWith("list_messages", {
@@ -345,6 +348,39 @@ describe("the reads behind the hooks", () => {
     rpcMock.mockResolvedValue({ data: null, error: { code: "42501", message: "CHARA_FORBIDDEN", details: "" } });
     expect(await fetchLatestMessages(CONVERSATION)).toBeNull();
     expect(await fetchUnreadMessageCounts()).toBeNull();
+  });
+
+  it("reads the connections of the thread again, so an answered inquiry leaves Waiting for an answer while it is open", async () => {
+    rpcMock.mockResolvedValue({
+      data: [
+        {
+          id: "11111111-1111-4111-8111-111111111111",
+          message_id: "33333333-3333-4333-8333-333333333333",
+          kind: "inquiry",
+          status: "answered",
+          sent_by_me: false,
+          job_id: null,
+          job_title: null,
+          job_city: null,
+          job_country_code: null,
+          job_open: false,
+          requirement_title: null,
+          occupation_label: null,
+          quantity: null,
+          destination_country: null,
+          start_date: null,
+        },
+      ],
+      error: null,
+    });
+    const connections = await fetchConversationConnections(CONVERSATION);
+    expect(rpcMock).toHaveBeenCalledWith("list_conversation_connections", { p_conversation: CONVERSATION });
+    expect(connections?.["33333333-3333-4333-8333-333333333333"]).toMatchObject({ kind: "inquiry", status: "answered" });
+    rpcMock.mockClear();
+    expect(await fetchConversationConnections("conversation:x")).toBeNull();
+    expect(rpcMock).not.toHaveBeenCalled();
+    rpcMock.mockResolvedValue({ data: null, error: { code: "42501", message: "CHARA_FORBIDDEN", details: "" } });
+    expect(await fetchConversationConnections(CONVERSATION)).toBeNull();
   });
 
   it("maps my_unread_counts", async () => {

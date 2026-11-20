@@ -4,7 +4,7 @@ import { expectAccessibleAtBothWidths } from "./support/applications";
 import { execute, literal, query } from "./support/db";
 import { createCommittedPartner, partnerWithCompany, setPartnerRelease, type PartnerType } from "./support/partners";
 import { signInBrowser } from "./support/session";
-import { enforceLimits, restoreLimits } from "./support/team";
+import { addMember, enforceLimits, newTeam, restoreLimits, subscribe } from "./support/team";
 import { expect, test } from "./support/test";
 import type { TestUser } from "./support/test-user";
 
@@ -15,6 +15,10 @@ const analyticsUrl = (slug: string, period?: string) => `/en/org/${slug}/analyti
 
 function setJobOrderRelease(on: boolean): void {
   execute(`update private.settings set value = '${on}' where key = 'release_job_orders'`);
+}
+
+function setMessagingRelease(on: boolean): void {
+  execute(`update private.settings set value = '${on}' where key = 'release_messaging'`);
 }
 
 // A listed partner on plan p_plan, with the counts of the last days: profile views from Germany (12) and Austria (3), and
@@ -180,6 +184,49 @@ test.describe("Network analytics (FR-R6, release 2a and 2b)", () => {
     await owner.page.getByRole("button", { name: "Try again" }).click();
     await expect(owner.page.getByRole("heading", { name: "No activity yet" })).toBeVisible();
     await owner.close();
+  });
+
+  test("FR-R6 AC8 (V76): inquiries received by a partner and sent by an employer show while release 2c is on", async ({ browser }) => {
+    test.setTimeout(120_000);
+    const s = await partnerOnPlan("staffing_company", "staffing_professional");
+    const employer = await newTeam();
+    subscribe(employer, "employer_professional");
+    const { user: employerMember } = await addMember(employer, "member");
+    execute(
+      `insert into private.org_analytics_daily (organization_id, day, metric, country_code, occupation_id, value)
+       values (${literal(s.id)}, current_date - 2, 'inquiries', 'DE', null, 17),
+              (${literal(s.id)}, current_date - 3, 'inquiries', 'PL', null, 2),
+              (${literal(s.id)}, current_date - 3, 'inquiries', 'AT', null, 3),
+              (${literal(employer.id)}, current_date - 2, 'inquiries', 'NP', null, 8)`,
+    );
+
+    const partner = await signedIn(browser, s.user);
+    await partner.page.goto(analyticsUrl(s.slug));
+    await expect(totalRow(partner.page, "Profile views")).toContainText("15");
+    await expect(totalRow(partner.page, "Inquiries received")).toHaveCount(0);
+
+    setMessagingRelease(true);
+    try {
+      await partner.page.reload();
+      await expect(totalRow(partner.page, "Inquiries received")).toContainText("22");
+      const byCountry = partner.page.getByRole("region", { name: "By country" });
+      await expect(byCountry.getByRole("columnheader", { name: "Inquiries received" })).toBeVisible();
+      await expect(byCountry.getByRole("row", { name: /Germany/ })).toContainText("17");
+      await expect(byCountry.getByRole("row", { name: /Poland/ })).toContainText("fewer than 5");
+      await expect(partner.page.getByRole("region", { name: "By occupation" }).getByRole("columnheader", { name: "Inquiries received" })).toHaveCount(0);
+      await expectAccessibleAtBothWidths(partner.page);
+
+      const sender = await signedIn(browser, employerMember);
+      await sender.page.goto(analyticsUrl(employer.slug));
+      await expect(totalRow(sender.page, "Inquiries sent")).toContainText("8");
+      await expect(sender.page.getByRole("region", { name: "By country" }).getByRole("row", { name: /Nepal/ })).toContainText("8");
+      await expect(totalRow(sender.page, "Profile views")).toHaveCount(0);
+      await expectAccessibleAtBothWidths(sender.page);
+      await sender.close();
+    } finally {
+      setMessagingRelease(false);
+    }
+    await partner.close();
   });
 
   test("the analytics page is closed to outsiders and while release 2a is off", async ({ browser }) => {

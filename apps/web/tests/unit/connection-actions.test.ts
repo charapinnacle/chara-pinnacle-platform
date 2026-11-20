@@ -51,7 +51,7 @@ describe("typed message cards (FR-P2 AC10)", () => {
 
   it("offers Apply on a waiting invitation to the worker only, named after the vacancy", () => {
     const worker = typedMessageCard("invite_to_job", connection("invite_to_job", "sent"), "worker");
-    expect(worker.kind !== "text" && worker.actions[0]).toEqual({ type: "apply", jobId: JOB, label: "Apply to Welder MIG/MAG" });
+    expect(worker.kind !== "text" && worker.actions[0]).toEqual({ type: "apply", jobId: JOB, vacancy: "Welder MIG/MAG" });
     const company = typedMessageCard("invite_to_job", connection("invite_to_job", "sent", { sentByMe: true }), "organization");
     expect(company.kind !== "text" && company.actions).toEqual([]);
     for (const status of ["answered", "accepted", "declined"] as const) {
@@ -65,6 +65,18 @@ describe("typed message cards (FR-P2 AC10)", () => {
     if (card.kind === "text") throw new Error("rendered as text");
     expect(card.actions.some(({ type }) => type === "apply")).toBe(false);
     expect(card.note).toBe("This vacancy is no longer accepting applications");
+  });
+
+  it("asks to confirm a decline, saying what the other side reads and that it cannot be undone", () => {
+    const request = typedMessageCard("request_workforce", connection("request_workforce", "sent"), "organization");
+    expect(request.kind !== "text" && request.actions).toEqual([
+      {
+        type: "decline",
+        label: "Decline the workforce request",
+        confirm:
+          "The employer reads Declined, without a reason, and your invitation to its requirement is declined too. This cannot be undone.",
+      },
+    ]);
   });
 
   it("lets the receiving side decline what waits for its answer, never the sender", () => {

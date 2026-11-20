@@ -1,6 +1,12 @@
 import { prerender } from "react-dom/static";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { CONTACT_MESSAGE_MAX, sendRefusalText } from "@/lib/contact-requests/presentation";
+import {
+  CONTACT_MESSAGE_MAX,
+  contactAgainFrom,
+  sendRefusalText,
+  sentNextStep,
+  withdrawConfirmText,
+} from "@/lib/contact-requests/presentation";
 import { contactRequestFormSchema } from "@/lib/validation/contact-request";
 
 const requireOrgRoleMock = vi.hoisted(() => vi.fn());
@@ -25,6 +31,9 @@ vi.mock("@/lib/dal/reference", () => ({
 vi.mock("@/lib/dal/contact-requests", () => ({ listSentContactRequests: sentMock, listReceivedContactRequests: receivedMock }));
 vi.mock("@/lib/actions/contact-requests", () => ({ respondToContactRequest: vi.fn(), withdrawContactRequest: vi.fn() }));
 vi.mock("@/lib/actions/messaging", () => ({ openConversation: vi.fn() }));
+vi.mock("@/lib/dal/settings", () => ({
+  getPublicSettings: async () => ({ contact_request_repeat_days: "30", contact_request_decline_days: "90", contact_request_expiry_days: "30" }),
+}));
 
 const { default: OrganizationContactRequestsPage } = await import("@/app/[lang]/(app)/org/[slug]/contact-requests/page");
 const { default: ContactRequestsPage } = await import("@/app/[lang]/(app)/contact-requests/page");
@@ -133,11 +142,20 @@ describe("the organisation's contact requests (FR-Q3 AC7, AC8, AC10; NFR-S9, NFR
   });
 
   it("calls an expired request No answer and a declined one Declined, without a reason", async () => {
-    sentMock.mockResolvedValue({ items: [{ ...sent, status: "expired" }, { ...sent, id: CARD, status: "declined" }], nextCursor: null });
-    const page = await orgPage();
-    expect(page).toContain("No answer");
-    expect(page).toContain("Declined");
-    expect(page).toContain("cannot contact this worker again for 90 days");
+    vi.useFakeTimers({ now: new Date("2027-03-15T09:00:00+00:00"), toFake: ["Date"] });
+    try {
+      sentMock.mockResolvedValue({
+        items: [{ ...sent, status: "expired" }, { ...sent, id: CARD, status: "declined", respondedAt: "2027-02-12T09:00:00+00:00" }],
+        nextCursor: null,
+      });
+      const page = await orgPage();
+      expect(page).toContain("No answer");
+      expect(page).toContain("Declined");
+      expect(page).toContain("The worker did not answer within 30 days. You can send a new request from Find Workers.");
+      expect(page).toContain("The worker declined. Your organisation can send this worker a new request from 13 May 2027.");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("filters by status from the address and shows an empty state with the way to Find Workers", async () => {
@@ -152,6 +170,36 @@ describe("the organisation's contact requests (FR-Q3 AC7, AC8, AC10; NFR-S9, NFR
   it("does not exist while Find Workers is off", async () => {
     releasedMock.mockResolvedValue(false);
     await expect(orgPage()).rejects.toThrow("NOT_FOUND");
+  });
+});
+
+describe("when the organisation may ask a worker again (FR-Q3 AC3, AC5; NFR-U4)", () => {
+  const periods = { repeatDays: 30, declineDays: 90, expiryDays: 30 };
+  const now = Date.parse("2027-02-20T09:00:00+00:00");
+  const withdrawn = { status: "withdrawn", createdAt: "2027-02-10T09:00:00+00:00", respondedAt: null } as const;
+
+  it("counts the repeat period from when the request was sent, and the decline period from the answer", () => {
+    expect(contactAgainFrom(withdrawn, periods, now)).toBe("2027-03-12T09:00:00.000Z");
+    expect(contactAgainFrom({ ...withdrawn, status: "declined", respondedAt: "2027-02-11T09:00:00+00:00" }, periods, now)).toBe(
+      "2027-05-12T09:00:00.000Z",
+    );
+    expect(contactAgainFrom({ ...withdrawn, status: "pending" }, periods, now)).toBeNull();
+    expect(contactAgainFrom(withdrawn, periods, Date.parse("2027-04-01T00:00:00Z"))).toBeNull();
+  });
+
+  it("asks before a withdrawal, saying it cannot be undone and from when the organisation may ask again", () => {
+    expect(withdrawConfirmText("2027-03-12T09:00:00.000Z")).toBe(
+      "The worker can no longer answer it. This cannot be undone. Your organisation can send this worker a new request from 12 March 2027.",
+    );
+    expect(withdrawConfirmText(null)).toBe("The worker can no longer answer it. This cannot be undone. You can send a new request from Find Workers.");
+  });
+
+  it("names the date from the settings in the next step of a withdrawn and a declined request", () => {
+    expect(sentNextStep(withdrawn, periods, now)).toBe("You withdrew this request. Your organisation can send this worker a new request from 12 March 2027.");
+    expect(sentNextStep(withdrawn, { ...periods, repeatDays: 7 }, now)).toBe("You withdrew this request. You can send a new request from Find Workers.");
+    expect(sentNextStep({ ...withdrawn, status: "declined", respondedAt: "2027-02-11T09:00:00+00:00" }, { ...periods, declineDays: 60 }, now)).toBe(
+      "The worker declined. Your organisation can send this worker a new request from 12 April 2027.",
+    );
   });
 });
 

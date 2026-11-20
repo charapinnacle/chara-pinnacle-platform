@@ -3,6 +3,7 @@ import {
   analyticsCsv,
   analyticsFileName,
   breakdownRows,
+  hasDimension,
   metricLabel,
   parsePeriod,
   shownMetric,
@@ -30,6 +31,8 @@ describe("the CSV export of analytics (FR-R6 AC9)", () => {
     figure({ country: "AT", value: null }),
     figure({ country: "DE", value: 18 }),
     figure({ metric: "invitations", value: 7 }),
+    figure({ metric: "inquiries", country: "DE", value: 6 }),
+    figure({ metric: "inquiries", value: 9 }),
     figure({}),
   ];
   const lines = analyticsCsv(rows, { countries, occupations, fewerThan: 5 }).split("\r\n");
@@ -39,14 +42,16 @@ describe("the CSV export of analytics (FR-R6 AC9)", () => {
   });
 
   it("lists the totals first, then the countries, then the occupations, by metric", () => {
-    expect(lines.slice(1, 6)).toEqual([
+    expect(lines.slice(1, 8)).toEqual([
       "2026-08-19,2026-11-16,profile_views,,,30",
+      "2026-08-19,2026-11-16,inquiries,,,9",
       "2026-08-19,2026-11-16,invitations,,,7",
       "2026-08-19,2026-11-16,profile_views,Austria,,fewer than 5",
       "2026-08-19,2026-11-16,profile_views,Germany,,18",
+      "2026-08-19,2026-11-16,inquiries,Germany,,6",
       `2026-08-19,2026-11-16,invitations,,"'=HYPERLINK(""http://evil.example"")",fewer than 5`,
     ]);
-    expect(lines[6]).toBe("");
+    expect(lines[8]).toBe("");
   });
 
   it("reads a suppressed cell as below the threshold in force", () => {
@@ -69,9 +74,19 @@ describe("the presentation of analytics (FR-R6 AC8)", () => {
     expect(metricLabel("employer", "invitations")).toBe("Invitations sent");
     expect(metricLabel("staffing_company", "selections")).toBe("Times selected");
     expect(metricLabel("employer", "responses")).toBe("Responses received");
+    expect(metricLabel("staffing_company", "inquiries")).toBe("Inquiries received");
+    expect(metricLabel("employer", "inquiries")).toBe("Inquiries sent");
+    expect(shownMetric("employer", "inquiries")).toBe(true);
     expect(shownMetric("employer", "profile_views")).toBe(false);
     expect(shownMetric("employer", "hires")).toBe(true);
     expect(shownMetric("staffing_company", "profile_views")).toBe(true);
+  });
+
+  it("gives profile views and inquiries, which name no requirement, no column by occupation", () => {
+    expect(hasDimension("inquiries", "country")).toBe(true);
+    expect(hasDimension("inquiries", "occupation")).toBe(false);
+    expect(hasDimension("profile_views", "occupation")).toBe(false);
+    expect(hasDimension("invitations", "occupation")).toBe(true);
   });
 
   it("puts the cells of a breakdown in rows by name, a hidden cell as null", () => {

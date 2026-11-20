@@ -67,6 +67,8 @@ const figures = (over: Partial<PartnerFigures> = {}): PartnerFigures => ({
   profileViewsInPlan: true,
   network: null,
   submissionStages: null,
+  requests: null,
+  matchingWorkers: null,
   ...over,
 });
 

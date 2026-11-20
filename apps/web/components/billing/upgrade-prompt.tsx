@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { TextLink } from "@/components/forms/text-link";
 import { recordLimitPrompt } from "@/lib/actions/limits";
-import { resetText, usageText, type OrganizationType, type UsagePrompt } from "@/lib/billing/limits";
+import { resetText, usagePromptText, type OrganizationType, type UsagePrompt } from "@/lib/billing/limits";
 
 type UpgradePromptProps = {
   organizationId: string;
@@ -51,7 +51,7 @@ export function UpgradePrompt({
   return (
     <div className="grid gap-1 text-small">
       <p id={reasonId} className="font-medium">
-        {usageText(limitKey, organizationType, used, limit)} on your {planName ? `${planName} plan` : "plan"}.
+        {usagePromptText(limitKey, organizationType, used, limit, planName)}
       </p>
       {/* A limit of 0 (the free plan after a lapse) does not come back with the month. */}
       {resetsAt && limit > 0 ? <p>{resetText(resetsAt)}</p> : null}

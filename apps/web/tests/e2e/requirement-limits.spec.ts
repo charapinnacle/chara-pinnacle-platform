@@ -280,7 +280,7 @@ test.describe("Workforce requirement plan limits (FR-M4)", () => {
     await waitForHydration(statusButtons(page).first());
     await statusButtons(page).filter({ hasText: "Reopen" }).click();
     const prompt = page.getByRole("alert").filter({ hasText: "open workforce requirements" });
-    await expect(prompt).toContainText("0 of 0 open workforce requirements on your Free plan.");
+    await expect(prompt).toContainText("Open workforce requirements are not included in your Free plan.");
     await expect(prompt).not.toContainText("Pause or close");
     expect(statusOf(id)).toBe("paused");
 

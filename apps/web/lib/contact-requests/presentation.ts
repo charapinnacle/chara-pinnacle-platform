@@ -1,4 +1,5 @@
 import type { Database } from "@chara-pinnacle/db-types";
+import { formatDate } from "@/lib/i18n/format";
 import type { StatusTone } from "@/lib/status-tone";
 
 export type ContactRequestStatus = Database["public"]["Enums"]["contact_request_status"];
@@ -26,14 +27,57 @@ export const sentStatusLabels: Record<ContactRequestStatus, string> = {
   withdrawn: "Withdrawn",
 };
 
-// What the organisation can do next with a request (NFR-U4).
-export const sentNextSteps: Record<ContactRequestStatus, string> = {
-  pending: "The worker decides whether to share their name with you. You can withdraw the request while it waits.",
-  accepted: "The worker shared their name with you. Continue in the conversation.",
-  declined: "The worker declined. Your organisation cannot contact this worker again for 90 days.",
-  expired: "The worker did not answer within 30 days. You can send a new request from Find Workers.",
-  withdrawn: "You withdrew this request. A new request to this worker is possible 30 days after it was sent.",
-};
+// The periods of the public settings contact_request_repeat_days, contact_request_decline_days and
+// contact_request_expiry_days.
+export type ContactRequestPeriods = { repeatDays: number; declineDays: number; expiryDays: number };
+
+export function contactRequestPeriods(settings: Readonly<Record<string, string>>): ContactRequestPeriods {
+  return {
+    repeatDays: Number(settings.contact_request_repeat_days),
+    declineDays: Number(settings.contact_request_decline_days),
+    expiryDays: Number(settings.contact_request_expiry_days),
+  };
+}
+
+type SentRequestDates = { status: ContactRequestStatus; createdAt: string; respondedAt: string | null };
+
+const DAY_MS = 86_400_000;
+
+// When the organisation may send the worker a new request after this one (FR-Q3 AC3, AC5), as send_contact_request
+// reads it: contact_request_decline_days after a decline, contact_request_repeat_days after any request was sent. Null
+// once that time has passed, and for a request still waiting or accepted.
+export function contactAgainFrom(request: SentRequestDates, periods: ContactRequestPeriods, now = Date.now()): string | null {
+  if (request.status === "pending" || request.status === "accepted") return null;
+  const ends = [Date.parse(request.createdAt) + periods.repeatDays * DAY_MS];
+  if (request.status === "declined" && request.respondedAt) ends.push(Date.parse(request.respondedAt) + periods.declineDays * DAY_MS);
+  const end = Math.max(...ends);
+  return end > now ? new Date(end).toISOString() : null;
+}
+
+const askAgain = (from: string | null) =>
+  from ? `Your organisation can send this worker a new request from ${formatDate(from)}.` : "You can send a new request from Find Workers.";
+
+// What the dialog of Withdraw request says before the organisation confirms.
+export function withdrawConfirmText(againFrom: string | null): string {
+  return `The worker can no longer answer it. This cannot be undone. ${askAgain(againFrom)}`;
+}
+
+// What the organisation can do next with a request (NFR-U4), with the date from which it may ask the worker again.
+export function sentNextStep(request: SentRequestDates, periods: ContactRequestPeriods, now = Date.now()): string {
+  const again = askAgain(contactAgainFrom(request, periods, now));
+  switch (request.status) {
+    case "pending":
+      return "The worker decides whether to share their name with you. You can withdraw the request while it waits.";
+    case "accepted":
+      return "The worker shared their name with you. Continue in the conversation.";
+    case "declined":
+      return `The worker declined. ${again}`;
+    case "expired":
+      return `The worker did not answer within ${periods.expiryDays} days. ${again}`;
+    case "withdrawn":
+      return `You withdrew this request. ${again}`;
+  }
+}
 
 export const receivedStatusLabels: Record<ContactRequestStatus, string> = {
   pending: "Waiting for your answer",

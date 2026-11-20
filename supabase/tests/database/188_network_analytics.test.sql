@@ -192,8 +192,8 @@ delete from private.org_analytics_daily;
 -- Shape and grants --------------------------------------------------------------------------------------------------------
 select is(
   enum_range(null::public.analytics_metric)::text,
-  '{profile_views,invitations,responses,selections,submissions,hires}',
-  'the metrics of FR-R6 in release 2b: profile views and the five job order metrics (inquiries come with V76)'
+  '{profile_views,inquiries,invitations,responses,selections,submissions,hires}',
+  'the metrics of FR-R6: profile views, inquiries (V76) and the five job order metrics'
 );
 select ok(
   (select bool_and(not has_function_privilege('anon', f, 'execute') and has_function_privilege('authenticated', f, 'execute')

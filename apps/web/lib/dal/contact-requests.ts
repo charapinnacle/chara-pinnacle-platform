@@ -1,6 +1,7 @@
 import "server-only";
 import * as z from "zod";
 import { contactRequestStatuses, type ContactRequestStatus } from "@/lib/contact-requests/presentation";
+import type { ContactRequestCounts } from "@/lib/dashboard/connections";
 import { createClient } from "@/lib/supabase/server";
 
 export const CONTACT_REQUESTS_PAGE_SIZE = 20;
@@ -25,6 +26,8 @@ const sentSchema = z.object({
   worker_first_name: z.string().nullable(),
   worker_last_name: z.string().nullable(),
   conversation_id: z.uuid().nullable(),
+  moderation_state: z.enum(["visible", "hidden", "org_suspended"]),
+  moderation_action_id: z.number().int().nullable(),
 });
 
 // One request of the organisation as list_contact_requests_sent answers it: the card fields while the card is listed and,
@@ -45,6 +48,8 @@ export type SentContactRequest = {
   currentCountry: string | null;
   workerName: string | null;
   conversationId: string | null;
+  // The decision that hid the request (FR-S1, V73); null while the worker sees it.
+  hiddenBy: number | null;
 };
 
 export type SentContactRequestsPage = { items: SentContactRequest[]; nextCursor: string | null };
@@ -79,6 +84,7 @@ export async function listSentContactRequests(
     currentCountry: row.current_country,
     workerName: row.status === "accepted" ? [row.worker_first_name, row.worker_last_name].filter(Boolean).join(" ") || null : null,
     conversationId: row.conversation_id,
+    hiddenBy: row.moderation_state === "hidden" ? row.moderation_action_id : null,
   }));
   const last = items.at(-1);
   return { items, nextCursor: rows.length > CONTACT_REQUESTS_PAGE_SIZE && last ? `${last.createdAt}|${last.id}` : null };
@@ -180,4 +186,15 @@ export async function listOpenVacancies(organizationId: string): Promise<OpenVac
     .order("title");
   if (error) throw new Error("The vacancies could not be loaded", { cause: error });
   return data;
+}
+
+const countsSchema = z.object({ pending: z.number().int().nonnegative(), received: z.number().int().nonnegative() });
+
+// The worker's own contact requests for the Find Workers card of the dashboard (FR-Q1 AC10). Release 2c must be on (the
+// caller checks isReleased first).
+export async function getMyContactRequestCounts(): Promise<ContactRequestCounts> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("my_contact_request_counts").single();
+  if (error) throw new Error("The contact requests could not be counted", { cause: error });
+  return countsSchema.parse(data);
 }

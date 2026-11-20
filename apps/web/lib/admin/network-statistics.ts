@@ -84,9 +84,25 @@ export const networkMetricGroups: readonly MetricGroup[] = [
       { key: "hires", label: "Submitted candidates hired" },
     ],
   },
+  {
+    heading: "Messaging",
+    metrics: [
+      { key: "conversations", label: "Conversations started" },
+      { key: "messages", label: "Messages sent" },
+    ],
+  },
+  {
+    heading: "Find Workers",
+    metrics: [
+      { key: "worker_searches", label: "Find Workers searches" },
+      { key: "contact_requests", label: "Contact requests sent" },
+      { key: "contact_requests_accepted", label: "Contact requests accepted" },
+    ],
+  },
 ];
 
-// The groups and metrics the database returned: the job order metrics only while their release is on.
+// The groups and metrics the database returned: the job order, messaging and Find Workers metrics only while their
+// release is on.
 export function shownMetricGroups(counts: readonly NetworkCount[]): MetricGroup[] {
   const returned = new Set(counts.map((row) => row.metric));
   return networkMetricGroups.flatMap((group) => {

@@ -65,7 +65,7 @@ describe("Save partner and Follow buttons (FR-L4 AC9; FR-K5 AC8)", () => {
   it("send a visitor to log in and back to the page, as Follow or Log in to follow", () => {
     const html = renderToStaticMarkup(<ConnectionActions {...base} organizationId={null} access={{ kind: "visitor" }} />);
     expect(html).toContain('href="/en/login?next=%2Fen%2Fpartners%2Fgamma"');
-    expect(html).toContain("Follow<span class=\"sr-only\"> Gamma Staffing</span>");
+    expect(html).toContain("Follow<span class=\"sr-only normal-case\"> Gamma Staffing</span>");
     const page = renderToStaticMarkup(
       <ConnectionActions {...base} organizationId={null} access={{ kind: "visitor" }} visitorLabel="Log in to follow" />,
     );

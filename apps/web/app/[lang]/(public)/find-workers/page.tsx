@@ -35,7 +35,7 @@ export default async function FindWorkersPublicPage({ params }: PageProps<"/[lan
             {active.map((organization) => (
               <li key={organization.slug}>
                 <LinkButton href={findWorkersPath(lang, organization.slug)} variant="secondary">
-                  Find workers for {organization.displayName}
+                  Find workers for <span className="normal-case">{organization.displayName}</span>
                 </LinkButton>
               </li>
             ))}

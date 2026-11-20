@@ -33,7 +33,7 @@ export function SendInquiry(props: SendInquiryProps) {
   return (
     <>
       <FormButton type="button" className="w-full sm:w-auto" onClick={() => setOpen(true)}>
-        Send inquiry<span className="sr-only"> to {props.partnerName}</span>
+        Send inquiry<span className="sr-only normal-case"> to {props.partnerName}</span>
       </FormButton>
       <ModalDialog open={open} onClose={() => setOpen(false)} title={`Send an inquiry to ${props.partnerName}`}>
         <InquiryForm {...props} onClose={() => setOpen(false)} />

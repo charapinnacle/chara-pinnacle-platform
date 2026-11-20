@@ -123,6 +123,7 @@ test.describe("Structured connection actions (FR-P2)", () => {
     );
     expect(row).toEqual({ kind: "inquiry", status: "sent" });
 
+    // While the first inquiry waits, a second one is refused and points to the conversation.
     await page.goto(profileUrl(rekrut.slug));
     const again = page.getByRole("button", { name: `Send inquiry to ${rekrut.name}` });
     await waitForHydration(again);
@@ -130,9 +131,22 @@ test.describe("Structured connection actions (FR-P2)", () => {
     const second = page.getByRole("dialog", { name: `Send an inquiry to ${rekrut.name}` });
     await second.getByLabel("Your inquiry").fill("A second question about the same welders, while the first waits.");
     await second.getByRole("button", { name: "Send inquiry" }).click();
-    await expect(second.getByRole("alert")).toContainText("still waiting for an answer");
+    await expect(second.getByRole("alert").first()).toContainText("still waiting for an answer");
     await expect(second.getByRole("link", { name: `Open the conversation with ${rekrut.name}` })).toHaveAttribute("href", conversationUrl);
     await expect(second.getByLabel("Your inquiry")).toHaveValue("A second question about the same welders, while the first waits.");
+
+    // Once the partner answers, the inquiry reads Answered in the conversation.
+    await page.goto(conversationUrl);
+    const reply = "Yes, we can send twenty welders from April.";
+    execute(
+      `insert into public.messages (conversation_id, sender_user_id, sender_organization_id, body)
+       select c.conversation_id, m.user_id, c.to_organization_id, ${literal(reply)}
+       from public.connections c join public.organization_members m on m.organization_id = c.to_organization_id and m.role = 'owner'
+       where c.from_organization_id = ${literal(acme.id)} and c.to_organization_id = ${literal(rekrut.id)}`,
+    );
+    await expect(thread).toContainText(reply);
+    await expect(thread).toContainText("Answered");
+    await expect(thread).not.toContainText("Waiting for an answer");
   });
 
   test("AC3, AC9: an owner at aal2 requests workforce from a staffing company and finds the request in the conversation", async ({ page }) => {
@@ -144,7 +158,7 @@ test.describe("Structured connection actions (FR-P2)", () => {
     const dialog = page.getByRole("dialog", { name: `Request workforce from ${staffit.name}` });
     await dialog.getByLabel("Occupation").selectOption("7212");
     await dialog.getByLabel("Number of workers").fill("25");
-    await dialog.getByLabel("Country of work").selectOption("DE");
+    await expect(dialog.getByLabel("Country of work"), "the employer's country comes preselected").toHaveValue("DE");
     await dialog.getByLabel("City or region").fill("Hamburg");
     const start = new Date(Date.now() + 60 * 86_400_000).toISOString().slice(0, 10);
     await dialog.getByLabel("Start date").fill(start);
@@ -198,8 +212,19 @@ test.describe("Structured connection actions (FR-P2)", () => {
     await workerPage.goto(`/en/messages/${conversation}`);
     const apply = workerPage.getByRole("link", { name: "Apply to Welder MIG/MAG" });
     await expect(apply).toHaveAttribute("href", `/en/jobs/${welder}/apply`);
+    await expect(apply.getByText("Welder MIG/MAG", { exact: true })).toHaveCSS("text-transform", "none");
     await expect(workerPage.getByRole("log")).toContainText("Hamburg, Germany");
     await expectAccessibleAtBothWidths(workerPage);
+    await workerPage.setViewportSize({ width: 1280, height: 900 });
+    const decline = workerPage.getByRole("button", { name: "Decline the invitation to apply" });
+    await waitForHydration(decline);
+    await decline.click();
+    const confirmDecline = workerPage.getByRole("dialog", { name: "Decline the invitation to apply?" });
+    await expect(confirmDecline).toContainText("This cannot be undone.");
+    await expectNoAxeViolations(workerPage);
+    await confirmDecline.getByRole("button", { name: "Cancel" }).click();
+    await expect(confirmDecline).toHaveCount(0);
+    await expect(workerPage.getByRole("log")).toContainText("Not applied yet");
 
     execute(
       `insert into public.connections (kind, from_organization_id, to_user_id, conversation_id, job_id)

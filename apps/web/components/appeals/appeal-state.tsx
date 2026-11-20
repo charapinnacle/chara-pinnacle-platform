@@ -53,9 +53,13 @@ export function AppealState({ decision, now = new Date() }: { decision: Appealab
   }
   if (!decision.inEffect) return <p>This decision is no longer in effect.</p>;
   if (new Date(decision.appealUntil) < now) return <p>The time to appeal this decision ended on {formatDate(decision.appealUntil)}.</p>;
+  const who =
+    decision.targetType === "message"
+      ? `The member who sent the message, or the owner or an admin of ${decision.organizationName ?? "the company"},`
+      : `The owner or an admin of ${decision.organizationName ?? "the company"}`;
   return (
     <p>
-      The owner or an admin of {decision.organizationName} can appeal this decision until {formatDate(decision.appealUntil)}.
+      {who} can appeal this decision until {formatDate(decision.appealUntil)}.
     </p>
   );
 }

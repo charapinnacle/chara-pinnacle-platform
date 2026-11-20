@@ -56,6 +56,10 @@ type LicencesSectionProps = {
   countries: ReferenceItem[];
   patterns: Record<string, string>;
   maxYears: number;
+  // A country to open the form for at once, from the licence prompt of Where you serve (FR-K1 AC8), and the page to
+  // return to without it once the form closes.
+  initialCountry?: string | null;
+  profilePath?: string;
 };
 
 type FormValues = LicenceInput & { file: File | undefined };
@@ -64,12 +68,24 @@ type Outcome = { errors?: Record<string, string>; message?: string; saved?: true
 // The licences of a partner (FR-J2): one entry per country with the issuing authority, the number, the valid-until date
 // and an optional evidence file. The owner and admins add, change and delete entries; a member reads them. They are kept
 // for staff review and never shown to employers or the public until verification exists [d2.6].
-export function LicencesSection({ slug, canManage, licences, countries, patterns, maxYears }: LicencesSectionProps) {
+export function LicencesSection({
+  slug,
+  canManage,
+  licences,
+  countries,
+  patterns,
+  maxYears,
+  initialCountry,
+  profilePath,
+}: LicencesSectionProps) {
   const router = useRouter();
-  const [editing, setEditing] = useState<PartnerLicence | "new" | null>(null);
+  const [editing, setEditing] = useState<PartnerLicence | "new" | null>(canManage && initialCountry ? "new" : null);
   const [deleting, setDeleting] = useState<PartnerLicence | null>(null);
   const nameOf = (code: string) => countries.find((country) => country.code === code)?.name ?? code;
-  const close = () => setEditing(null);
+  const close = () => {
+    setEditing(null);
+    if (initialCountry && profilePath) router.replace(profilePath, { scroll: false });
+  };
   const addButton = canManage ? (
     <FormButton type="button" className="w-full sm:w-auto" onClick={() => setEditing("new")}>
       Add a licence
@@ -137,6 +153,7 @@ export function LicencesSection({ slug, canManage, licences, countries, patterns
           <LicenceForm
             slug={slug}
             licence={editing === "new" ? null : editing}
+            initialCountry={editing === "new" ? initialCountry : null}
             countries={countries}
             patterns={patterns}
             maxYears={maxYears}
@@ -169,6 +186,7 @@ export function LicencesSection({ slug, canManage, licences, countries, patterns
 type LicenceFormProps = {
   slug: string;
   licence: PartnerLicence | null;
+  initialCountry?: string | null;
   countries: ReferenceItem[];
   patterns: Record<string, string>;
   maxYears: number;
@@ -178,14 +196,14 @@ type LicenceFormProps = {
 
 // A failed save keeps the dialog open with every value; the file is sent only after the entry is saved, straight to
 // Storage through the URL the Server Action obtained.
-function LicenceForm({ slug, licence, countries, patterns, maxYears, onClose, onSaved }: LicenceFormProps) {
+function LicenceForm({ slug, licence, initialCountry, countries, patterns, maxYears, onClose, onSaved }: LicenceFormProps) {
   const schema = licenceFormSchema({ countries, patterns, maxYears, savedValidUntil: licence?.validUntil }).and(
     z.object({ file: evidenceFormSchema }),
   );
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      country: licence?.country ?? "",
+      country: licence?.country ?? initialCountry ?? "",
       issuingAuthority: licence?.issuingAuthority ?? "",
       licenceNumber: licence?.licenceNumber ?? "",
       validUntil: licence?.validUntil ?? "",

@@ -15,7 +15,10 @@ import {
   contactRequestStatuses,
   contactRequestTones,
   isContactRequestStatus,
-  sentNextSteps,
+  contactAgainFrom,
+  contactRequestPeriods,
+  sentNextStep,
+  type ContactRequestPeriods,
   sentStatusLabels,
   type ContactRequestStatus,
 } from "@/lib/contact-requests/presentation";
@@ -23,8 +26,9 @@ import { listSentContactRequests, type SentContactRequest } from "@/lib/dal/cont
 import { getCountries, getOccupations } from "@/lib/dal/reference";
 import { isReleased } from "@/lib/dal/release";
 import { requireOrgRole } from "@/lib/dal/session";
+import { getPublicSettings } from "@/lib/dal/settings";
 import { formatDate } from "@/lib/i18n/format";
-import { conversationPath, findWorkersPath, orgContactRequestsPath } from "@/lib/routes";
+import { appealPath, conversationPath, findWorkersPath, orgContactRequestsPath } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
 // Nothing about a worker who has not accepted is in the title or the metadata (NFR-S9).
@@ -55,8 +59,9 @@ function workerLabel(request: SentContactRequest, names: Names): string {
   return "Worker no longer visible";
 }
 
-function RequestItem({ request, lang, slug, names, messaging }: {
+function RequestItem({ request, lang, slug, names, messaging, periods }: {
   request: SentContactRequest;
+  periods: ContactRequestPeriods;
   lang: string;
   slug: string;
   names: Names;
@@ -77,8 +82,14 @@ function RequestItem({ request, lang, slug, names, messaging }: {
       </p>
       <p className="text-body leading-relaxed whitespace-pre-line wrap-anywhere">{request.message}</p>
       {request.jobTitle ? <p className="text-body">Vacancy: {request.jobTitle}</p> : null}
+      {request.hiddenBy !== null ? (
+        <p className="text-small">
+          <strong>Hidden by moderation.</strong> The worker no longer sees this request and cannot answer it.{" "}
+          <TextLink href={appealPath(lang, request.hiddenBy)}>See the reasons and how to appeal</TextLink>
+        </p>
+      ) : null}
       <p className="text-small text-muted-foreground">
-        {sentNextSteps[request.status]}
+        {sentNextStep(request, periods)}
         {request.status === "pending" ? (
           <>
             {" "}
@@ -88,7 +99,12 @@ function RequestItem({ request, lang, slug, names, messaging }: {
       </p>
       {request.status === "pending" ? (
         <div>
-          <WithdrawContactRequest slug={slug} requestId={request.id} cardLabel={label} />
+          <WithdrawContactRequest
+            slug={slug}
+            requestId={request.id}
+            cardLabel={label}
+            againFrom={contactAgainFrom({ ...request, status: "withdrawn" }, periods)}
+          />
         </div>
       ) : null}
       {request.status === "accepted" && request.conversationId ? (
@@ -121,12 +137,14 @@ export default async function OrganizationContactRequestsPage({ params, searchPa
   const { organization } = await requireOrgRole(lang, slug, "member", { hideFromOutsiders: true, partner: "either" });
   const status = isContactRequestStatus(raw.status) ? raw.status : null;
   const cursor = parseCursor(raw.before);
-  const [page, occupations, countries, messaging] = await Promise.all([
+  const [page, occupations, countries, messaging, settings] = await Promise.all([
     listSentContactRequests(organization.id, { status, cursor }),
     getOccupations(),
     getCountries(),
     isReleased("release_messaging"),
+    getPublicSettings(),
   ]);
+  const periods = contactRequestPeriods(settings);
   const names: Names = {
     occupations: Object.fromEntries(occupations.map(({ code, label }) => [code, label])),
     countries: Object.fromEntries(countries.map(({ code, name }) => [code, name])),
@@ -170,7 +188,7 @@ export default async function OrganizationContactRequestsPage({ params, searchPa
       ) : (
         <ul aria-label="Contact requests" className="grid gap-3">
           {page.items.map((request) => (
-            <RequestItem key={request.id} request={request} lang={lang} slug={slug} names={names} messaging={messaging} />
+            <RequestItem key={request.id} request={request} lang={lang} slug={slug} names={names} messaging={messaging} periods={periods} />
           ))}
         </ul>
       )}

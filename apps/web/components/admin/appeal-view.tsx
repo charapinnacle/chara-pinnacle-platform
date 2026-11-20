@@ -9,7 +9,7 @@ import { Section } from "@/components/layout/section";
 import { getAppeal, type AppealDetail } from "@/lib/dal/admin-appeals";
 import { formatDateTime } from "@/lib/i18n/format";
 import { adminPath } from "@/lib/routes";
-import { appealableDecisionLabel, appealStatusLabels, appealStatusTones, appealTargetLabels } from "@/lib/validation/appeal";
+import { appealableDecisionLabel, appealStatusLabels, appealStatusTones, appealTargetLabels, NO_ORGANIZATION } from "@/lib/validation/appeal";
 
 // What a reversal undoes, as the dialog says it; a decision no longer in effect has nothing left to undo.
 const undoText: Record<string, string> = {
@@ -32,6 +32,7 @@ export function undoOf(appeal: AppealDetail): string {
 
 function targetLink(lang: string, appeal: AppealDetail) {
   if (appeal.targetType === "job") return <TextLink href={adminPath(lang, `moderation/${appeal.targetId}`)}>Open the vacancy</TextLink>;
+  if (!appeal.organizationId) return null;
   return <TextLink href={adminPath(lang, `organizations/${appeal.organizationId}`)}>Open the organisation</TextLink>;
 }
 
@@ -54,7 +55,7 @@ export async function AppealView({ lang, id, canAct }: { lang: string; id: numbe
           items={[
             { label: "Decision", value: appealableDecisionLabel(appeal.action, appeal.targetType) },
             { label: appealTargetLabels[appeal.targetType] ?? "About", value: appeal.title },
-            { label: "Organisation", value: appeal.organizationName },
+            { label: "Organisation", value: appeal.organizationName ?? NO_ORGANIZATION },
             { label: "Decided", value: formatDateTime(appeal.decidedOn) },
             { label: "Statement of reasons", value: <p className="whitespace-pre-line wrap-anywhere">{appeal.decisionReasons}</p> },
             ...(appeal.decisionReportId

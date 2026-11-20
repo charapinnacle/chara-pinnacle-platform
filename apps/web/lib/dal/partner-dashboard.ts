@@ -1,5 +1,6 @@
 import "server-only";
 import * as z from "zod";
+import { matchingWorkersColumns, parseMatchingWorkers } from "@/lib/dashboard/connections";
 import type { PartnerFigures, SubmissionOutcome } from "@/lib/dashboard/partner-dashboard";
 import type { SubmissionStatus } from "@/lib/submissions/presentation";
 import { createClient } from "@/lib/supabase/server";
@@ -50,6 +51,9 @@ const figuresRow = z.object({
   responses_selected: count.nullable(),
   responses_declined: count.nullable(),
   submission_stages: stagesSchema.nullable(),
+  partner_requests: count.nullable(),
+  partner_inquiries: count.nullable(),
+  ...matchingWorkersColumns,
 });
 
 // The figures of a recruitment or staffing company dashboard (FR-R3, FR-R4), read again on every request in one call; the
@@ -89,6 +93,8 @@ export async function getPartnerFigures(organizationId: string): Promise<Partner
             responsesDeclined: row.responses_declined ?? 0,
           },
     submissionStages: row.submission_stages,
+    requests: row.partner_requests === null ? null : { total: row.partner_requests, inquiries: row.partner_inquiries ?? 0 },
+    matchingWorkers: parseMatchingWorkers(row),
   };
 }
 

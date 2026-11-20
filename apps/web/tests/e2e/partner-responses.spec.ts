@@ -586,7 +586,7 @@ test.describe("The monthly limit's upgrade prompt (FR-R1 AC10, AC11)", () => {
     const [{ name: planName }] = query<{ name: string }>(`select name from billing.plans where code = 'free_recruitment_company'`);
 
     await signInAtAal1(page, l.owner, `/en/org/${l.slug}/invitations/${invitation}/respond`);
-    await expect(panel(page)).toContainText(`0 of 0 job order responses this month on your ${planName} plan.`);
+    await expect(panel(page)).toContainText(`Job order responses are not included in your ${planName} plan.`);
     await expect(panel(page)).not.toContainText("The count starts again");
     await expect(panel(page).getByRole("link", { name: "Upgrade your plan" })).toHaveAttribute("href", `/en/org/${l.slug}/billing`);
     await expect(page.getByRole("button", { name: "Send response" })).toHaveCount(0);

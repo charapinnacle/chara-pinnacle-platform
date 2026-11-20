@@ -1,4 +1,5 @@
 import { BlockCard, Figure } from "@/components/dashboard/block-card";
+import { MatchingWorkersCard, PartnerRequestsCard, UnreadMessagesCard } from "@/components/dashboard/connection-blocks";
 import { DateText } from "@/components/dashboard/date-text";
 import { Panel } from "@/components/dashboard/panel";
 import { InvitationsCard, JobOrdersCard, ResponsesCard, SubmissionsCard } from "@/components/dashboard/partner-network-blocks";
@@ -12,6 +13,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { CommitmentGate } from "@/components/organization/commitment-gate";
 import { limitNoun, type OrgUsage } from "@/lib/billing/limits";
 import { followerCountText, type FollowerCount } from "@/lib/connections/access";
+import { organizationUnread } from "@/lib/dashboard/connections";
 import {
   dashboardQuestions,
   missingPartLabels,
@@ -28,6 +30,7 @@ import { segmentOf } from "@/lib/dashboard/segments";
 import { getCommitmentBlock } from "@/lib/dal/commitment";
 import { getFollowerCount } from "@/lib/dal/connections";
 import { getDashboardPlan, type DashboardPlan } from "@/lib/dal/dashboard";
+import { getUnreadMessageCounts } from "@/lib/dal/messaging";
 import { hasVerifiedTotpFactor } from "@/lib/dal/mfa";
 import { getPartnerFigures } from "@/lib/dal/partner-dashboard";
 import { getPartnerReview, getReviewOutcome, getReviewTargetDays } from "@/lib/dal/partner-review";
@@ -303,8 +306,9 @@ function PlanUsageCard({ plan, usage, usageKeys, type, billingHref, paused }: Pl
 // Find job orders, Find employers, Submit candidates while submissions are on, Update workforce capacity; staffing: Add
 // workforce, Find companies, Respond to request) and the blocks fitting job orders or workforce requests with the
 // matching employers, invitations, responses with their decisions (projects) and submissions by stage with their
-// outcomes join the figures. Partner requests and unread messages come with release 2c (V75); until a release is on
-// its blocks and actions are absent, not shown as zero. A member sees
+// outcomes join the figures. While release 2c is on (V75) the partner requests and unread messages (messaging) and the
+// matching workers (Find Workers) join them, the unread messages from a read of their own (FR-R3 AC11); until a release
+// is on its blocks and actions are absent, not shown as zero. A member sees
 // every block but none of the actions of the owner and admins. Owners and admins see the plan once at aal2, as on the
 // billing page (FR-A4).
 export async function PartnerDashboard({ lang, user, organization }: PartnerDashboardProps) {
@@ -335,12 +339,17 @@ export async function PartnerDashboard({ lang, user, organization }: PartnerDash
     () => null,
   );
   const listings = Promise.all([getWorkforceListings(id), getAvailabilityRules(), getOccupations(), getCountries()]);
-  const [twoStepDone, jobOrders, submissionsOn, findWorkers] = await Promise.all([
+  const [twoStepDone, jobOrders, submissionsOn, findWorkers, messaging] = await Promise.all([
     planLocked ? hasVerifiedTotpFactor(lang) : false,
     jobOrdersReleased,
     isReleased("release_candidate_submissions"),
     isReleased("release_find_workers"),
+    isReleased("release_messaging"),
   ]);
+  const dashboardHref = companyDashboardPath(lang, segmentOf(type), slug);
+  const unread = messaging && !planLocked ? getUnreadMessageCounts().then((counts) => organizationUnread(counts, id)) : null;
+  // Read inside the figures, which are not drawn when they fail to load; the failure is then not left unhandled.
+  void unread?.catch(() => undefined);
   // The submission pages need both switches, as submissionsReleased says.
   const submissions = jobOrders && submissionsOn;
   const usageKeys = planUsageKeys({ jobOrders, submissions });
@@ -440,6 +449,24 @@ export async function PartnerDashboard({ lang, user, organization }: PartnerDash
             {value.submissionStages ? (
               <SubmissionsCard stages={value.submissionStages} organizationId={id} lang={lang} slug={slug} />
             ) : null}
+            {value.requests ? <PartnerRequestsCard requests={value.requests} lang={lang} slug={slug} /> : null}
+            {messaging ? (
+              unread ? (
+                <Panel promise={unread} errorTitle="Your unread messages could not be loaded">
+                  {(count) => <UnreadMessagesCard unread={count} lang={lang} slug={slug} lockedHref={null} />}
+                </Panel>
+              ) : (
+                <UnreadMessagesCard unread={0} lang={lang} slug={slug} lockedHref={mfaPath(lang, dashboardHref)} />
+              )
+            ) : null}
+            {value.matchingWorkers ? (
+              <MatchingWorkersCard
+                value={value.matchingWorkers}
+                audience="partner"
+                findWorkersHref={findWorkersPath(lang, slug)}
+                billingHref={billingHref}
+              />
+            ) : null}
             <ProfileCard figures={value} lang={lang} slug={slug} canManage={canManage} />
             <ViewsCard figures={value} billingHref={billingHref} />
             <LicencesCard figures={value} href={licencesHref} canManage={canManage} />
@@ -485,7 +512,7 @@ export async function PartnerDashboard({ lang, user, organization }: PartnerDash
           {twoStepDone ? (
             <>
               Enter your two-step code to see your plan and its usage.{" "}
-              <TextLink href={mfaPath(lang, companyDashboardPath(lang, segmentOf(type), slug))}>
+              <TextLink href={mfaPath(lang, dashboardHref)}>
                 Enter your code
               </TextLink>
             </>

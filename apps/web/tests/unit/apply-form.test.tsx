@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { ApplyForm } from "@/components/applications/apply-form";
 import { applicationStatusLabels } from "@/lib/applications/presentation";
+import type { HiringRule } from "@/lib/dal/hiring-rules";
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/actions/applications", () => ({ applyToVacancy: async () => undefined }));
@@ -12,8 +13,11 @@ const documents = [
   { id: "0a1b2c3d-0000-4000-8000-0000000000d2", title: "Certificate.pdf", type: "certificate" as const },
 ];
 const NOTICE = "Cross-border hiring can be subject to legal requirements";
-const render = (docs = documents) =>
-  renderToStaticMarkup(<ApplyForm jobId="j" lang="en" employerName="Nordic Build GmbH" limits={limits} documents={docs} />);
+const render = (docs = documents, hiringRule: HiringRule | null = null) =>
+  renderToStaticMarkup(
+    <ApplyForm jobId="j" lang="en" employerName="Nordic Build GmbH" limits={limits} documents={docs} hiringRule={hiringRule} />,
+  );
+const PARTNER_NOTICE = "Hiring from Nepal to Germany needs a licensed recruitment partner.";
 
 describe("ApplyForm", () => {
   it("lists the fields in the order of the criteria: note with its counter, one checkbox per document, consent, notice, Submit", () => {
@@ -41,6 +45,30 @@ describe("ApplyForm", () => {
     expect(html).toMatch(/<button[^>]*type="submit"[^>]*>Submit application<\/button>/);
     expect(html).not.toContain('disabled=""');
     expect(html).toContain(NOTICE);
+  });
+});
+
+describe("ApplyForm with a direct-hiring rule (FR-Q5 AC7)", () => {
+  it("shows a partner-required rule above Submit in the named region, with the way to licensed partners", () => {
+    const html = render(documents, { rule: "licensed_partner_required", notice: PARTNER_NOTICE, source: "NP", destination: "DE" });
+    expect(html).toContain('aria-label="Hiring rules for your country"');
+    expect(html).toContain("Apply through a licensed recruitment partner");
+    expect(html.indexOf(PARTNER_NOTICE)).toBeGreaterThan(-1);
+    expect(html.indexOf(PARTNER_NOTICE)).toBeLessThan(html.indexOf("Submit application"));
+    expect(html).toContain('href="/en/partners/recruitment?sources_from=NP&amp;destination=DE"');
+    expect(html).toContain("Find licensed recruitment partners");
+  });
+
+  it("shows the general notice where direct hiring is allowed, without the partner link", () => {
+    const html = render(documents, { rule: "allowed", notice: "Workers never pay.", source: "NG", destination: "DE" });
+    expect(html).toContain('aria-label="Hiring rules for your country"');
+    expect(html).toContain("Workers never pay.");
+    expect(html).not.toContain("Find licensed recruitment partners");
+    expect(html).not.toContain("Direct hiring allowed");
+  });
+
+  it("shows no region while the rules are not enforced", () => {
+    expect(render()).not.toContain("Hiring rules for your country");
   });
 });
 

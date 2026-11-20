@@ -70,6 +70,15 @@ export function usageText(key: string, type: OrganizationType, used: number, lim
   return `${formatCount(used)} of ${formatCount(limit)} ${limitNoun(key, type, limit)}`;
 }
 
+// The first line of the upgrade prompt: "2 of 3 countries served on your Basic plan.", or, for a limit of 0 (the free plan
+// after a lapse, V51), "Messages are not included in your Free plan." rather than "3 of 0".
+export function usagePromptText(key: string, type: OrganizationType, used: number, limit: number, planName: string | null): string {
+  const plan = planName ? `your ${planName} plan` : "your plan";
+  if (limit > 0) return `${usageText(key, type, used, limit)} on ${plan}.`;
+  const noun = limitNoun(key, type).replace(/ this month$/, "");
+  return `${noun.charAt(0).toUpperCase()}${noun.slice(1)} are not included in ${plan}.`;
+}
+
 export function resetText(resetsAt: string): string {
   return `The count starts again on ${formatDate(resetsAt)}.`;
 }

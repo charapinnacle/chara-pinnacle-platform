@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import * as z from "zod";
 import { GENERIC_FAILURE } from "@/lib/auth-errors";
 import { limitRefusalMessage, type OrganizationType, type UsagePrompt } from "@/lib/billing/limits";
+import type { ConversationConnection } from "@/lib/connections/typed-messages";
+import { listConversationConnections } from "@/lib/dal/connection-actions";
 import { getConversation, getUnreadMessageCounts, listMessages } from "@/lib/dal/messaging";
 import { isReleased } from "@/lib/dal/release";
 import { requireUser } from "@/lib/dal/session";
@@ -29,6 +31,18 @@ export async function fetchLatestMessages(conversationId: string): Promise<Messa
   if (!id.success) return null;
   try {
     return await listMessages(id.data);
+  } catch {
+    return null;
+  }
+}
+
+// The connections of a thread's typed messages, asked with its newest page, so a card follows its status (an inquiry the
+// partner answered, a request declined) while the thread is open; null when they cannot be read.
+export async function fetchConversationConnections(conversationId: string): Promise<Record<string, ConversationConnection> | null> {
+  const id = idSchema.safeParse(conversationId);
+  if (!id.success) return null;
+  try {
+    return await listConversationConnections(id.data);
   } catch {
     return null;
   }

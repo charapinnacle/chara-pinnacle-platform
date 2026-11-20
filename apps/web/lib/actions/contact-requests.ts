@@ -21,6 +21,7 @@ import {
 import { slugSchema } from "@/lib/validation/team";
 
 const idSchema = z.uuid();
+const destinationSchema = z.string().regex(/^[A-Z]{2}$/).nullable();
 
 const RELEASE_OFF = "Find Workers is not available at the moment.";
 
@@ -28,11 +29,18 @@ export type SendContactRequestResult = { errors?: { message?: string; jobId?: st
 
 // Sends a contact request from the organisation slug to the worker behind cardId (FR-Q3 AC1, AC12, SOP step Send). Any
 // member who may search; send_contact_request checks the release, the plan, the card, the rules and the limits again.
-// A refusal comes back as the reason the dialog shows, so the typed message stays.
-export async function sendContactRequest(slug: string, cardId: string, input: ContactRequestFormInput): Promise<SendContactRequestResult> {
+// A refusal comes back as the reason the dialog shows, so the typed message stays. destination is the one the card was
+// shaped for (the search's Destination filter or the requirement's country), so the rules the send checks are the card's.
+export async function sendContactRequest(
+  slug: string,
+  cardId: string,
+  input: ContactRequestFormInput,
+  destination: string | null = null,
+): Promise<SendContactRequestResult> {
   const parsedSlug = slugSchema.safeParse(slug);
   const card = idSchema.safeParse(cardId);
-  if (!parsedSlug.success || !card.success) return { message: GENERIC_FAILURE };
+  const parsedDestination = destinationSchema.safeParse(destination);
+  if (!parsedSlug.success || !card.success || !parsedDestination.success) return { message: GENERIC_FAILURE };
   const parsed = contactRequestFormSchema.safeParse(input);
   if (!parsed.success) {
     const issue = parsed.error.issues[0];
@@ -51,6 +59,7 @@ export async function sendContactRequest(slug: string, cardId: string, input: Co
     p_card: card.data,
     p_message: parsed.data.message,
     ...(parsed.data.jobId ? { p_job: parsed.data.jobId } : {}),
+    ...(parsedDestination.data ? { p_destination: parsedDestination.data } : {}),
   });
   revalidatePath(findWorkersPath(defaultLocale, organization.slug));
   revalidatePath(orgContactRequestsPath(defaultLocale, organization.slug));

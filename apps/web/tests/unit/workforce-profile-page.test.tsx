@@ -370,7 +370,7 @@ describe("the availability of the workforce profile page (FR-K3)", () => {
     expect(html).toMatch(/Confirmed 65 days ago, on [^<]+\. Confirm to show it again\.<\/p>/);
     expect(html).toMatch(/Confirmed 50 days ago, on [^<]+\. Confirm within 10 days to stay visible\.<\/p>/);
     expect(html).toContain(">Confirmed today.</p>");
-    expect(html).toContain('Confirm<span class="sr-only"> the listing for Welders and flame cutters from Nepal</span>');
+    expect(html).toContain('Confirm<span class="sr-only normal-case"> the listing for Welders and flame cutters from Nepal</span>');
     expect(html).toContain('Edit<span class="sr-only"> the listing for Welders and flame cutters from Philippines</span>');
     expect(html).toContain('Delete<span class="sr-only"> the listing for Welders and flame cutters from Nepal</span>');
   });

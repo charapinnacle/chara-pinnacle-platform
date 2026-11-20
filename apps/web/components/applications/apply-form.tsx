@@ -3,6 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMemo, useState } from "react";
 import { useForm, useWatch, type FieldPath } from "react-hook-form";
+import { HiringRuleNotice } from "@/components/applications/hiring-rule-notice";
 import { NotAcceptingNotice } from "@/components/applications/not-accepting-notice";
 import { CheckboxField } from "@/components/forms/checkbox-field";
 import { CheckboxGroupField } from "@/components/forms/checkbox-group-field";
@@ -16,6 +17,7 @@ import { applyToVacancy } from "@/lib/actions/applications";
 import type { RefusalLink } from "@/lib/applications/apply-refusal";
 import { CROSS_BORDER_NOTICE } from "@/lib/applications/presentation";
 import type { ApplyDocument } from "@/lib/dal/applications";
+import type { HiringRule } from "@/lib/dal/hiring-rules";
 import { applyFormSchema, type ApplyFormInput, type ApplyLimits } from "@/lib/validation/application";
 
 type ApplyFormProps = {
@@ -24,11 +26,12 @@ type ApplyFormProps = {
   employerName: string;
   limits: ApplyLimits;
   documents: ApplyDocument[];
+  hiringRule: HiringRule | null;
 };
 
 const ids = { coverNote: "apply-cover-note", documentIds: "apply-documents", consent: "apply-consent" } as const;
 
-export function ApplyForm({ jobId, lang, employerName, limits, documents }: ApplyFormProps) {
+export function ApplyForm({ jobId, lang, employerName, limits, documents, hiringRule }: ApplyFormProps) {
   const schema = useMemo(() => applyFormSchema(limits), [limits]);
   const form = useForm<ApplyFormInput>({
     resolver: zodResolver(schema),
@@ -104,6 +107,8 @@ export function ApplyForm({ jobId, lang, employerName, limits, documents }: Appl
       </CheckboxField>
 
       <Notice tone="info">{CROSS_BORDER_NOTICE}</Notice>
+
+      {hiringRule ? <HiringRuleNotice lang={lang} hiringRule={hiringRule} /> : null}
 
       <FormButton type="submit" busy={formState.isSubmitting}>
         {formState.isSubmitting ? "Submitting" : "Submit application"}

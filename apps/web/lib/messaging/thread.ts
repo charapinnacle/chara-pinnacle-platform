@@ -16,6 +16,8 @@ export type MessageItem = {
   senderName: string | null;
   senderOrganizationName: string | null;
   senderErased: boolean;
+  // The decision that hid the message (V73), read only by the side that sent it; null while it is shown.
+  hiddenBy: number | null;
 };
 
 export type UnreadMessages = { conversationId: string; organizationId: string | null; unread: number };

@@ -1,4 +1,4 @@
-import { NOT_ACCEPTING, profileFields } from "@/lib/applications/presentation";
+import { FIND_LICENSED_PARTNERS, NOT_ACCEPTING, licensedPartnersPath, profileFields } from "@/lib/applications/presentation";
 import { tryAgainIn } from "@/lib/auth-errors";
 import { settingsPath } from "@/lib/routes";
 import type { FieldErrors } from "@/lib/validation/sign-up";
@@ -11,6 +11,7 @@ export type ApplyRefusal =
   | { kind: "document_not_found" }
   | { kind: "not_candidate" }
   | { kind: "account_inactive" }
+  | { kind: "direct_hiring_blocked" }
   | { kind: "invalid_input"; field: "coverNote" | "documentIds" }
   | { kind: "fault"; reference: string };
 
@@ -46,6 +47,11 @@ export function applyRefusalResult(refusal: ApplyRefusal, lang: string): ApplyAc
       return {
         message: "Your account is being closed, so you cannot apply. Cancel the closure in your settings to apply again.",
         links: [{ label: "Go to settings", href: settingsPath(lang) }],
+      };
+    case "direct_hiring_blocked":
+      return {
+        message: "Direct hiring from your country to the country of this vacancy is not allowed, so you cannot apply directly. A licensed recruitment partner can help you.",
+        links: [{ label: FIND_LICENSED_PARTNERS, href: licensedPartnersPath(lang) }],
       };
     case "invalid_input":
       return refusal.field === "coverNote"

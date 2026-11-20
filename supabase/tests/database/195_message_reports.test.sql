@@ -1,5 +1,5 @@
 begin;
-select plan(28);
+select plan(30);
 
 \ir apply_fixture.inc
 
@@ -227,6 +227,18 @@ select is(
   '42501;3', 'FR-P3 AC7: an anonymous caller is refused, and no refusal wrote an audit row');
 select is(pg_temp.read_as(:'t1', format('select count(*)::text from public.messages where conversation_id = %L', :'c_inv')), '0',
   'FR-P3 AC7: T1 still reads no row of public.messages directly');
+update public.profiles set display_name = null where id = :'mem';
+select is(
+  pg_temp.read_as(:'t1', format($f$select string_agg(concat_ws('|', coalesce(sender_name, '-'), sender_former), ',' order by created_at)
+    from public.admin_get_reported_message(%s) where body in ('Message 11', 'Message 12')$f$, :ctx_report)),
+  'Paul Partner|f,-|f', 'a member without a display name is still a member, not a former one');
+delete from public.organization_members where organization_id = :'rek' and user_id = :'radm';
+update public.messages set sender_user_id = :'radm' where conversation_id = :'c_inv' and body = 'Message 13';
+update public.messages set sender_user_id = null where conversation_id = :'c_inv' and body = 'Message 14';
+select is(
+  pg_temp.read_as(:'t1', format($f$select string_agg(concat_ws('|', coalesce(sender_name, '-'), sender_former), ',' order by created_at)
+    from public.admin_get_reported_message(%s) where body in ('Message 11', 'Message 13', 'Message 14')$f$, :ctx_report)),
+  'Paul Partner|f,-|t,-|t', 'a sender removed from the organisation and an erased one are former members');
 update private.settings set value = 'false' where key = 'release_messaging';
 select is(pg_temp.context(:'t1', :ctx_report), '42501|CHARA_FORBIDDEN|release_off',
   'the context is not opened while release_messaging is off');

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { GENERIC_FAILURE } from "@/lib/auth-errors";
 import { recordLimitPrompt } from "@/lib/actions/limits";
 import { limitRefusalMessage } from "@/lib/billing/limits";
+import { getLicenceRequiredDestinations } from "@/lib/dal/hiring-rules";
 import { isReleased } from "@/lib/dal/release";
 import { requireOrgRole } from "@/lib/dal/session";
 import { defaultLocale } from "@/lib/i18n/locale";
@@ -13,7 +14,8 @@ import { geographiesSchema, type GeographiesInput } from "@/lib/validation/geogr
 import { fieldErrors, partnerTypeSchema, type FieldErrors } from "@/lib/validation/sign-up";
 import { slugSchema } from "@/lib/validation/team";
 
-export type SaveGeographiesResult = { errors?: FieldErrors; message?: string; saved?: true };
+// licencePrompts: the served countries that need a licence the company does not hold (FR-K1 AC8).
+export type SaveGeographiesResult = { errors?: FieldErrors; message?: string; saved?: true; licencePrompts?: string[] };
 
 const RELEASE_OFF = "Registration for recruitment and staffing companies is not open at the moment.";
 const SUSPENDED = "This organisation is suspended, so its countries cannot be changed.";
@@ -57,5 +59,7 @@ export async function saveOrganizationGeographies(
     return { message: GENERIC_FAILURE };
   }
   if (onboarding) redirect(onboardingPath(defaultLocale));
-  return { saved: true };
+  // The countries are saved whatever the prompt read answers; without it the page simply shows no prompt.
+  const licencePrompts = await getLicenceRequiredDestinations(organization.id).catch(() => []);
+  return { saved: true, licencePrompts };
 }

@@ -1,11 +1,14 @@
 import type { Page, Response } from "@playwright/test";
+import { signInStaff } from "./support/admin";
 import { expectAccessibleAtBothWidths } from "./support/applications";
 import { expectNoAxeViolations } from "./support/axe";
 import { execute, literal, query } from "./support/db";
 import { waitForHydration } from "./support/hydration";
 import { createCommittedUser } from "./support/login";
 import { uniqueToken } from "./support/organizations";
+import { setPartnerRelease } from "./support/partners";
 import { seedAllButCv, signIn } from "./support/passport";
+import { fillReport, sendReport } from "./support/reports";
 import { addMember, newTeam, newVisitor, signInAtAal1, type Team } from "./support/team";
 import type { TestUser } from "./support/test-user";
 import { expect, test } from "./support/test";
@@ -165,6 +168,27 @@ test.describe("Contact requests (FR-Q3)", () => {
     await expectAccessibleAtBothWidths(page);
   });
 
+  test("AC6, AC12: a request sent from a search with a Destination filter is checked for that destination", async ({ page }) => {
+    test.setTimeout(180_000);
+    const token = `egret${uniqueToken()}`;
+    const worker = await visibleWorker(token);
+    execute(`insert into public.worker_preferred_countries (worker_user_id, country_code) values (${literal(worker.id)}, 'AT')`);
+
+    await signInAtAal1(page, member, `${searchUrl(acme.slug, token)}&destination=AT`);
+    await expect(cards(page)).toHaveCount(1);
+    const send = cards(page).first().getByRole("button", { name: /^Send contact request: / });
+    await waitForHydration(send);
+    await send.click();
+    const dialog = page.getByRole("dialog", { name: "Send a contact request" });
+    await dialog.getByLabel("Message to the worker").fill("We are hiring welders for our Vienna yard.");
+    await dialog.getByRole("button", { name: "Send request" }).click();
+    await expect(page.getByText("Contact request sent", { exact: true })).toBeVisible();
+    const [row] = query<{ destination_country: string }>(
+      `select destination_country from public.contact_requests where organization_id = ${literal(acme.id)} and worker_user_id = ${literal(worker.id)}`,
+    );
+    expect(row).toEqual({ destination_country: "AT" });
+  });
+
   test("AC11, NFR-U4: the worker reads two requests, accepts one by keyboard and declines the other after the warning", async ({ page, browser }) => {
     test.setTimeout(240_000);
     const worker = await visibleWorker(`heron${uniqueToken()}`);
@@ -233,12 +257,73 @@ test.describe("Contact requests (FR-Q3)", () => {
     const withdraw = waitingItem.getByRole("button", { name: /^Withdraw the contact request: / });
     await waitForHydration(withdraw);
     await withdraw.click();
+    const confirmWithdraw = page.getByRole("dialog", { name: "Withdraw the contact request?" });
+    await expect(confirmWithdraw).toContainText("This cannot be undone.");
+    await expectNoAxeViolations(page);
+    await confirmWithdraw.getByRole("button", { name: "Withdraw request" }).click();
     await expect(page.getByText("Contact request withdrawn", { exact: true })).toBeVisible();
     await expect(page.getByRole("listitem").filter({ hasText: "Waiting request." })).toContainText("Withdrawn");
+    await expect(page.getByRole("listitem").filter({ hasText: "Waiting request." })).toContainText(
+      "You withdrew this request. Your organisation can send this worker a new request from",
+    );
 
     await page.goto(`/en/org/${acme.slug}/contact-requests?status=expired`);
     await expect(page.getByText("No contact requests with this status")).toBeVisible();
     await expectNoAxeViolations(page);
+  });
+
+  test("AC11, FR-S1 AC4, AC8 (V73): the worker reports a request; Trust & Safety hide it; the worker no longer reads it and the organisation reads it hidden", async ({ page, browser }) => {
+    test.setTimeout(240_000);
+    setPartnerRelease(true);
+    try {
+      const worker = await visibleWorker(`gull${uniqueToken()}`);
+      const request = seedRequest(acme, worker, null, "Pay us 300 euros and the job is yours.");
+      await signIn(page, worker);
+      await page.goto("/en/contact-requests");
+      const report = page.getByRole("link", { name: `Report this request from ${acmeName}` });
+      await expect(report).toHaveAttribute("href", `/en/report?type=contact_request&request=${request}`);
+      await report.click();
+      await expect(page.getByRole("heading", { name: "Report a contact request", level: 1 })).toBeVisible();
+      await expectAccessibleAtBothWidths(page);
+      await page.setViewportSize({ width: 1280, height: 900 });
+      await fillReport(page, { details: "The company asked me for 300 euros to get the job." });
+      await sendReport(page);
+      const [stored] = query<{ id: number; target_type: string; organization_id: string | null }>(
+        `select id, target_type::text, organization_id from public.reports where contact_request_id = ${literal(request)}`,
+      );
+      expect(stored).toMatchObject({ target_type: "contact_request", organization_id: null });
+
+      const staff = await newVisitor(browser);
+      await signInStaff(staff.page, "trust_safety", `/en/admin/reports/${stored.id}`);
+      const target = staff.page.locator("#target");
+      await expect(target).toContainText(acmeName);
+      await expect(target).not.toContainText("300 euros");
+      const hide = staff.page.getByRole("button", { name: "Hide", exact: true });
+      await waitForHydration(hide);
+      await hide.click();
+      const dialog = staff.page.getByRole("dialog", { name: "Hide the contact request" });
+      await dialog.getByLabel("Statement of reasons").fill("The request asks the worker to pay for the job, against the platform rules.");
+      await dialog.getByRole("button", { name: "Hide" }).click();
+      await expect(staff.page.getByText("Hidden. The report is actioned", { exact: true })).toBeVisible();
+      await expect(staff.page.locator("#decision")).toContainText("Contact request hidden");
+      await staff.context.close();
+
+      await page.goto("/en/contact-requests");
+      await expect(page.getByText("Pay us 300 euros and the job is yours.")).toHaveCount(0);
+
+      const [decision] = query<{ id: number }>(
+        `select id from public.moderation_actions where target_type = 'contact_request' and target_id = ${literal(request)}`,
+      );
+      const team = await newVisitor(browser);
+      await signInAtAal1(team.page, member, `/en/org/${acme.slug}/contact-requests`);
+      const item = team.page.getByRole("listitem").filter({ hasText: "Pay us 300 euros and the job is yours." });
+      await expect(item).toContainText("Hidden by moderation.");
+      await expect(item.getByRole("link", { name: "See the reasons and how to appeal" })).toHaveAttribute("href", `/en/appeals/${decision.id}`);
+      await expectAccessibleAtBothWidths(team.page);
+      await team.context.close();
+    } finally {
+      setPartnerRelease(false);
+    }
   });
 
   test("AC11: a worker without requests reads No contact requests", async ({ page }) => {

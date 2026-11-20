@@ -177,6 +177,8 @@ const config = defineConfig({
         "**/find-workers.spec.ts",
         "**/contact-requests.spec.ts",
         "**/connection-actions.spec.ts",
+        "**/direct-hiring-enforcement.spec.ts",
+        "**/messaging-dashboard-blocks.spec.ts",
       ],
     },
     {
@@ -744,13 +746,29 @@ const config = defineConfig({
       testMatch: "**/connection-actions.spec.ts",
       dependencies: ["contact-requests-release"],
     },
+    // The direct-hiring rules in force (V72) set release_find_workers and releases 2a for the whole database and add rules
+    // that refuse direct applications and contact, so they follow the connection actions and come before the sitemap.
+    {
+      name: "direct-hiring-enforcement-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/direct-hiring-enforcement.spec.ts",
+      dependencies: ["connection-actions-release"],
+    },
+    // The release 2c blocks of the dashboards (V75) set releases 2a and 2c for the whole database and make workers
+    // visible, so they follow the direct-hiring rules and come before the sitemap.
+    {
+      name: "messaging-dashboard-blocks-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/messaging-dashboard-blocks.spec.ts",
+      dependencies: ["direct-hiring-enforcement-release"],
+    },
     // The sitemap is compared with every public vacancy of the database, so no other spec may open or close one while
     // these tests run: they follow every other project.
     {
       name: "sitemap",
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/search-engine-sitemap.spec.ts",
-      dependencies: ["connection-actions-release"],
+      dependencies: ["messaging-dashboard-blocks-release"],
     },
     // The load times of the performance smoke are measured when no other spec loads the server: last of all.
     {

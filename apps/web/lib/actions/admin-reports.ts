@@ -80,16 +80,17 @@ export async function decideReport(input: ReportDecisionInput): Promise<AdminRes
 }
 
 const MESSAGE_REFUSALS = {
-  CHARA_FORBIDDEN: { message: "Only the Trust & Safety Administrator who put this report in review can open the message." },
-  "CHARA_FORBIDDEN:release_off": { message: "Messages are not live yet." },
-  "CHARA_INVALID_STATE:new": { message: "Put the report in review first. The message opens for the person who does." },
+  CHARA_FORBIDDEN: { message: "Only the Trust & Safety Administrator who put this report in review can open what was reported." },
+  "CHARA_FORBIDDEN:release_off": { message: "This part of the platform is not live yet." },
+  "CHARA_INVALID_STATE:new": { message: "Put the report in review first. It opens for the person who does." },
   "CHARA_INVALID_STATE:actioned": changed("actioned"),
   "CHARA_INVALID_STATE:dismissed": changed("dismissed"),
-  "CHARA_NOT_FOUND:message_gone": { message: "The message has been deleted since it was reported (retention or erasure)." },
+  "CHARA_NOT_FOUND:message_gone": { message: "It has been deleted since it was reported (retention or erasure)." },
 } as const;
 
-// Opens the reported message and the ten around it for the handler of the report (FR-P3 AC7). Each call is one opening,
-// which the database audits, so the page asks for it only when the handler chooses to read the message.
+// Opens the reported message and the ten around it, or the reported contact request, for the handler of the report (FR-P3
+// AC7, NFR-C5). Each call is one opening, which the database audits, so the page asks for it only when the handler
+// chooses to read it.
 export async function openReportedMessage(id: number): Promise<AdminResult & { messages?: ReportedMessage[] }> {
   const parsed = reportIdSchema.safeParse(id);
   if (!parsed.success) return { message: "This record no longer exists." };

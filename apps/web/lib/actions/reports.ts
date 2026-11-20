@@ -37,6 +37,7 @@ function resolveTarget(type: ReportInput["type"], target: string) {
     if (type === "requirement") return { type, requirement: id.data } as const;
     if (type === "partner_response") return { type, response: id.data } as const;
     if (type === "message") return { type, message: id.data } as const;
+    if (type === "contact_request") return { type, contactRequest: id.data } as const;
     return { type, submission: id.data } as const;
   }
   if (type === "partner_profile") {
@@ -57,7 +58,7 @@ function resolveTarget(type: ReportInput["type"], target: string) {
 
 // Anyone may report: a visitor, a candidate, a member of a company. The database decides what can be reported by whom
 // (a public vacancy, a company through one, a page, a public partner profile, an applicant of the caller's own
-// organisation, or a job order, response, submission or message the caller takes part in) and counts the attempt against the
+// organisation, or a job order, response, submission, message or contact request the caller takes part in) and counts the attempt against the
 // visitor throttle, so nothing here repeats those rules.
 export async function submitReport(input: ReportInput): Promise<ReportResult> {
   const parsed = reportInputSchema.safeParse(input);

@@ -37,7 +37,7 @@ export default async function JobOrdersInfoPage({ params }: PageProps<"/[lang]/j
             {partners.map((partner) => (
               <li key={partner.slug}>
                 <LinkButton href={jobOrdersPath(lang, partner.slug)} variant={partners.length === 1 ? "primary" : "secondary"}>
-                  Job orders for {partner.displayName}
+                  Job orders for <span className="normal-case">{partner.displayName}</span>
                 </LinkButton>
               </li>
             ))}

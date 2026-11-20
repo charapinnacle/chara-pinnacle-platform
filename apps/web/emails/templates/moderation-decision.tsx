@@ -20,7 +20,17 @@ const targetNames: Record<string, string> = {
   requirement: "requirement",
   partner_response: "response to",
   candidate_submission: "candidate submission for",
+  message: "message",
+  contact_request: "contact request",
 };
+
+// A message or a contact request (V73), named by its kind, never its text. The decision page holds the reasons and the
+// appeal; the sender of a message may appeal it, as the owner or an admin may appeal a contact request.
+function sentItem(payload: Record<string, unknown>) {
+  const type = field(payload, "target_type");
+  if (type !== "message" && type !== "contact_request") return null;
+  return { name: targetNames[type], message: type === "message" };
+}
 
 // A job order, response or submission of the organisation (V57): its kind, its title as the organisation knows it, and
 // the page where the organisation reads the decision.
@@ -44,9 +54,12 @@ export const moderationDecision: Template = {
   subject: (payload) => {
     if (isReporterNotice(payload)) return `Your report ${field(payload, "reference")} was closed`;
     if (isAppealNotice(payload)) {
-      const about = field(payload, "title");
+      const sent = sentItem(payload);
+      const about = sent ? `your ${sent.name}` : field(payload, "title");
       return about ? `Your appeal about ${about} was decided` : "Your appeal was decided";
     }
+    const sent = sentItem(payload);
+    if (sent) return field(payload, "decision") === "unhide" ? `Your ${sent.name} is shown again` : `Your ${sent.name} was hidden by moderation`;
     const item = moderatedItem(payload);
     if (item) return field(payload, "decision") === "unhide" ? `Your ${item.name} is shown again` : `Your ${item.name} was hidden by moderation`;
     return field(payload, "decision") === "unhide" ? "Your public profile is shown again" : "Your public profile was hidden by moderation";
@@ -75,7 +88,7 @@ export const moderationDecision: Template = {
     if (isAppealNotice(payload)) {
       const restored = field(payload, "appeal_outcome") === "restored";
       const target = targetNames[field(payload, "target_type") ?? ""] ?? "item";
-      const title = field(payload, "title");
+      const title = sentItem(payload) ? undefined : field(payload, "title");
       const reasons = field(payload, "reasons");
       const subject = title ? `the ${target} ${title}` : `your ${target}`;
       return (
@@ -95,6 +108,32 @@ export const moderationDecision: Template = {
     }
     const reasons = field(payload, "reasons");
     const unhidden = field(payload, "decision") === "unhide";
+    const sent = sentItem(payload);
+    if (sent) {
+      return (
+        <Layout
+          preview={unhidden ? `Your ${sent.name} is shown again` : `Your ${sent.name} was hidden by moderation`}
+          heading={unhidden ? "Shown again after moderation" : "Hidden by moderation"}
+        >
+          <Paragraph>
+            {unhidden
+              ? `Our moderators made your ${sent.name} visible again. The reasons:`
+              : `Our moderators hid your ${sent.name}. The other party no longer sees it. The reasons:`}
+          </Paragraph>
+          {reasons ? <Quote>{reasons}</Quote> : null}
+          {unhidden || !decision ? null : (
+            <>
+              <Paragraph>
+                {sent.message
+                  ? "If you think this was a mistake, the person who sent it, or the owner or an admin of the company, can appeal. A moderator who did not take the decision reviews the appeal."
+                  : "If you think this was a mistake, the owner or an admin can appeal. A moderator who did not take the decision reviews the appeal."}
+              </Paragraph>
+              <Action href={url(siteUrl, `/appeals/${decision}`)}>See the decision and appeal</Action>
+            </>
+          )}
+        </Layout>
+      );
+    }
     const item = moderatedItem(payload);
     if (item) {
       return (

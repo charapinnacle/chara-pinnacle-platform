@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { UpgradePrompt } from "@/components/billing/upgrade-prompt";
 import { toast, toastError } from "@/components/feedback/toast-store";
@@ -41,6 +41,8 @@ type WhereYouServeFormProps = {
   onboarding: boolean;
   // The availability listings per source country (FR-K3), on the workforce profile page only.
   listingCounts?: Promise<Readonly<Record<string, number>>>;
+  // The workforce profile page, where the licence prompt opens the licence form (FR-K1 AC8).
+  profilePath?: string;
 };
 
 const FAILURE_TITLE = "Could not save your countries";
@@ -60,8 +62,11 @@ export function WhereYouServeForm({
   billingHref,
   onboarding,
   listingCounts,
+  profilePath,
 }: WhereYouServeFormProps) {
   const router = useRouter();
+  const [licencePrompts, setLicencePrompts] = useState<string[]>([]);
+  const nameOf = (code: string) => countries.find((country) => country.code === code)?.name ?? code;
   const form = useForm<GeographiesInput>({
     resolver: zodResolver(geographiesSchema(partnerType)),
     defaultValues: defaults,
@@ -85,6 +90,8 @@ export function WhereYouServeForm({
       (result) => {
         if (result.message) toastError(FAILURE_TITLE, result.message);
         if (result.saved) {
+          const before = formState.defaultValues?.servesMarket ?? [];
+          if (profilePath) setLicencePrompts((result.licencePrompts ?? []).filter((code) => !before.includes(code)));
           form.reset(form.getValues());
           // A removed code took its availability listings with it: the counts and the listings are read again.
           if (listingCounts) router.refresh();
@@ -153,13 +160,38 @@ export function WhereYouServeForm({
             counts={listingCounts}
             saved={formState.defaultValues?.sourcesFrom?.filter((code) => code !== undefined) ?? []}
             current={sourcesFrom}
-            nameOf={(code) => countries.find((country) => country.code === code)?.name ?? code}
+            nameOf={nameOf}
           />
         </Suspense>
       ) : null}
       <FormButton type="submit" busy={formState.isSubmitting}>
         {formState.isSubmitting ? "Saving..." : onboarding ? "Continue" : "Save countries"}
       </FormButton>
+      <div role="status" className="grid gap-3 empty:hidden">
+        {licencePrompts.map((code) => (
+          <Notice key={code} tone="info" className="grid gap-3">
+            <p>{nameOf(code)} requires a licence for responses to job orders. Add your licence now?</p>
+            <div className="flex flex-wrap gap-2">
+              <FormButton
+                type="button"
+                onClick={() => {
+                  setLicencePrompts((codes) => codes.filter((item) => item !== code));
+                  router.push(`${profilePath}?licence=${code}`, { scroll: false });
+                }}
+              >
+                Add licence<span className="sr-only"> for {nameOf(code)}</span>
+              </FormButton>
+              <FormButton
+                type="button"
+                variant="secondary"
+                onClick={() => setLicencePrompts((codes) => codes.filter((item) => item !== code))}
+              >
+                Later<span className="sr-only">, the licence for {nameOf(code)}</span>
+              </FormButton>
+            </div>
+          </Notice>
+        ))}
+      </div>
     </form>
   );
 }

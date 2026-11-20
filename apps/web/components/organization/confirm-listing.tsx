@@ -19,7 +19,7 @@ export function ConfirmListing({ slug, listing, name }: ConfirmListingProps) {
       busy={confirm.pending}
       onClick={() => confirm.run(() => confirmListing(slug, listing.id), `Listing confirmed: ${name}`, () => router.refresh())}
     >
-      Confirm<span className="sr-only"> the listing for {name}</span>
+      Confirm<span className="sr-only normal-case"> the listing for {name}</span>
     </FormButton>
   );
 }

@@ -28,7 +28,7 @@ export function ConnectionActions({ lang, organizationId, name, access, saved, f
       <LinkButton href={loginPath(lang, next)} variant="secondary" size="default">
         <Bell aria-hidden className="size-4" />
         {visitorLabel}
-        <span className="sr-only"> {name}</span>
+        <span className="sr-only normal-case"> {name}</span>
       </LinkButton>
     );
   }

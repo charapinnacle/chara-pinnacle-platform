@@ -52,7 +52,7 @@ test.describe("Partner usage and the upgrade prompt (FR-R1)", () => {
 
     // The free plan includes no listing: the section shows the prompt instead of the add button, and reports it.
     const availability = page.getByRole("region", { name: "Availability" });
-    await expect(availability).toContainText("0 of 0 workforce listings on your Free plan.");
+    await expect(availability).toContainText("Workforce listings are not included in your Free plan.");
     await expect(availability).toContainText(
       "Basic includes 10 workforce listings; Professional includes 50 workforce listings; Enterprise has no limit.",
     );

@@ -226,7 +226,7 @@ export function ResponseDocuments({ slug, requirementId, initial, max, pollKey, 
                   busy={removing === document.id}
                   onClick={() => remove(document)}
                 >
-                  Remove<span className="sr-only"> {document.fileName}</span>
+                  Remove<span className="sr-only normal-case"> {document.fileName}</span>
                 </FormButton>
               </span>
             </li>

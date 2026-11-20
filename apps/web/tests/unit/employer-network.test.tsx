@@ -97,6 +97,12 @@ describe("getEmployerNetwork (FR-R5 AC3, AC4, AC7)", () => {
       rejected: 0,
       withdrawn: 0,
     },
+    partner_requests_waiting: 2,
+    partner_requests_answered: 1,
+    matching_workers: 40,
+    matching_workers_suppressed: false,
+    matching_workers_fewer_than: null,
+    matching_workers_reason: null,
   };
 
   it("reads the one row of the organisation and maps it", async () => {
@@ -119,11 +125,13 @@ describe("getEmployerNetwork (FR-R5 AC3, AC4, AC7)", () => {
     });
     expect(network.requirements?.invitedRecruitment).toBe(2);
     expect(network.submissionStages?.submitted).toBe(2);
+    expect(network.requests).toEqual({ waiting: 2, answered: 1 });
+    expect(network.matchingWorkers).toEqual({ kind: "count", count: 40 });
   });
 
   it("keeps a switched-off release as null, never as zero", async () => {
     const off = Object.fromEntries(
-      Object.entries(row).map(([key, value]) => [key, key.endsWith("companies") || key === "saved_partners" ? value : null]),
+      Object.entries(row).map(([key, value]) => [key, key.endsWith("companies") || key === "saved_partners" || key === "matching_workers_suppressed" ? value : null]),
     );
     rpcMock.mockResolvedValue({ data: [off], error: null });
     const network: EmployerNetwork = await getEmployerNetwork("org-a");
@@ -132,6 +140,8 @@ describe("getEmployerNetwork (FR-R5 AC3, AC4, AC7)", () => {
       followedCompanies: 1,
       requirements: null,
       submissionStages: null,
+      requests: null,
+      matchingWorkers: null,
     });
   });
 
