@@ -103,7 +103,7 @@ test.describe("Structured connection actions (FR-P2)", () => {
     await expect(dialog).toContainText("0/2,000 characters");
     await body.fill("Too short");
     await dialog.getByRole("button", { name: "Send inquiry" }).click();
-    await expect(dialog.getByRole("alert")).toContainText("Write at least 20 characters");
+    await expect(dialog.locator("#inquiry-body-error")).toContainText("Write at least 20 characters");
     await expectNoAxeViolations(page);
     const text = "We need twenty welders for our Hamburg yard from April. Can you help?";
     await body.fill(text);
