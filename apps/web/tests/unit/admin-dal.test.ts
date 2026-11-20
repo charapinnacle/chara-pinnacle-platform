@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const rpcMock = vi.fn();
+const rangeMock = vi.fn();
 const createClientMock = vi.fn();
 const headerValues = vi.hoisted(() => ({ values: {} as Record<string, string> }));
 
@@ -11,7 +12,10 @@ vi.mock("@/lib/supabase/server", () => ({
   createClient: async (extra?: Record<string, string>) => {
     createClientMock(extra);
     return {
-      rpc: rpcMock,
+      rpc: (...args: unknown[]) => {
+        const result = Promise.resolve(rpcMock(...args));
+        return Object.assign(result, { range: (from: number, to: number) => (rangeMock(from, to), result) });
+      },
     };
   },
 }));
@@ -566,6 +570,16 @@ describe("the partner network statistics", () => {
       minCount: 8,
       statesFrom: "2026-03-31",
     });
+  });
+
+  it("read the counts page by page past the 100 rows the Data API returns at once", async () => {
+    const row = (n: number) => ({ metric: "partner_saves", period_start: `2026-01-${String((n % 28) + 1).padStart(2, "0")}`, count: n });
+    const pages = [Array.from({ length: 100 }, (_, n) => row(n)), Array.from({ length: 3 }, (_, n) => row(100 + n))];
+    rpcMock.mockImplementation(async (name: string) => (name === "admin_network_counts" ? { data: pages.shift(), error: null } : { data: [], error: null }));
+    const statistics = await dal.networkStatistics({ from: "2025-11-20", to: "2026-11-19", period: "week" });
+
+    expect(statistics.counts).toHaveLength(103);
+    expect(rangeMock.mock.calls).toEqual([[0, 99], [100, 199]]);
   });
 
   it("throw a failure that keeps the database error as its cause", async () => {
