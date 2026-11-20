@@ -6,7 +6,7 @@ import { createCommittedUser } from "./support/login";
 import { createCommittedPartner, partnerWithCompany, setPartnerRelease } from "./support/partners";
 import { seedAllButCv, signIn } from "./support/passport";
 import { signInBrowser } from "./support/session";
-import { addMember, newTeam, signInAtAal2, type Team } from "./support/team";
+import { addMember, newTeam, signInWithCode, type Team } from "./support/team";
 import type { TestUser } from "./support/test-user";
 import { expect, test } from "./support/test";
 
@@ -124,7 +124,7 @@ test.describe("Dashboard blocks of release 2c (V75)", () => {
   test("FR-R5 AC5, AC6: the employer reads the matching workers and its inquiry, each with its next action", async ({ page }) => {
     test.setTimeout(150_000);
     const url = `/en/dashboard/employer?org=${acme.slug}`;
-    await signInAtAal2(page, acme.owner, acme.ownerSecret, url);
+    await signInWithCode(page, acme.owner, acme.ownerSecret, url);
     const network = region(page, QUESTION);
     const matching = network.getByRole("region", { name: "Matching workers" });
     await expect(matching).toContainText("5 workers who chose to be visible match your requirements.");
@@ -142,7 +142,7 @@ test.describe("Dashboard blocks of release 2c (V75)", () => {
     const free = await newTeam();
     seedRequirement(free);
     const url = `/en/dashboard/employer?org=${free.slug}`;
-    await signInAtAal2(page, free.owner, free.ownerSecret, url);
+    await signInWithCode(page, free.owner, free.ownerSecret, url);
     const matching = region(page, "Matching workers");
     await expect(matching).toContainText("Find Workers is included in paid plans.");
     await expect(matching.getByRole("link", { name: "Upgrade your plan" })).toHaveAttribute("href", `/en/org/${free.slug}/billing`);
@@ -219,7 +219,7 @@ test.describe("Dashboard blocks of release 2c (V75)", () => {
     setRelease("release_messaging", false);
     setRelease("release_find_workers", false);
     try {
-      await signInAtAal2(page, acme.owner, acme.ownerSecret, `/en/dashboard/employer?org=${acme.slug}`);
+      await signInWithCode(page, acme.owner, acme.ownerSecret, `/en/dashboard/employer?org=${acme.slug}`);
       await expect(page.getByRole("heading", { level: 2, name: QUESTION })).toBeVisible();
       for (const name of ["Matching workers", "Inquiries and workforce requests", "Unread messages"]) {
         await expect(region(page, name)).toHaveCount(0);
