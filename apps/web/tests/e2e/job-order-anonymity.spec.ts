@@ -57,7 +57,9 @@ async function received(page: Page, visit: () => Promise<void>): Promise<string>
   const listener = (response: PageResponse) => {
     const type = response.headers()["content-type"] ?? "";
     if (response.url().includes("/_next/static/") || !/text|json|x-component/.test(type)) return;
-    bodies.push(response.text().then((body) => `${response.url()}\n${JSON.stringify(response.headers())}\n${body}`, () => response.url()));
+    // A response still streaming when the page is left never ends; its body is given up after 20 s.
+    const text = response.text().then((body) => `${response.url()}\n${JSON.stringify(response.headers())}\n${body}`, () => response.url());
+    bodies.push(Promise.race([text, new Promise<string>((resolve) => setTimeout(() => resolve(response.url()), 20_000))]));
   };
   page.on("response", listener);
   try {
