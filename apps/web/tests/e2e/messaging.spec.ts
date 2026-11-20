@@ -396,7 +396,7 @@ test.describe("Messaging limits and safety (FR-P3)", () => {
     const dialog = page.getByRole("dialog", { name: "Block this conversation?" });
     await expect(dialog).toBeVisible();
     await dialog.getByRole("button", { name: "Block conversation" }).click();
-    await expect(page.getByText("You blocked this conversation")).toBeVisible();
+    await expect(page.getByText("You blocked this conversation", { exact: true })).toBeVisible();
     await expect(page.getByRole("textbox")).toHaveCount(0);
     await expect(logOf(page, employerName).getByText("Pay 300 euros for the contract first.")).toBeVisible();
     await expectAccessibleAtBothWidths(page);
