@@ -203,6 +203,10 @@ export const findWorkersOrderBy = "order by r.score desc, r.updated_at desc, r.c
 // Which cards are searched: the listed ones (opted in, account active, no deletion requested; V68).
 export const findWorkersSelection = "where c.listed";
 
+// The refusals of private.assert_worker_searcher, which every search makes first (V80): only an active organisation, and
+// for a recruitment or staffing company only a listed one that is not hidden by moderation, searches workers.
+export const findWorkersAccessChecks = ["organization_suspended", "not_listed", "profile_hidden"] as const;
+
 export const findWorkersCopy = {
   selection:
     "Employers, and listed recruitment and staffing companies, on a paid plan can search the workers who chose to be found. Only workers whose choice is current and whose account is active are shown; every filter leaves out the workers that do not match it.",
@@ -211,8 +215,12 @@ export const findWorkersCopy = {
   updated:
     "The last time the worker changed a field their card shows, most recent first.",
   identifier: "A fixed random number of each card, so that cards equal on everything above always appear in the same order.",
+  access:
+    "Only an active organisation can search; a recruitment or staffing company must also be listed in the directories and not hidden by moderation. The check is made again for every search and every page of results.",
   rules:
     "The direct-hiring rules of the worker's country for your destination decide only whether a card offers direct contact or points to recruitment partners, never whether or where it is listed.",
+  contact:
+    "Whether your organisation saved a card or sent the worker a contact request, and the worker's answer, decide only what the card offers, never the order.",
   never:
     "No characteristic such as gender, age, nationality, religion or health is a filter or counts in the order. Whether your organisation pays, and its plan, decide only which filters it can use, never the order; workers never pay.",
   paging:

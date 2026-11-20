@@ -206,6 +206,7 @@ export default async function RankingPage({ params }: PageProps<"/[lang]/legal/r
       {findWorkers ? (
         <ContentSection heading="Find Workers">
           <p>{findWorkersCopy.selection}</p>
+          <p>{findWorkersCopy.access}</p>
           <p>Workers are sorted by these parameters, in this order:</p>
           <ol className="grid list-decimal gap-2 ps-5">
             <li>{findWorkersCopy.score}</li>
@@ -213,6 +214,7 @@ export default async function RankingPage({ params }: PageProps<"/[lang]/legal/r
             <li>{findWorkersCopy.identifier}</li>
           </ol>
           <p>{findWorkersCopy.rules}</p>
+          <p>{findWorkersCopy.contact}</p>
           <p>{findWorkersCopy.never}</p>
           <p>{findWorkersCopy.paging}</p>
         </ContentSection>

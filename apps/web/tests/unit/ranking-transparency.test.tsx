@@ -11,6 +11,7 @@ import {
   findEmployersCopy,
   findEmployersOrderBy,
   findEmployersSelection,
+  findWorkersAccessChecks,
   findWorkersCopy,
   findWorkersOrderBy,
   findWorkersSelection,
@@ -80,6 +81,7 @@ const listJobOrders = latestDefinition("list_job_orders");
 const searchEmployers = latestDefinition("search_employers");
 const searchWorkers = latestDefinition("search_workers");
 const assertJobOrderPartner = latestDefinition("assert_job_order_partner", "private");
+const assertWorkerSearcher = latestDefinition("assert_worker_searcher", "private");
 
 async function renderPage(): Promise<string> {
   const page = await RankingPage({ params: Promise.resolve({ lang: "en" }) } as Parameters<typeof RankingPage>[0]);
@@ -293,6 +295,18 @@ describe("the ranking page and Find Workers (FR-Q2, NFR-C8)", () => {
     expect(searchWorkers).toContain(
       "f.q_occupation::integer + f.q_headline::integer + f.q_skills::integer + f.skill_hits as score",
     );
+  });
+
+  it("only an active organisation, and a listed and visible partner, searches, as the page says (V80)", () => {
+    expect(searchWorkers).toContain("v_org public.organizations := private.assert_worker_searcher(p_org);");
+    for (const detail of findWorkersAccessChecks) expect(assertWorkerSearcher).toContain(`detail = '${detail}'`);
+    expect(findWorkersCopy.access).toContain("listed in the directories and not hidden by moderation");
+  });
+
+  it("no order by of search_workers reads a saved card or a contact request (V80)", () => {
+    const orders = [...searchWorkers.matchAll(/order by [^;]*?(?=\)|;|limit|$)/g)].map((match) => match[0]);
+    for (const order of orders) expect(order).not.toMatch(/\b(saved_worker_cards|contact_requests?|direct_contact|notice)\b/i);
+    expect(searchWorkers).not.toMatch(/\b(saved_worker_cards|contact_requests)\b/);
   });
 
   it("no order by of search_workers reads a plan or a characteristic of the worker", () => {

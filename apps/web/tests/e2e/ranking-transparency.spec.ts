@@ -10,14 +10,19 @@ function setJobOrderRelease(on: boolean): void {
   execute(`update private.settings set value = '${on}' where key = 'release_job_orders'`);
 }
 
+function setFindWorkersRelease(on: boolean): void {
+  execute(`update private.settings set value = '${on}' where key = 'release_find_workers'`);
+}
+
 const staleDays = () =>
   query<{ v: string }>(`select value #>> '{}' as v from private.settings where key = 'workforce_listing_stale_days'`)[0].v;
 
 // NFR-C8: the public page that describes the order of Find Partners. Release 2a is set for the whole database while this
 // file runs, so it is a project of its own that follows the other partner specs (playwright.config.ts), one test after
-// the other; the release 2b test sets release 2b for a moment too, which no project running beside this one reads. The
-// order itself, plan against plan, is proved in supabase/tests/database/154_ranking_transparency.test.sql (Find Partners)
-// and 190_job_order_ranking.test.sql (the job order board, V79).
+// the other; the release 2b and Find Workers tests set release 2b or release_find_workers for a moment too, which no
+// project running beside this one reads. The order itself, plan against plan, is proved in
+// supabase/tests/database/154_ranking_transparency.test.sql (Find Partners), 190_job_order_ranking.test.sql (the job
+// order board, V79) and 222_find_workers_ranking.test.sql (Find Workers, V80).
 test.describe("the ranking transparency page (NFR-C8)", () => {
   test.describe.configure({ mode: "serial" });
   test.afterAll(() => {
@@ -96,6 +101,33 @@ test.describe("the ranking transparency page (NFR-C8)", () => {
       await expectAccessibleAtBothWidths(page);
     } finally {
       setJobOrderRelease(false);
+    }
+  });
+
+  test("while Find Workers is released it also describes the order of the cards and what never changes it (V80)", async ({ page }) => {
+    setPartnerRelease(true);
+    setFindWorkersRelease(false);
+    await page.goto(RANKING);
+    const main = page.getByRole("main");
+    await expect(main.getByRole("heading", { level: 2, name: "Find Workers", exact: true })).toHaveCount(0);
+
+    setFindWorkersRelease(true);
+    try {
+      await page.reload();
+      const findWorkers = main.locator("section").filter({ has: page.getByRole("heading", { level: 2, name: "Find Workers", exact: true }) });
+      await expect(findWorkers).toContainText("Only workers whose choice is current and whose account is active are shown");
+      await expect(findWorkers).toContainText("listed in the directories and not hidden by moderation");
+      await expect(findWorkers.getByRole("listitem")).toHaveText([
+        /^The match score: one point for each field your keyword is found in/,
+        /^The last time the worker changed a field their card shows/,
+        /^A fixed random number of each card/,
+      ]);
+      await expect(findWorkers).toContainText("never whether or where it is listed");
+      await expect(findWorkers).toContainText("decide only what the card offers, never the order");
+      await expect(findWorkers).toContainText("No characteristic such as gender, age, nationality, religion or health is a filter");
+      await expectAccessibleAtBothWidths(page);
+    } finally {
+      setFindWorkersRelease(false);
     }
   });
 
