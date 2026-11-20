@@ -177,7 +177,9 @@ test.describe("Moderation of job orders, responses and submissions (V57)", () =>
       `select payload ->> 'target_type' as target_type, payload ->> 'reasons' as reasons from public.notifications
        where kind = 'moderation_decision' and user_id = ${literal(alpha.owner.id)}`,
     )).toEqual([{ target_type: "partner_response", reasons: REASONS }]);
-    expect((await page.request.get(`/en/org/${acme.slug}/requirements/${requirement}/responses/${response}`)).status(), "hidden from the employer").toBe(404);
+    // The page streams behind its loading state, so the not-found page comes with status 200: what it shows is checked.
+    await page.goto(`/en/org/${acme.slug}/requirements/${requirement}/responses/${response}`);
+    await expect(page.getByRole("heading", { name: "Page not found" }), "hidden from the employer").toBeVisible();
 
     const partner = await newVisitor(browser);
     await signInAtAal1(partner.page, alpha.owner, `/en/org/${alpha.slug}/responses/${response}`);
