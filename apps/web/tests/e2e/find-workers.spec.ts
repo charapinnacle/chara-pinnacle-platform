@@ -9,7 +9,7 @@ import { logIn } from "./support/login-page";
 import { uniqueToken } from "./support/organizations";
 import { seedAllButCv, signIn } from "./support/passport";
 import { setPartnerRelease } from "./support/partners";
-import { enforceLimits, newTeam, newVisitor, restoreLimits, signInAtAal1, type Team } from "./support/team";
+import { enforceLimits, newTeam, newVisitor, restoreLimits, signInAtAal1, signInAtAal2, type Team } from "./support/team";
 import type { TestUser } from "./support/test-user";
 import { expect, test } from "./support/test";
 
@@ -179,7 +179,7 @@ test.describe("Find Workers (FR-Q2)", () => {
   test("AC10, AC12: Find workers for this requirement prefills it and keeps the saved cards with it", async ({ page }) => {
     test.setTimeout(180_000);
     const requirement = seedRequirement(acme);
-    await signInAtAal1(page, acme.owner, `/en/org/${acme.slug}/requirements/${requirement}`);
+    await signInAtAal2(page, acme.owner, acme.ownerSecret, `/en/org/${acme.slug}/requirements/${requirement}`);
     await page.getByRole("link", { name: "Find workers for this requirement" }).click();
     await expect(page).toHaveURL(searchUrl(acme.slug, `requirement=${requirement}&occupation=7212&destination=DE`));
     await expect(page.getByText("Searching for the requirement")).toBeVisible();
