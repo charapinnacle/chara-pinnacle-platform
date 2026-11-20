@@ -4,7 +4,7 @@ import { expectAccessibleAtBothWidths } from "./support/applications";
 import { execute, literal } from "./support/db";
 import { partnerWithCompany, setPartnerRelease, type PartnerType } from "./support/partners";
 import { signInBrowser } from "./support/session";
-import { addMember, newTeam, signInAtAal2, type Team } from "./support/team";
+import { addMember, newTeam, signInWithCode, type Team } from "./support/team";
 import { expect, test } from "./support/test";
 
 // The partner network part of the employer dashboard (V56; FR-R5 AC1, AC3, AC4, AC7 to AC10; NFR-U3, NFR-U4). Releases
@@ -116,7 +116,7 @@ test.describe("Employer dashboard, partner network (V56)", () => {
 
   test("AC1, AC3, AC4, AC10: the owner reads each block with its state and next action", async ({ page }) => {
     test.setTimeout(150_000);
-    await signInAtAal2(page, acme.owner, acme.ownerSecret, dashboardUrl(acme.slug));
+    await signInWithCode(page, acme.owner, acme.ownerSecret, dashboardUrl(acme.slug));
     await expect(page.getByRole("heading", { level: 2, name: QUESTION })).toBeVisible();
     const network = region(page, QUESTION);
     await expect(network.getByRole("link", { name: "Post workforce requirement" })).toHaveAttribute("href", `/en/org/${acme.slug}/requirements/new`);
@@ -177,7 +177,7 @@ test.describe("Employer dashboard, partner network (V56)", () => {
   test("AC9: a new employer is told what to do in every block", async ({ page }) => {
     test.setTimeout(120_000);
     const fresh = await newTeam();
-    await signInAtAal2(page, fresh.owner, fresh.ownerSecret, dashboardUrl(fresh.slug));
+    await signInWithCode(page, fresh.owner, fresh.ownerSecret, dashboardUrl(fresh.slug));
     await expect(region(page, "Workforce requirements")).toContainText(
       "Post a workforce requirement to ask partners for a group of workers, for example 20 welders for Germany.",
     );
@@ -191,7 +191,7 @@ test.describe("Employer dashboard, partner network (V56)", () => {
   test("AC7: the 2b blocks leave with job orders, the saved partners stay", async ({ page }) => {
     test.setTimeout(120_000);
     setRelease("release_job_orders", false);
-    await signInAtAal2(page, acme.owner, acme.ownerSecret, dashboardUrl(acme.slug));
+    await signInWithCode(page, acme.owner, acme.ownerSecret, dashboardUrl(acme.slug));
     await expect(page.getByRole("link", { name: "Saved partners: 2" })).toBeVisible();
     for (const name of ["Workforce requirements", "Partners invited and selected", "Responses waiting for your decision", "Submitted candidates"]) {
       await expect(region(page, name)).toHaveCount(0);
