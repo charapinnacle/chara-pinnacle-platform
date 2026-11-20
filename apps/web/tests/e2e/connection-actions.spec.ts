@@ -7,7 +7,7 @@ import { createCommittedUser } from "./support/login";
 import { uniqueToken } from "./support/organizations";
 import { seedAllButCv, signIn } from "./support/passport";
 import { partnerWithCompany, type PartnerType } from "./support/partners";
-import { addMember, newTeam, newVisitor, signInAtAal1, signInAtAal2, subscribe, type Team } from "./support/team";
+import { addMember, newTeam, newVisitor, signInAtAal1, signInWithCode, subscribe, type Team } from "./support/team";
 import type { TestUser } from "./support/test-user";
 import { expect, test } from "./support/test";
 
@@ -151,7 +151,7 @@ test.describe("Structured connection actions (FR-P2)", () => {
 
   test("AC3, AC9: an owner at aal2 requests workforce from a staffing company and finds the request in the conversation", async ({ page }) => {
     test.setTimeout(240_000);
-    await signInAtAal2(page, acme.owner, acme.ownerSecret, profileUrl(staffit.slug));
+    await signInWithCode(page, acme.owner, acme.ownerSecret, profileUrl(staffit.slug));
     const request = page.getByRole("button", { name: `Request workforce from ${staffit.name}` });
     await waitForHydration(request);
     await request.click();
