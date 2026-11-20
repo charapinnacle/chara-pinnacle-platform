@@ -123,7 +123,7 @@ test.describe("worker identity before a contact request is accepted (NFR-S9)", (
       const save = cards(page).first().getByRole("button", { name: /^Save: / });
       await waitForHydration(save);
       await save.click();
-      await expect(page.getByText("Worker saved")).toBeVisible();
+      await expect(page.getByText("Worker saved", { exact: true })).toBeVisible();
       await page.reload();
       await expect(page.getByRole("list", { name: "Saved workers" }).getByTestId("worker-card")).toHaveCount(1);
     });
@@ -138,7 +138,7 @@ test.describe("worker identity before a contact request is accepted (NFR-S9)", (
         const dialog = page.getByRole("dialog", { name: "Send a contact request" });
         await dialog.getByLabel("Message to the worker").fill("We are hiring pipe welders for a refinery in Rotterdam. Would you like to talk?");
         await dialog.getByRole("button", { name: "Send request" }).click();
-        await expect(page.getByText("Contact request sent").first()).toBeVisible();
+        await expect(page.getByText("Contact request sent", { exact: true }).first()).toBeVisible();
         await expect(dialog).toHaveCount(0);
         await page.reload();
       }
