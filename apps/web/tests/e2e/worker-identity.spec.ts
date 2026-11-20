@@ -183,8 +183,11 @@ test.describe("worker identity before a contact request is accepted (NFR-S9)", (
       `profiles?id=in.(${declining.user.id},${accepting.user.id})`,
       `worker_skills?worker_user_id=in.(${declining.user.id},${accepting.user.id})`,
     ]) {
+      // Nothing comes back: either no row, or the table is not granted to the role at all.
       const answer = await dataApiAs(member, path);
-      expect(await answer.json(), path).toEqual([]);
+      const body: unknown = await answer.json();
+      if (answer.ok) expect(body, path).toEqual([]);
+      else expect(body, path).toMatchObject({ code: "42501" });
     }
     const own = await dataApiAs(member, `contact_requests?organization_id=eq.${team.id}&select=id,status,message`);
     expect(await own.json()).toHaveLength(2);
