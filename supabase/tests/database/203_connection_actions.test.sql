@@ -1,5 +1,5 @@
 begin;
-select plan(70);
+select plan(71);
 
 \ir apply_fixture.inc
 
@@ -327,6 +327,12 @@ select is(
   (select format('%s|%s', m.kind, c.status) from public.messages m join public.connections c on c.id = m.connection_id
    where m.conversation_id = :'conv_rw'),
   'request_workforce|sent', 'AC3: one typed message of kind request_workforce, status sent'
+);
+select is(
+  (select m.body from public.messages m where m.conversation_id = :'conv_rw'),
+  format('Workforce request: 25 × Welders and flame cutters in Hamburg, Germany, from %s.',
+    to_char(current_date + 60, 'FMDD FMMonth YYYY')),
+  'AC3: the typed message names the country and writes the date as the card does'
 );
 select is(
   (select count(*)::integer from private.requirement_reveals where requirement_id = :'req_rw' and organization_id = :'stf' and cause = 'invitation'),
