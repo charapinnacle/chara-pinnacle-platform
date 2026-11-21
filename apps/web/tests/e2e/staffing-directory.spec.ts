@@ -180,14 +180,15 @@ test.describe("Find staffing partners and available workforce (FR-L2, FR-K3)", (
     const address = `${DIRECTORY}?destination=DE`;
     await page.goto(address);
     const card = cards(page).filter({ hasText: batch.staffing });
-    const contact = card.getByRole("link", { name: `Sign up to contact ${batch.staffing}` });
-    await expect(contact).toHaveAttribute("href", "/en/signup?kind=company");
+    const contact = card.getByRole("link", { name: `Sign in to contact ${batch.staffing}` });
+    const profile = await card.getByRole("heading").getByRole("link").getAttribute("href");
+    await expect(contact, "the card signs in like the profile does").toHaveAttribute("href", `/en/login?next=${encodeURIComponent(profile ?? "")}`);
     let reached = false;
     for (let step = 0; step < 80 && !reached; step++) {
       await page.keyboard.press("Tab");
       reached = await contact.evaluate((element) => element === document.activeElement);
     }
-    expect(reached, "Sign up to contact is reachable by Tab").toBe(true);
+    expect(reached, "Sign in to contact is reachable by Tab").toBe(true);
 
     const viewers: [string, TestUser][] = [
       ["candidate", await createCommittedUser("worker")],
@@ -199,7 +200,7 @@ test.describe("Find staffing partners and available workforce (FR-L2, FR-K3)", (
       await viewerPage.goto(address);
       const viewerCard = cards(viewerPage).filter({ hasText: batch.staffing });
       await expect(viewerCard, label).toHaveCount(1);
-      await expect(viewerCard.getByRole("link", { name: /Sign up to contact/ }), label).toHaveCount(0);
+      await expect(viewerCard.getByRole("link", { name: /Sign in to contact/ }), label).toHaveCount(0);
       // Save partner and Follow (FR-L4, V24): employers save and follow, candidates follow, the partner's own member neither.
       const actions: Record<string, string[]> = { candidate: ["Follow"], "partner member": [], "employer admin": ["Save partner", "Follow"] };
       const expected = actions[label] ?? [];

@@ -18,7 +18,7 @@ import {
   type PartnerDirectoryKind,
   type PartnerSearchFilters,
 } from "@/lib/partners/search-params";
-import { loginPath, partnerProfilePath, signUpPath } from "@/lib/routes";
+import { loginPath, partnerProfilePath } from "@/lib/routes";
 import { staffingTypeLabels } from "@/lib/validation/workforce-offer";
 
 const names = (items: readonly Named[]) => items.map((item) => item.name).join(", ");
@@ -100,8 +100,8 @@ function PartnerCard({ lang, kind, partner, basedIn, viewer, connection }: CardP
       {viewer === "visitor" || hasConnectionActions(connection.access) ? (
         <div className="flex flex-wrap gap-2 sm:justify-end">
           {viewer === "visitor" ? (
-            <LinkButton href={signUpPath(lang, "company")} variant="secondary">
-              Sign up to contact<span className="sr-only normal-case"> {partner.displayName}</span>
+            <LinkButton href={loginPath(lang, profilePath)} variant="secondary">
+              Sign in to contact<span className="sr-only normal-case"> {partner.displayName}</span>
             </LinkButton>
           ) : null}
           <ConnectionActions
