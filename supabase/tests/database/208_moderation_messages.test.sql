@@ -322,8 +322,8 @@ select is(pg_temp.report(:'wa', 'message', :'fee_msg', 'harassment'), 'P0002|CHA
 -- Appeal of the organisation's message: the sender or the owners and admins, at aal2 ------------------------------------------
 
 select is(
-  pg_temp.read_as(:'mem', format('select format(''%%s|%%s'', title, can_appeal) from public.list_my_appeals(%s)', :act_fee), 'aal1'),
-  'Message|t', 'FR-S1 step Appeal: the member who sent the message reads the decision and may appeal it');
+  pg_temp.read_as(:'mem', format('select format(''%%s|%%s'', title ~ ''^Sent on \d{1,2} \w+ \d{4} at \d\d:\d\d UTC in the conversation with Amina Okafor$'', can_appeal) from public.list_my_appeals(%s)', :act_fee), 'aal1'),
+  't|t', 'FR-S1 step Appeal: the member who sent the message reads the decision, named by when it was sent and to whom, and may appeal it');
 select is(
   pg_temp.read_as(:'own2', format('select count(*)::text from public.list_my_appeals(%s)', :act_fee)) || ';'
     || pg_temp.read_as(:'wa', format('select count(*)::text from public.list_my_appeals(%s)', :act_fee), 'aal1'),
@@ -354,8 +354,8 @@ select is(
   'Please pay 500 euros for the visa before we continue./When can you start?',
   'Acme no longer reads the worker''s hidden message and still reads its own, hidden one');
 select is(
-  pg_temp.read_as(:'wa', format('select format(''%%s|%%s|%%s'', title, organization_id is null, can_appeal) from public.list_my_appeals(%s)', :act_wa), 'aal1'),
-  'Message|t|t', 'the worker reads the decision on the own message and may appeal it');
+  pg_temp.read_as(:'wa', format('select format(''%%s|%%s|%%s'', title ~ '' in the conversation with Acme Bau$'', organization_id is null, can_appeal) from public.list_my_appeals(%s)', :act_wa), 'aal1'),
+  't|t|t', 'the worker reads the decision on the own message, named with the organisation it was sent to, and may appeal it');
 select is(
   pg_temp.read_as(:'wb', format($f$select appeal_id::text from public.submit_appeal(%s, 'This was not abusive, please look again.')$f$, :act_wa), 'aal1')
     || ';' || pg_temp.read_as(:'own1', format($f$select appeal_id::text from public.submit_appeal(%s, 'This was not abusive, please look again.')$f$, :act_wa)),
