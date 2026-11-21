@@ -7,10 +7,11 @@ import { toast, toastError } from "@/components/feedback/toast-store";
 import { FormButton } from "@/components/forms/form-button";
 import { FormErrorSummary } from "@/components/forms/form-error-summary";
 import { InputField, TextareaField } from "@/components/forms/form-field";
+import { Notice } from "@/components/forms/notice";
 import { SelectField } from "@/components/forms/select-field";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { setLimitOverride } from "@/lib/actions/plan-editor";
-import { overrideFormSchema, type OverrideForm } from "@/lib/validation/plan-editor";
+import { limitText, lowersPlanLimit, overrideFormSchema, type OverrideForm } from "@/lib/validation/plan-editor";
 
 const ids = {
   organizationId: "override-organization",
@@ -23,7 +24,7 @@ const ids = {
 const FAILURE = "The override was not saved";
 
 type OverrideFormProps = {
-  organizations: readonly { id: string; label: string; orgType: string }[];
+  organizations: readonly { id: string; label: string; orgType: string; planLimits: Readonly<Record<string, number | null>> }[];
   limitKeys: Readonly<Record<string, readonly { key: string; label: string }[]>>;
 };
 
@@ -37,7 +38,10 @@ export function OverrideFormView({ organizations, limitKeys }: OverrideFormProps
   const { control, formState, handleSubmit, reset } = form;
   const { submit } = useServerFormSubmit(form, { failureTitle: FAILURE });
   const organizationId = useWatch({ control, name: "organizationId" });
-  const orgType = organizations.find((organization) => organization.id === organizationId)?.orgType;
+  const [limitKey, value] = useWatch({ control, name: ["limitKey", "value"] });
+  const chosen = organizations.find((organization) => organization.id === organizationId);
+  const orgType = chosen?.orgType;
+  const planLimit = limitKey ? chosen?.planLimits[limitKey] : undefined;
   const keyOptions = (orgType ? (limitKeys[orgType] ?? []) : []).map(({ key, label }) => ({ value: key, label }));
 
   function onSubmit(values: OverrideForm) {
@@ -73,7 +77,22 @@ export function OverrideFormView({ organizations, limitKeys }: OverrideFormProps
         placeholder={orgType ? "Choose a limit" : "Choose an organisation first"}
         options={keyOptions}
       />
-      <InputField control={control} name="value" id={ids.value} label="Value" description="A whole number from 0 to 1,000,000." inputMode="numeric" autoComplete="off" maxLength={7} />
+      <InputField
+        control={control}
+        name="value"
+        id={ids.value}
+        label="Value"
+        description={`A whole number from 0 to 1,000,000.${planLimit === undefined ? "" : ` The plan allows ${limitText(planLimit)}.`}`}
+        inputMode="numeric"
+        autoComplete="off"
+        maxLength={7}
+      />
+      {lowersPlanLimit(planLimit, value) ? (
+        <Notice tone="warning" role="status">
+          This is lower than the plan&apos;s limit ({limitText(planLimit ?? null)}). The organisation gets less than its plan until the
+          override expires.
+        </Notice>
+      ) : null}
       <InputField control={control} name="expiresOn" id={ids.expiresOn} label="Expires on" description="A date after today. The plan limit applies again from that day." type="date" />
       <TextareaField control={control} name="reason" id={ids.reason} label="Reason for the change" description="Required, 10 to 500 characters." />
       <div>

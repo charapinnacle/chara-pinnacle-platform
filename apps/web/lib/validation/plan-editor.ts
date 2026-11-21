@@ -81,6 +81,14 @@ export function limitText(value: number | null): string {
   return value === null ? "Unlimited" : value.toLocaleString("en");
 }
 
+// Whether an override value gives an organisation less than its plan (null means unlimited); an override may do that, but
+// the administrator is told before saving.
+export function lowersPlanLimit(planLimit: number | null | undefined, value: string): boolean {
+  const next = /^\d+$/.test(value.trim()) ? Number(value.trim()) : null;
+  if (next === null || planLimit === undefined) return false;
+  return planLimit === null || next < planLimit;
+}
+
 export type PlanChange = { label: string; from: string; to: string };
 
 type PlanFields = { name: string; isPublic: boolean; trialDays: number };
