@@ -54,7 +54,12 @@ export default async function RespondToInvitationPage({ params }: PageProps<"/[l
           lang={lang}
           slug={slug}
           organization={organization}
-          requirement={{ id: requirement.id, workersNeeded: requirement.workersNeeded, countryCode: requirement.countryCode }}
+          requirement={{
+            id: requirement.id,
+            workersNeeded: requirement.workersNeeded,
+            countryCode: requirement.countryCode,
+            salaryCurrency: requirement.salaryCurrency,
+          }}
           eligibility={eligibility}
           selfHref={invitationRespondPath(lang, slug, invitation.id)}
         />

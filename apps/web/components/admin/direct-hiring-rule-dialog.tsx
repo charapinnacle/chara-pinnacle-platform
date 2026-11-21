@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { ModalDialog } from "@/components/feedback/modal-dialog";
 import { toast, toastError } from "@/components/feedback/toast-store";
+import { ComboboxField } from "@/components/forms/combobox-field";
 import { FormButton } from "@/components/forms/form-button";
 import { FormErrorSummary } from "@/components/forms/form-error-summary";
 import { InputField, TextareaField } from "@/components/forms/form-field";
@@ -109,7 +110,7 @@ function RuleFormView({ countries, rule, onClose }: { countries: readonly Countr
         </dl>
       ) : (
         <>
-          <SelectField
+          <ComboboxField
             control={control}
             name="sourceCountry"
             id={ids.sourceCountry}
@@ -117,8 +118,9 @@ function RuleFormView({ countries, rule, onClose }: { countries: readonly Countr
             description="The country where the worker lives now, never a nationality."
             placeholder="Choose a country"
             options={countryOptions}
+            emptyText="No matching country"
           />
-          <SelectField
+          <ComboboxField
             control={control}
             name="destinationCountry"
             id={ids.destinationCountry}
@@ -126,6 +128,7 @@ function RuleFormView({ countries, rule, onClose }: { countries: readonly Countr
             description="Leave as all destinations for a rule that applies to every country of work."
             placeholder="All destinations"
             options={countryOptions}
+            emptyText="No matching country"
           />
         </>
       )}

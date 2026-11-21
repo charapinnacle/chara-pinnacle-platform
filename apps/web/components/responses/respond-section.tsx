@@ -31,7 +31,7 @@ type RespondSectionProps = {
   lang: string;
   slug: string;
   organization: Organization;
-  requirement: { id: string; workersNeeded: number; countryCode: string };
+  requirement: { id: string; workersNeeded: number; countryCode: string; salaryCurrency: string | null };
   eligibility: ResponseEligibility;
   // This page, which the panel's Respond would lead to.
   selfHref: string;
@@ -77,6 +77,7 @@ export async function RespondSection({ lang, slug, organization, requirement, el
       workersNeeded={requirement.workersNeeded}
       maxCapacity={eligibility.maxCapacity}
       currencies={currencies}
+      defaultCurrency={requirement.salaryCurrency}
       documents={documents}
       documentsMax={documentsMax}
       organization={{ id: organization.id, type: organization.type, canManage }}
