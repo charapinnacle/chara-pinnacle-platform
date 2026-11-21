@@ -10,7 +10,7 @@ export const CANDIDATE_EMAIL_REQUIRED = "Enter the candidate's email address.";
 export const CANDIDATE_EMAIL_INVALID = "Enter a valid email address, like name@example.com.";
 export const CANDIDATE_EMAIL_TOO_LONG = "The email address must have 254 characters or fewer.";
 export const SUBMISSION_NOTE_TOO_LONG = "The note must have 1,000 characters or fewer.";
-export const SHARE_CONSENT_REQUIRED = "Confirm that you agree to share your profile and the selected documents";
+export const SHARE_CONSENT_REQUIRED = "Confirm that you agree to share your profile and the selected documents.";
 
 // The address is trimmed and lower-cased as submit_candidate stores it; the note is plain text, kept as typed after
 // trimming.

@@ -107,9 +107,9 @@ describe("moderateJob", () => {
   });
 
   it.each([
-    ["hidden", "This vacancy is already hidden"],
-    ["visible", "This vacancy is not hidden"],
-    ["org_suspended", "This vacancy is hidden with the suspension of its organisation"],
+    ["hidden", "This vacancy is already hidden."],
+    ["visible", "This vacancy is not hidden."],
+    ["org_suspended", "This vacancy is hidden with the suspension of its organisation."],
   ])("says what is the matter when the database finds the vacancy %s", async (state, expected) => {
     rpcMock.mockResolvedValue(failure("CHARA_INVALID_STATE", state));
     expect(await moderateJob({ id: ID, action: "hide", reason: REASON })).toEqual({ message: expected });
@@ -164,7 +164,7 @@ describe("grantRole", () => {
     [failure("CHARA_CONFLICT", "role_active"), { errors: { role: "This person already has this role" } }],
     [failure("CHARA_FORBIDDEN", "own_account"), { errors: { email: "You cannot give a role to yourself" } }],
     [failure("CHARA_INVALID_INPUT", "user"), { errors: { email: "This person has no active account with a confirmed email address" } }],
-    [failure("CHARA_INVALID_INPUT", "reason"), { errors: { reason: "Give a reason of 10 to 500 characters" } }],
+    [failure("CHARA_INVALID_INPUT", "reason"), { errors: { reason: "Give a reason of 10 to 500 characters." } }],
   ])("maps the refusal %# to the field", async (refusal, expected) => {
     rpcMock.mockImplementation(async (name: string) => (name === "admin_search_users" ? { data: [{ id: ID, email: "nia@example.test" }], error: null } : refusal));
     expect(await grantRole(input)).toEqual(expected);

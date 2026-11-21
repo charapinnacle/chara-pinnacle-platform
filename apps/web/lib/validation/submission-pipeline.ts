@@ -8,7 +8,7 @@ export const SUBMISSION_REASON_MIN_CHARS = 10;
 
 const REASON_LENGTH = `Enter a reason of at least ${SUBMISSION_REASON_MIN_CHARS} characters`;
 
-const stage = z.string({ error: "Choose a stage" }).pipe(z.enum(employerStages, { error: "Choose a stage" }));
+const stage = z.string({ error: "Choose a stage." }).pipe(z.enum(employerStages, { error: "Choose a stage." }));
 
 // What the Server Actions of a submission's stage change parse (FR-O5 AC3): a decline carries the reason the candidate
 // reads, trimmed, of at least SUBMISSION_REASON_MIN_CHARS characters.
@@ -36,7 +36,7 @@ export const submissionNoteInputSchema = z.object({
   body: z
     .string()
     .trim()
-    .min(1, { error: "Enter a note" })
+    .min(1, { error: "Enter a note." })
     .max(SUBMISSION_NOTE_MAX_CHARS, { error: `Note must be at most ${SUBMISSION_NOTE_MAX_CHARS} characters` }),
 });
 

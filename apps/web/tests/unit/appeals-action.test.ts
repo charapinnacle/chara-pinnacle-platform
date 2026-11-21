@@ -44,7 +44,7 @@ describe("submitAppeal", () => {
   });
 
   it("refuses grounds of 19 or 2,001 characters with the field error and calls nothing", async () => {
-    expect((await submitAppeal({ decision: 42, grounds: "Nineteen characters" })).errors).toEqual({ grounds: "Give grounds of at least 20 characters" });
+    expect((await submitAppeal({ decision: 42, grounds: "Nineteen characters" })).errors).toEqual({ grounds: "Give grounds of at least 20 characters." });
     expect((await submitAppeal({ decision: 42, grounds: "g".repeat(2001) })).errors).toEqual({ grounds: "The grounds can have at most 2000 characters" });
     expect((await submitAppeal({ decision: 0, grounds: GROUNDS })).errors).toHaveProperty("decision");
     expect(rpcMock).not.toHaveBeenCalled();
@@ -70,7 +70,7 @@ describe("submitAppeal", () => {
       expect((await submitAppeal({ decision: 42, grounds: GROUNDS })).message, `${message}:${details}`).toBe(text);
     }
     rpcMock.mockResolvedValueOnce(failure("CHARA_INVALID_INPUT", "grounds"));
-    expect((await submitAppeal({ decision: 42, grounds: GROUNDS })).errors).toEqual({ grounds: "Give grounds of 20 to 2000 characters" });
+    expect((await submitAppeal({ decision: 42, grounds: GROUNDS })).errors).toEqual({ grounds: "Give grounds of 20 to 2000 characters." });
     rpcMock.mockResolvedValueOnce(failure("CHARA_FORBIDDEN", "aal2_required"));
     await expect(submitAppeal({ decision: 42, grounds: GROUNDS })).rejects.toThrow("REDIRECT:/en/mfa?next=%2Fen%2Fappeals%2F42");
   });

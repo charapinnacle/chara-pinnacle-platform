@@ -23,7 +23,7 @@ import {
 } from "@/lib/validation/plan-editor";
 import { fieldErrors } from "@/lib/validation/sign-up";
 
-const REASON = { "CHARA_INVALID_INPUT:reason": { errors: { reason: "Give a reason of 10 to 500 characters" } } };
+const REASON = { "CHARA_INVALID_INPUT:reason": { errors: { reason: "Give a reason of 10 to 500 characters." } } };
 
 // The changes of one plan edit (FR-R2 AC10) as one call: the database saves them all or none, and refuses them when a
 // value shown in the dialog is no longer current.

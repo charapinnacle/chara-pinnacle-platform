@@ -14,7 +14,7 @@ export const appealFormSchema = z.object({
   grounds: z
     .string({ error: "Enter your grounds." })
     .trim()
-    .min(GROUNDS_MIN, `Give grounds of at least ${GROUNDS_MIN} characters`)
+    .min(GROUNDS_MIN, `Give grounds of at least ${GROUNDS_MIN} characters.`)
     .max(GROUNDS_MAX, `The grounds can have at most ${GROUNDS_MAX} characters`),
 });
 

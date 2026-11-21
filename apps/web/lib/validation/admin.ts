@@ -113,7 +113,7 @@ const dayString = z.string().refine(isDay, "Enter a date as year-month-day.");
 function checkRange(value: { from: string; to: string }, ctx: z.RefinementCtx): void {
   const days = (Date.parse(value.to) - Date.parse(value.from)) / 86_400_000 + 1;
   if (days < 1) ctx.addIssue({ code: "custom", path: ["from"], message: "The start date must not be after the end date." });
-  else if (days > MAX_RANGE_DAYS) ctx.addIssue({ code: "custom", path: ["to"], message: `Choose at most ${MAX_RANGE_DAYS} days` });
+  else if (days > MAX_RANGE_DAYS) ctx.addIssue({ code: "custom", path: ["to"], message: `Choose at most ${MAX_RANGE_DAYS} days.` });
 }
 
 export const rangeSchema = z.object({ from: dayString, to: dayString }).superRefine(checkRange);

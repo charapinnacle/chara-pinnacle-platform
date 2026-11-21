@@ -27,7 +27,7 @@ describe("the file limit", () => {
   });
 
   it("names the size limit and the empty file", () => {
-    expect(messages(upload({}, { name: "cv.pdf", size: MB15 + 1, type: "application/pdf" }))).toEqual(["file: File is larger than 15 MB"]);
+    expect(messages(upload({}, { name: "cv.pdf", size: MB15 + 1, type: "application/pdf" }))).toEqual(["file: File is larger than 15 MB."]);
     expect(messages(upload({}, { name: "cv.pdf", size: 0, type: "application/pdf" }))).toEqual(["file: The file is empty."]);
   });
 });

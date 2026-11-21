@@ -92,7 +92,7 @@ describe("decideReport (FR-S1 AC4, AC11)", () => {
     rpcMock.mockResolvedValueOnce(failure("CHARA_INVALID_STATE", "hidden"));
     expect((await decideReport({ ...input, decision: "hide" })).message).toBe("This item is already hidden. Reload the page.");
     rpcMock.mockResolvedValueOnce(failure("CHARA_INVALID_INPUT", "reason"));
-    expect((await decideReport(input)).errors).toEqual({ reason: "Give a reason of 10 to 2000 characters" });
+    expect((await decideReport(input)).errors).toEqual({ reason: "Give a reason of 10 to 2000 characters." });
     rpcMock.mockResolvedValueOnce(failure("CHARA_FORBIDDEN", "aal2_required"));
     await expect(decideReport(input)).rejects.toThrow("REDIRECT:/en/mfa?next=%2Fen%2Fadmin%2Freports%2F9");
   });
