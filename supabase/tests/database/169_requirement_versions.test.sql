@@ -1,5 +1,5 @@
 begin;
-select plan(130);
+select plan(131);
 
 \ir jobs_fixture.inc
 
@@ -387,9 +387,13 @@ update public.profiles set display_name = null where id = :'adm';
 select email as adm_email from auth.users where id = :'adm' \gset
 select is(
   pg_temp.read_as(:'mem', format($$select coalesce(changed_by_name, '-') from public.list_requirement_versions(%L, %L) where version = 7$$, :'acme', :'r'))
-    || ';' || pg_temp.read_as(:'adm', format($$select changed_by_name = %L
-      from public.list_requirement_versions(%L, %L) where version = 7$$, :'adm_email', :'acme', :'r')),
-  '-;true', 'a colleague without a name: a plain member reads none, an owner or admin reads the email the team page shows them');
+    || ';' || pg_temp.read_as(:'adm', format($$select coalesce(changed_by_name, '-') from public.list_requirement_versions(%L, %L) where version = 7$$, :'acme', :'r')),
+  '-;-', 'a colleague without a name: a plain member, and an admin at aal1, read none');
+select set_config('request.jwt.claims', json_build_object('sub', :'adm', 'role', 'authenticated', 'aal', 'aal2')::text, true) as keep \gset
+set local role authenticated;
+select is((select changed_by_name from public.list_requirement_versions(:'acme', :'r') where version = 7), :'adm_email',
+  'an owner or admin at aal2 reads the email of a colleague without a name, as the team page shows it');
+reset role;
 update public.profiles set display_name = 'Ada Admin' where id = :'adm';
 select is(
   pg_temp.read_as(:'mem', format(
