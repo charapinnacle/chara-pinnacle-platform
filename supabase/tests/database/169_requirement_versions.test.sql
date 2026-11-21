@@ -1,5 +1,5 @@
 begin;
-select plan(129);
+select plan(130);
 
 \ir jobs_fixture.inc
 
@@ -383,6 +383,14 @@ select is(
       from (select *, row_number() over () as n from public.list_requirement_versions(%L, %L)) s$$, :'acme', :'r')),
   '8:false:-,7:true:Ada Admin,6:true:Ada Admin,5:true:Ada Admin,4:true:Ada Admin,3:true:Ada Admin,2:true:Ada Admin,1:true:Ada Admin',
   'a member of Acme reads every version, newest first, with the name of who saved it (none once erased)');
+update public.profiles set display_name = null where id = :'adm';
+select email as adm_email from auth.users where id = :'adm' \gset
+select is(
+  pg_temp.read_as(:'mem', format($$select coalesce(changed_by_name, '-') from public.list_requirement_versions(%L, %L) where version = 7$$, :'acme', :'r'))
+    || ';' || pg_temp.read_as(:'adm', format($$select changed_by_name = %L
+      from public.list_requirement_versions(%L, %L) where version = 7$$, :'adm_email', :'acme', :'r')),
+  '-;true', 'a colleague without a name: a plain member reads none, an owner or admin reads the email the team page shows them');
+update public.profiles set display_name = 'Ada Admin' where id = :'adm';
 select is(
   pg_temp.read_as(:'mem', format(
     $$select old_values::text from public.list_requirement_versions(%L, %L) where version = 2$$, :'acme', :'r')),
