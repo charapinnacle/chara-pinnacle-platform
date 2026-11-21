@@ -258,6 +258,14 @@ export type ReportedMessage = {
   reported: boolean;
 };
 
+// Whether the signed-in Trust & Safety administrator has the report in review: only they read and decide a report on a
+// message or a contact request; anyone else may take it over.
+export async function isReportInMyReview(id: number): Promise<boolean> {
+  const { data, error } = await (await adminClient()).rpc("admin_report_in_my_review", { p_report: id });
+  if (error) throw failure("The review of the report", error);
+  return data;
+}
+
 // The reported message of a report and the five messages before and after it (FR-P3 AC7, NFR-C5), for the Trust & Safety
 // Administrator handling the report; the database refuses everyone else and audits every opening, so this is read only
 // when the handler asks for it, never with the page.

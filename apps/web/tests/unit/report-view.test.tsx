@@ -4,9 +4,10 @@ import type { ReportDetail } from "@/lib/dal/admin-reports";
 
 const getMock = vi.hoisted(() => vi.fn());
 const releasedMock = vi.hoisted(() => vi.fn());
+const mineMock = vi.hoisted(() => vi.fn());
 
 vi.mock("server-only", () => ({}));
-vi.mock("@/lib/dal/admin-reports", () => ({ getReport: getMock, getPartnerModeration: vi.fn(async () => null) }));
+vi.mock("@/lib/dal/admin-reports", () => ({ getReport: getMock, getPartnerModeration: vi.fn(async () => null), isReportInMyReview: mineMock }));
 vi.mock("@/lib/dal/release", () => ({ isReleased: releasedMock }));
 vi.mock("next/navigation", () => ({ notFound: vi.fn(), useRouter: () => ({ refresh: vi.fn() }) }));
 
@@ -223,6 +224,21 @@ describe("the page of a report about a job order, response or submission (FR-S1,
     expect(html).toContain("The candidate is not shown to staff");
     expect(html).toContain("Ready to travel.");
     expect(html).toContain(">Hide (already hidden)<");
+  });
+
+  it("lets only the administrator who has a message report in review decide it, and anyone else take it over", async () => {
+    const message = itemReport({ targetType: "message", item: { id: ITEM, moderationState: "visible", context: {} } });
+    getMock.mockResolvedValue(message);
+    mineMock.mockResolvedValue(false);
+    const other = renderToStaticMarkup(await ReportView({ lang: "en", id: 5, canAct: true }));
+    expect(other).toContain("Another Trust &amp; Safety administrator has this report in review.");
+    expect(other).toContain(">Mark in review<");
+    expect(other).not.toContain(">Hide<");
+    mineMock.mockResolvedValue(true);
+    const mine = renderToStaticMarkup(await ReportView({ lang: "en", id: 5, canAct: true }));
+    expect(mine).toContain(">Hide<");
+    expect(mine).not.toContain(">Mark in review<");
+    expect(mine).not.toContain("Another Trust &amp; Safety administrator");
   });
 
   it("names a closed decision on a job order by its kind", async () => {

@@ -12,7 +12,7 @@ import { TextLink } from "@/components/forms/text-link";
 import { DetailList } from "@/components/layout/detail-list";
 import { PageHeader } from "@/components/layout/page-header";
 import { Section } from "@/components/layout/section";
-import { getReport, type ReportDetail, type ReportItemContext } from "@/lib/dal/admin-reports";
+import { getReport, isReportInMyReview, type ReportDetail, type ReportItemContext } from "@/lib/dal/admin-reports";
 import { feeText } from "@/lib/responses/presentation";
 import { partnerSubmissionLabels } from "@/lib/submissions/presentation";
 import { isReleased } from "@/lib/dal/release";
@@ -73,7 +73,7 @@ function itemDetails(report: ReportDetail): { label: string; value: ReactNode }[
 
 // A message or a contact request: who sent it and its state with the page; its text only on the handler's audited
 // opening (NFR-C5).
-function SentItem({ report, canAct }: { report: ReportDetail; canAct: boolean }) {
+function SentItem({ report, reading }: { report: ReportDetail; reading: boolean }) {
   const { organization } = report;
   const kind = report.targetType === "contact_request" ? "contact_request" : "message";
   const context: ReportItemContext = report.item?.context ?? {};
@@ -86,7 +86,7 @@ function SentItem({ report, canAct }: { report: ReportDetail; canAct: boolean })
   return (
     <div className="grid gap-4">
       <DetailList items={details} />
-      {canAct && report.status === "in_review" ? (
+      {reading ? (
         <ReportedMessageContext reportId={report.id} kind={kind} />
       ) : (
         <p className="text-body text-muted-foreground">
@@ -98,9 +98,9 @@ function SentItem({ report, canAct }: { report: ReportDetail; canAct: boolean })
   );
 }
 
-function Target({ lang, report, canAct }: { lang: string; report: ReportDetail; canAct: boolean }) {
+function Target({ lang, report, canAct, reading }: { lang: string; report: ReportDetail; canAct: boolean; reading: boolean }) {
   const { job, organization } = report;
-  if (report.targetType === "message" || report.targetType === "contact_request") return <SentItem report={report} canAct={canAct} />;
+  if (report.targetType === "message" || report.targetType === "contact_request") return <SentItem report={report} reading={reading} />;
   if (isReportItem(report.targetType)) {
     return (
       <div className="grid gap-3">
@@ -225,6 +225,8 @@ function decisionTarget(report: ReportDetail): DecisionTarget {
 export async function ReportView({ lang, id, canAct }: { lang: string; id: number; canAct: boolean }) {
   const [report, released] = await Promise.all([getReport(id), isReleased("release_partner_directories")]);
   if (!report) notFound();
+  const afterReading = decidedAfterReading(report.targetType);
+  const reading = canAct && afterReading && report.status === "in_review" && (await isReportInMyReview(report.id));
 
   return (
     <div className="grid gap-page">
@@ -284,7 +286,7 @@ export async function ReportView({ lang, id, canAct }: { lang: string; id: numbe
         />
       </Section>
       <Section id="target" title="What it is about">
-        <Target lang={lang} report={report} canAct={canAct} />
+        <Target lang={lang} report={report} canAct={canAct} reading={reading} />
       </Section>
       <Section
         id="decision"
@@ -299,18 +301,25 @@ export async function ReportView({ lang, id, canAct }: { lang: string; id: numbe
       >
         {report.status === "new" || report.status === "in_review" ? (
           canAct ? (
-            <ReportDecision
+            <div className="grid gap-4">
+              {afterReading && report.status === "in_review" && !reading ? (
+                <Notice tone="info" role="status">
+                  Another Trust &amp; Safety administrator has this report in review. Put it in review yourself to read what
+                  was reported and decide it.
+                </Notice>
+              ) : null}
+              <ReportDecision
               id={report.id}
               status={report.status}
               reference={report.reference}
               signedIn={report.reporterKind === "account"}
               target={decisionTarget(report)}
-              decisions={
-                released && !(decidedAfterReading(report.targetType) && report.status === "new") ? reportDecisionsFor(report) : []
-              }
+              decisions={released && (!afterReading || reading) ? reportDecisionsFor(report) : []}
+              takeOver={afterReading && report.status === "in_review" && !reading}
               closeWithNote={!released || closesWithNote(report.targetType)}
               dismissWithNote={!released}
-            />
+              />
+            </div>
           ) : (
             <Notice tone="info" role="status">
               Read only. Trust &amp; Safety decides on reports.

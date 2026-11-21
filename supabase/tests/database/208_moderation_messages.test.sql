@@ -1,5 +1,5 @@
 begin;
-select plan(68);
+select plan(70);
 
 \ir apply_fixture.inc
 
@@ -266,6 +266,16 @@ select is(pg_temp.decide(:'t1', 'hide', 'The message asks the candidate to pay a
 select pg_temp.read_as(:'t1', format($f$select 'ok' from public.admin_set_report_status(%s, 'in_review', 'Reading the message now.')$f$, :fee_report)) as fee_review \gset
 select is(pg_temp.decide(:'t2', 'hide', 'The message asks the candidate to pay a visa fee.', :fee_report), 'P0001|CHARA_INVALID_STATE|not_in_review',
   'NFR-C5: nor by a second administrator, who cannot read it while T1 has it in review');
+select is(pg_temp.read_as(:'t1', format($f$select 'ok' from public.admin_set_report_status(%s, 'dismissed', 'Nothing in it breaks the rules.')$f$, :fee_report)),
+  'P0001|CHARA_INVALID_STATE|not_in_review', 'NFR-C5: a report on a message is not closed by setting its status, only by a decision');
+select is(
+  pg_temp.read_as(:'t2', format($f$select 'ok' from public.admin_set_report_status(%s, 'in_review', 'Taking this over while T1 is away.')$f$, :fee_report))
+    || ';' || pg_temp.read_as(:'t2', format('select public.admin_report_in_my_review(%s)::text', :fee_report))
+    || ';' || pg_temp.read_as(:'t1', format('select public.admin_report_in_my_review(%s)::text', :fee_report))
+    || ';' || pg_temp.read_as(:'t2', format($f$select 'ok' from public.admin_set_report_status(%s, 'in_review', 'Taking this over again.')$f$, :fee_report))
+    || ';' || pg_temp.read_as(:'t1', format($f$select 'ok' from public.admin_set_report_status(%s, 'in_review', 'Back from leave, reading it now.')$f$, :fee_report)),
+  'ok;true;false;P0001|CHARA_INVALID_STATE|in_review;ok',
+  'a second administrator takes a report in review over and then has it; the same one cannot again; T1 takes it back');
 select pg_temp.decide(:'t1', 'hide', 'The message asks the candidate to pay a visa fee.', :fee_report) as hid \gset
 select ok(:'hid' ~ '^\d+\|actioned$', 'FR-S1 AC4: T1 hides the reported message and the report is actioned');
 select split_part(:'hid', '|', 1)::bigint as act_fee \gset

@@ -22,6 +22,8 @@ export type DecisionTarget = { kind: string; title: string; organization: string
 type ReportDecisionProps = {
   id: number;
   status: "new" | "in_review";
+  // In review by another administrator: putting it in review again takes it over, to read and decide it.
+  takeOver?: boolean;
   reference: string;
   signedIn: boolean;
   target: DecisionTarget;
@@ -92,10 +94,10 @@ function dialogTitle(choice: Choice, target: DecisionTarget): string {
   return choice === "hide" ? `Hide the ${target.kind.toLowerCase()}` : words[choice].title;
 }
 
-export function ReportDecision({ id, status, reference, signedIn, target, decisions, closeWithNote, dismissWithNote }: ReportDecisionProps) {
+export function ReportDecision({ id, status, takeOver = false, reference, signedIn, target, decisions, closeWithNote, dismissWithNote }: ReportDecisionProps) {
   const [choice, setChoice] = useState<Choice | null>(null);
   const buttons: Choice[] = [
-    ...(status === "new" ? (["in_review"] as const) : []),
+    ...(status === "new" || takeOver ? (["in_review"] as const) : []),
     ...decisions,
     ...(dismissWithNote ? (["dismissed"] as const) : []),
     ...(closeWithNote ? (["actioned"] as const) : []),
