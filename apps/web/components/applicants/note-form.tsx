@@ -10,6 +10,7 @@ import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import type { ReviewSubject } from "@/components/applicants/review-subject";
 import { addInternalNote } from "@/lib/actions/applicant-review";
 import { addSubmissionInternalNote } from "@/lib/actions/submission-pipeline";
+import { characterCount } from "@/lib/i18n/format";
 import { NOTE_MAX_CHARS, noteInputSchema, type NoteInput } from "@/lib/validation/applicant";
 import { SUBMISSION_NOTE_MAX_CHARS, submissionNoteInputSchema } from "@/lib/validation/submission-pipeline";
 
@@ -50,7 +51,7 @@ export function NoteForm({ slug, subject, visibility }: { slug: string; subject:
         name="body"
         id={NOTE_ID}
         label="Add an internal note"
-        description={`${visibility} ${length}/${maxChars}`}
+        description={`${visibility} ${characterCount(length, maxChars)}.`}
       />
       <div>
         <FormButton type="submit" busy={formState.isSubmitting} className="w-full sm:w-auto">

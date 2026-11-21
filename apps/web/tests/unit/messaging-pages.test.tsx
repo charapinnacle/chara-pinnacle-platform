@@ -225,7 +225,7 @@ describe("the thread renders text only (FR-P1 AC9, NFR-S10)", () => {
       <ConversationThread lang="en" organization={null} conversationId={CONVERSATION} counterpart="Amina Okafor" initialMessages={[]} maxChars={4000} />,
     );
     expect(html).toMatch(/<label[^>]*for="message-body"[^>]*>Message to Amina Okafor<\/label>/);
-    expect(html).toContain("0 / 4,000 characters");
+    expect(html).toContain("0 of 4,000 characters");
     expect(html).not.toContain('type="file"');
     expect(html).toContain("No messages yet");
   });

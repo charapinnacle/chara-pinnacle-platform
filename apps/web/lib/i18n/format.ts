@@ -5,6 +5,11 @@ export function formatCount(count: number): string {
   return countFormat.format(count);
 }
 
+// A text field's counter, written the same way on every form: "120 of 2,000 characters".
+export function characterCount(used: number, max: number): string {
+  return `${formatCount(used)} of ${formatCount(max)} characters`;
+}
+
 // The countries whose English short name takes "the" in a sentence ("in the Philippines").
 const WITH_ARTICLE = new Set([
   "AE", "BS", "CD", "CF", "CK", "DO", "FK", "FO", "GB", "GM", "KM", "KY", "MH", "MP", "NL", "PH", "SB", "TC", "US", "VA", "VG", "VI",

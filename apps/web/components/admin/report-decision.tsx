@@ -11,6 +11,7 @@ import { FormErrorSummary } from "@/components/forms/form-error-summary";
 import { TextareaField } from "@/components/forms/form-field";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { decideReport, moveReport } from "@/lib/actions/admin-reports";
+import { characterCount } from "@/lib/i18n/format";
 import { characters } from "@/lib/utils";
 import { moderationFormSchema, type ModerationForm } from "@/lib/validation/admin";
 import { decisionOfOption, type ReportDecisionOption } from "@/lib/validation/report";
@@ -183,7 +184,7 @@ function DecisionForm({
         name="reason"
         id={NOTE_ID}
         label={choice === "in_review" ? "Reason" : decision ? "Statement of reasons" : "Note"}
-        description={`Required, ${REASONS_MIN} to ${REASONS_MAX} characters. ${count} of ${REASONS_MAX} characters used. ${audience(choice, signedIn, reference)}`}
+        description={`Required, ${REASONS_MIN} to ${REASONS_MAX} characters. ${characterCount(count, REASONS_MAX)} used. ${audience(choice, signedIn, reference)}`}
       />
       <div className="grid gap-3 sm:grid-cols-2">
         <FormButton type="button" variant="secondary" onClick={onClose}>

@@ -14,7 +14,7 @@ import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { Textarea } from "@/components/ui/textarea";
 import { sendMessage } from "@/lib/actions/messaging";
 import type { OrganizationType, UsagePrompt } from "@/lib/billing/limits";
-import { formatCount } from "@/lib/i18n/format";
+import { characterCount } from "@/lib/i18n/format";
 import { characters } from "@/lib/utils";
 import { clampCharacters, messageSchema } from "@/lib/validation/messaging";
 
@@ -86,7 +86,7 @@ export function MessageComposer({ conversationId, recipient, maxChars, organizat
         name="body"
         id={COMPOSER_ID}
         label={`Message to ${recipient}`}
-        description={`${formatCount(length)} / ${formatCount(maxChars)} characters. Enter starts a new line; Ctrl+Enter sends.`}
+        description={`${characterCount(length, maxChars)}. Enter starts a new line; Ctrl+Enter sends.`}
       >
         {({ onChange, ...field }) => (
           <Textarea

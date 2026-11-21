@@ -18,7 +18,7 @@ import { ResponseDocuments } from "@/components/responses/response-documents";
 import { respondToRequirement, updateMyResponse, type ResponseResult } from "@/lib/actions/responses";
 import type { OrganizationType, UsagePrompt } from "@/lib/billing/limits";
 import type { ResponseDocument } from "@/lib/dal/responses";
-import { formatCount } from "@/lib/i18n/format";
+import { characterCount, formatCount } from "@/lib/i18n/format";
 import { toOptions } from "@/lib/reference-options";
 import {
   feeModelDescriptions,
@@ -205,7 +205,7 @@ export function ResponseForm({
         name="experienceNote"
         id={ids.experienceNote}
         label="Relevant experience"
-        description={`Your experience with these occupations and this destination. ${formatCount(experience.length)}/${formatCount(EXPERIENCE_MAX)}`}
+        description={`Your experience with these occupations and this destination. ${characterCount(experience.length, EXPERIENCE_MAX)}.`}
       />
       <fieldset className="grid gap-5">
         <legend className="mb-1.5 text-h3">Your proposal</legend>

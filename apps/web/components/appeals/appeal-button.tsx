@@ -11,7 +11,7 @@ import { FormErrorSummary } from "@/components/forms/form-error-summary";
 import { TextareaField } from "@/components/forms/form-field";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { submitAppeal } from "@/lib/actions/appeals";
-import { formatCount } from "@/lib/i18n/format";
+import { characterCount, formatCount } from "@/lib/i18n/format";
 import { characters } from "@/lib/utils";
 import { appealFormSchema, GROUNDS_MAX, GROUNDS_MIN, type AppealForm } from "@/lib/validation/appeal";
 
@@ -73,7 +73,7 @@ function AppealDialogForm({ decision, subject, targetDays, onClose }: AppealButt
         name="grounds"
         id={GROUNDS_ID}
         label="Grounds"
-        description={`Required, ${GROUNDS_MIN} to ${GROUNDS_MAX} characters. ${count} of ${GROUNDS_MAX} characters used. Say why you think the decision is wrong.`}
+        description={`Required, ${GROUNDS_MIN} to ${GROUNDS_MAX} characters. ${characterCount(count, GROUNDS_MAX)} used. Say why you think the decision is wrong.`}
       />
       <div className="grid gap-3 sm:grid-cols-2">
         <FormButton type="button" variant="secondary" onClick={onClose}>

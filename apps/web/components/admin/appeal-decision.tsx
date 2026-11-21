@@ -11,6 +11,7 @@ import { FormErrorSummary } from "@/components/forms/form-error-summary";
 import { TextareaField } from "@/components/forms/form-field";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { decideAppeal } from "@/lib/actions/admin-appeals";
+import { characterCount } from "@/lib/i18n/format";
 import { characters } from "@/lib/utils";
 import { moderationFormSchema, type ModerationForm } from "@/lib/validation/admin";
 import type { AppealOutcome } from "@/lib/validation/appeal";
@@ -86,7 +87,7 @@ function DecisionForm({ id, outcome, subject, undo, onClose }: AppealDecisionPro
         name="reason"
         id={NOTE_ID}
         label="Statement of reasons"
-        description={`Required, ${REASONS_MIN} to ${REASONS_MAX} characters. ${count} of ${REASONS_MAX} characters used. The person who appealed is sent it with the outcome.`}
+        description={`Required, ${REASONS_MIN} to ${REASONS_MAX} characters. ${characterCount(count, REASONS_MAX)} used. The person who appealed is sent it with the outcome.`}
       />
       <div className="grid gap-3 sm:grid-cols-2">
         <FormButton type="button" variant="secondary" onClick={onClose}>

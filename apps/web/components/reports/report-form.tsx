@@ -12,6 +12,7 @@ import { TextLink } from "@/components/forms/text-link";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { cardVariants } from "@/components/layout/card";
 import { submitReport } from "@/lib/actions/reports";
+import { characterCount } from "@/lib/i18n/format";
 import { characters, cn } from "@/lib/utils";
 import {
   DETAILS_MAX_CHARS,
@@ -139,7 +140,7 @@ export function ReportForm({ lang, type, target, category, signedIn, backHref }:
         name="details"
         id={ids.details}
         label="What happened"
-        description={`20 to ${DETAILS_MAX_CHARS} characters. ${type === "profile" ? PROFILE_ADVICE : "Do not include passwords or documents."} ${length}/${DETAILS_MAX_CHARS}`}
+        description={`20 to ${DETAILS_MAX_CHARS} characters. ${type === "profile" ? PROFILE_ADVICE : "Do not include passwords or documents."} ${characterCount(length, DETAILS_MAX_CHARS)}.`}
       />
       {signedIn ? null : (
         <InputField

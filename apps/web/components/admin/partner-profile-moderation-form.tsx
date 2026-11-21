@@ -9,6 +9,7 @@ import { FormErrorSummary } from "@/components/forms/form-error-summary";
 import { TextareaField } from "@/components/forms/form-field";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { moderatePartnerProfile } from "@/lib/actions/admin-reports";
+import { characterCount } from "@/lib/i18n/format";
 import { characters } from "@/lib/utils";
 import { moderationFormSchema, type ModerationForm } from "@/lib/validation/admin";
 
@@ -48,7 +49,7 @@ export function PartnerProfileModerationForm({ id, action }: { id: string; actio
         name="reason"
         id={REASON_ID}
         label="Statement of reasons"
-        description={`Required, 10 to 2000 characters. ${count} of 2000 characters used. The owner and administrators are sent it${hiding ? " with the appeal route" : ""}.`}
+        description={`Required, 10 to 2000 characters. ${characterCount(count, 2000)} used. The owner and administrators are sent it${hiding ? " with the appeal route" : ""}.`}
       />
       <div>
         <FormButton type="submit" variant={hiding ? "destructive" : "primary"} busy={formState.isSubmitting} className="w-full sm:w-auto">
