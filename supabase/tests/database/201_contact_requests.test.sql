@@ -1,5 +1,5 @@
 begin;
-select plan(101);
+select plan(102);
 
 \ir jobs_fixture.inc
 
@@ -457,6 +457,11 @@ select is(
    where m.conversation_id = current_setting('t.conv')::uuid),
   '1|t|t|t', 'AC8: the request''s message is the first message of the conversation, from Acme, dated when it was sent'
 );
+update public.contact_requests set moderation_state = 'hidden' where id = current_setting('t.acme_w')::uuid;
+select is(
+  (select string_agg(moderation_state::text, ',') from public.messages where conversation_id = current_setting('t.conv')::uuid),
+  'hidden', 'hiding the request hides its message in the conversation too');
+update public.contact_requests set moderation_state = 'visible' where id = current_setting('t.acme_w')::uuid;
 select is(
   (select string_agg(coalesce(p.organization_id::text, 'worker:' || (p.user_id = :'w')::text), ',' order by p.organization_id nulls last)
    from public.conversation_participants p where p.conversation_id = current_setting('t.conv')::uuid),

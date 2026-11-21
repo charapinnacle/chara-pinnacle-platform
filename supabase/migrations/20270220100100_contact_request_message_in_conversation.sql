@@ -1,7 +1,8 @@
 -- A worker who accepted a contact request was taken to an empty conversation; the employer's message stayed on the request
 -- page, while an inquiry is the first message of its conversation. respond_to_contact_request of
 -- 20270213100100_moderation_messages.sql with one change: on accept, the request's message becomes the first message of
--- the conversation, from the member and organisation that sent it, dated when it was sent. Grants are kept.
+-- the conversation, from the member and organisation that sent it, dated when it was sent; the conversation sorts by the
+-- acceptance. The copy follows the request's moderation (private.sync_contact_request_copy). Grants are kept.
 
 create or replace function public.respond_to_contact_request(p_request uuid, p_decision text) returns uuid
 language plpgsql
@@ -59,11 +60,34 @@ begin
     if not exists (select 1 from public.messages m where m.conversation_id = v_conversation) then
       insert into public.messages (conversation_id, sender_user_id, sender_organization_id, kind, body, created_at)
       values (v_conversation, v_row.sent_by, v_row.organization_id, 'text', v_row.message, v_row.created_at);
-      update public.conversations c set last_message_at = coalesce(c.last_message_at, v_row.created_at)
-      where c.id = v_conversation;
+      update public.conversations c set last_message_at = now() where c.id = v_conversation;
     end if;
     return v_conversation;
   end if;
   return null;
 end;
 $$;
+
+-- The first message copied from a contact request is hidden and shown again with the request, so hiding a reported request
+-- also hides its text in the conversation, and a reversed decision brings both back.
+create function private.sync_contact_request_copy() returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  update public.messages m
+  set moderation_state = new.moderation_state
+  from public.conversations c
+  where c.context_type = 'contact_request' and c.context_id = new.id and m.conversation_id = c.id
+    and m.sender_organization_id = new.organization_id and m.created_at = new.created_at and m.body = new.message;
+  return null;
+end;
+$$;
+
+revoke all on function private.sync_contact_request_copy() from public, anon, authenticated, service_role;
+
+create trigger contact_requests_sync_copy
+after update of moderation_state on public.contact_requests
+for each row when (old.moderation_state is distinct from new.moderation_state)
+execute function private.sync_contact_request_copy();
