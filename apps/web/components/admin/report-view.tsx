@@ -23,6 +23,7 @@ import { adminPath, partnerProfilePath } from "@/lib/routes";
 import { isPrivatePath } from "@/lib/seo/private-routes";
 import {
   closesWithNote,
+  decidedAfterReading,
   FEE_DEMAND_LABEL,
   isFeeDemand,
   isReportItem,
@@ -304,7 +305,9 @@ export async function ReportView({ lang, id, canAct }: { lang: string; id: numbe
               reference={report.reference}
               signedIn={report.reporterKind === "account"}
               target={decisionTarget(report)}
-              decisions={released ? reportDecisionsFor(report) : []}
+              decisions={
+                released && !(decidedAfterReading(report.targetType) && report.status === "new") ? reportDecisionsFor(report) : []
+              }
               closeWithNote={!released || closesWithNote(report.targetType)}
               dismissWithNote={!released}
             />

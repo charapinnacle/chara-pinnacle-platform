@@ -1,5 +1,5 @@
 begin;
-select plan(66);
+select plan(68);
 
 \ir apply_fixture.inc
 
@@ -261,6 +261,11 @@ select is(pg_temp.writes(), :'w0', 'and nothing was written by a refused decisio
 
 -- FR-S1 AC4, AC8: hide the member's message --------------------------------------------------------------------------------------
 
+select is(pg_temp.decide(:'t1', 'hide', 'The message asks the candidate to pay a visa fee.', :fee_report), 'P0001|CHARA_INVALID_STATE|not_in_review',
+  'NFR-C5: a report on a message is not decided before it is in review, as its text is unread until then');
+select pg_temp.read_as(:'t1', format($f$select 'ok' from public.admin_set_report_status(%s, 'in_review', 'Reading the message now.')$f$, :fee_report)) as fee_review \gset
+select is(pg_temp.decide(:'t2', 'hide', 'The message asks the candidate to pay a visa fee.', :fee_report), 'P0001|CHARA_INVALID_STATE|not_in_review',
+  'NFR-C5: nor by a second administrator, who cannot read it while T1 has it in review');
 select pg_temp.decide(:'t1', 'hide', 'The message asks the candidate to pay a visa fee.', :fee_report) as hid \gset
 select ok(:'hid' ~ '^\d+\|actioned$', 'FR-S1 AC4: T1 hides the reported message and the report is actioned');
 select split_part(:'hid', '|', 1)::bigint as act_fee \gset
@@ -335,6 +340,7 @@ select is(
 
 -- A worker's message: hidden without a suspension, appealed by the worker ------------------------------------------------------
 
+select pg_temp.read_as(:'t1', format($f$select 'ok' from public.admin_set_report_status(%s, 'in_review', 'Reading the message now.')$f$, :wa_report)) as wa_review \gset
 select is(pg_temp.decide(:'t1', 'suspend_organization', 'The candidate sent an abusive message.', :wa_report),
   'P0001|CHARA_INVALID_INPUT|decision', 'a worker''s message has no organisation to suspend');
 select pg_temp.decide(:'t1', 'hide', 'The message contains abusive language.', :wa_report) as hid_wa \gset
@@ -410,6 +416,7 @@ select is(
   'true;false', 'the owner may appeal the hidden request; the member who sent it reads it only');
 
 select pg_temp.report_id(pg_temp.report(:'wb', 'contact_request', :'cr_b', 'misleading_or_fraud')) as crb_report \gset
+select pg_temp.read_as(:'t1', format($f$select 'ok' from public.admin_set_report_status(%s, 'in_review', 'Reading the request now.')$f$, :crb_report)) as crb_review \gset
 select pg_temp.decide(:'t1', 'suspend_organization', 'The organisation sends misleading job offers.', :crb_report) as sus_b \gset
 select is(
   (select format('%s|%s|%s', a.target_type, a.target_id, a.action) from public.moderation_actions a where a.id = split_part(:'sus_b', '|', 1)::bigint)
