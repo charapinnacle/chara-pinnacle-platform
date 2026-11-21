@@ -22,7 +22,7 @@ describe("the entries of the console", () => {
   });
 
   it("give the Trust & Safety Administrator the searches, the reports, the moderation of vacancies and the record of suspensions", () => {
-    expect(labels(["trust_safety"])).toEqual(["Users", "Organisations", "Reports", "Vacancy moderation", "Suspensions and reinstatements"]);
+    expect(labels(["trust_safety"])).toEqual(["Users", "Organisations", "Reports", "Vacancy moderation", "Suspensions"]);
   });
 
   it("give the Verification Reviewer none while release 2a is off", () => {
