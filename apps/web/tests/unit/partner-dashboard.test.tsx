@@ -206,7 +206,7 @@ describe("the review and listing state (FR-J1 AC11, FR-J4 AC7, AC10, NFR-C7)", (
     outcomeMock.mockResolvedValue({ decision: "approve", reason: null, infoStep: null, decidedAt: "2026-11-22T10:00:00Z" });
     html = await render();
     expect(html).toContain(">Your company is listed</h2>");
-    expect(html).toMatch(/<a[^>]*href="\/en\/org\/manila-skills\/workforce-profile"[^>]*>Complete your workforce profile/);
+    expect(html).toMatch(/<a[^>]*href="\/en\/org\/manila-skills\/workforce-profile"[^>]*>Update your workforce profile/);
     expect(html).not.toMatch(/approved|verified/i);
     // FR-L4 AC11: a listed company reads its follower count, never who follows it.
     expect(html).toContain("Followers: fewer than 5");
