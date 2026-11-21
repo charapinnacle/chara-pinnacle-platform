@@ -31,6 +31,8 @@ type ReportFormProps = {
   // A category chosen by the link that opened the form, for example "Report a fee demand".
   category?: ReportInput["category"];
   signedIn: boolean;
+  // The conversation the form was opened from, to go back to after sending.
+  backHref?: string;
 };
 
 const ids = {
@@ -61,7 +63,7 @@ const PROFILE_ADVICE = "Do not write the candidate's name, contact details or do
 
 // One form for every kind of report: the page decides the kind and whether the target is known. The database checks
 // that the target can be reported, and by whom, again.
-export function ReportForm({ lang, type, target, category, signedIn }: ReportFormProps) {
+export function ReportForm({ lang, type, target, category, signedIn, backHref }: ReportFormProps) {
   const form = useForm<ReportFormInput>({
     resolver: zodResolver(reportFormSchemaFor(type, target !== undefined)),
     defaultValues: { link: "", category: category ?? "", details: "", email: "", goodFaith: false },
@@ -105,9 +107,15 @@ export function ReportForm({ lang, type, target, category, signedIn }: ReportFor
             Keep this number. We do not email you about it, and a report cannot be looked up without an account.
           </p>
         )}
-        <TextLink standalone href={`/${lang}/trust-safety`}>
-          Back to Trust &amp; Safety
-        </TextLink>
+        {backHref ? (
+          <TextLink standalone href={backHref}>
+            Back to the conversation
+          </TextLink>
+        ) : (
+          <TextLink standalone href={`/${lang}/trust-safety`}>
+            Back to Trust &amp; Safety
+          </TextLink>
+        )}
       </div>
     );
   }

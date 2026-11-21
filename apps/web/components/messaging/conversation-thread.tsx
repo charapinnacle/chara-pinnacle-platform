@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { TypedMessageCard } from "@/components/connections/typed-message-card";
 import { toastNetworkError } from "@/components/feedback/toast-store";
@@ -59,6 +59,7 @@ export function ConversationThread({
   const [loadingEarlier, startLoadingEarlier] = useTransition();
   const newestId = messages[0]?.id;
   const router = useRouter();
+  const pathname = usePathname();
   const askedFor = useRef(new Set<string>());
 
   // A typed message that arrived live has no card yet: the page is read again once for it, which brings its connection.
@@ -128,7 +129,7 @@ export function ConversationThread({
                     </p>
                   ) : message.mine ? null : (
                     <p className="text-small">
-                      <TextLink href={reportPath(lang, "message", message.id)}>
+                      <TextLink href={reportPath(lang, "message", message.id, undefined, pathname)}>
                         Report<span className="sr-only"> the message of {senderLabel(message)}, {formatDateTime(message.createdAt)}</span>
                       </TextLink>
                     </p>
