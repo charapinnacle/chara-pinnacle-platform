@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 import { displayName, expectAccessibleAtBothWidths, newApplicant } from "./support/applications";
 import { expectNoAxeViolations } from "./support/axe";
+import { choose } from "./support/combobox";
 import { execute, literal, query } from "./support/db";
 import { seedDocument } from "./support/documents";
 import { waitForHydration } from "./support/hydration";
@@ -180,7 +181,7 @@ test.describe("release 2b journeys (NFR-O4, NFR-U4)", () => {
     await pp.getByLabel("Relevant experience").fill("We placed welding crews in shipyards on the Adriatic coast for twelve years.");
     await pp.getByRole("radio", { name: "Fee per hire" }).check();
     await pp.getByLabel("Amount").fill("1200.00");
-    await pp.getByLabel("Currency").selectOption("EUR");
+    await choose(pp, "Currency", "Euro");
     await expectAccessibleAtBothWidths(pp);
     await pp.setViewportSize({ width: 1280, height: 900 });
     await send.click();
