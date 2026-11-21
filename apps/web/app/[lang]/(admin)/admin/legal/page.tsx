@@ -56,11 +56,11 @@ export default async function LegalPage({ params, searchParams }: PageProps<"/[l
         >
           {documents.map((document) => (
             <tr key={document.slug}>
-              <td className={`${cell} break-all`}>{document.slug}</td>
+              <td className={`${cell} break-words`}>{document.slug}</td>
               <td className={`${cell} break-words`}>{document.title}</td>
               <td className={cell}>{document.version}</td>
               <td className={cell}>{document.isDraft ? "Draft" : "Approved"}</td>
-              <td className={cell}>{formatShortDate(document.publishedAt)}</td>
+              <td className={`${cell} whitespace-nowrap`}>{formatShortDate(document.publishedAt)}</td>
               <td className={cell}>
                 {acceptance.get(document.slug)?.map((row) => (
                   <span key={row.audience} className="block whitespace-nowrap">
