@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test";
 import { expectAccessibleAtBothWidths } from "./support/applications";
 import { signInStaff } from "./support/admin";
 import { expectNoAxeViolations } from "./support/axe";
+import { choose } from "./support/combobox";
 import { execute, executeAsync, literal, query } from "./support/db";
 import { createCommittedUser, enrollTotp } from "./support/login";
 import { logIn } from "./support/login-page";
@@ -128,7 +129,7 @@ test.describe("the direct-hiring rules of the console (FR-Q5)", () => {
     await page.keyboard.press("Enter");
     const dialog = page.getByRole("dialog", { name: "Add a rule" });
     await expect(dialog.getByText("This is not legal advice to anyone.", { exact: false })).toBeVisible();
-    await dialog.getByRole("combobox", { name: "Source country" }).selectOption("PH");
+    await choose(page, "Source country", "Philippines");
     await expect(dialog.getByRole("combobox", { name: "Destination country" })).toHaveValue("");
     await dialog.getByRole("combobox", { name: "Rule" }).selectOption("licensed_partner_required");
     await dialog.getByRole("textbox", { name: "Notice" }).focus();
@@ -209,7 +210,7 @@ test.describe("the direct-hiring rules of the console (FR-Q5)", () => {
     execute(`revoke execute on function ${SAVE} from authenticated`);
     await page.getByRole("button", { name: "Add rule" }).click();
     const dialog = page.getByRole("dialog", { name: "Add a rule" });
-    await dialog.getByRole("combobox", { name: "Source country" }).selectOption("PH");
+    await choose(page, "Source country", "Philippines");
     await dialog.getByRole("combobox", { name: "Rule" }).selectOption("blocked");
     await dialog.getByRole("textbox", { name: "Notice" }).fill(PH_NOTICE);
     await dialog.getByRole("textbox", { name: "Legal opinion reference" }).fill("LO-2026-11 PH");

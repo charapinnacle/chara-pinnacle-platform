@@ -68,7 +68,7 @@ export function AnalyticsView(props: AnalyticsViewProps) {
           standalone
           href={partner ? workforceProfilePath(lang, organization.slug) : organizationProfilePath(lang, organization.slug)}
         >
-          Complete your profile
+          Update your profile
         </TextLink>
       </EmptyState>
     );

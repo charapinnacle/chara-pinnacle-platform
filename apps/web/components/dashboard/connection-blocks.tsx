@@ -122,11 +122,12 @@ export function PartnerRequestsCard({ requests, lang, slug }: Place & { requests
             <TextLink standalone href={inquiriesHref}>
               {requests.inquiries === 1 ? "Answer the inquiry" : "Answer the inquiries"}
             </TextLink>
-          ) : (
+          ) : null}
+          {requests.total > requests.inquiries ? (
             <TextLink standalone href={invitationsPath(lang, slug)}>
               Respond to request
             </TextLink>
-          )}
+          ) : null}
         </>
       )}
     </BlockCard>

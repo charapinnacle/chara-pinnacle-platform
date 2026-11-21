@@ -19,7 +19,7 @@ const REFUSALS = {
   "CHARA_FORBIDDEN:release_off": { message: "Appeals are not open at the moment." },
   "CHARA_INVALID_STATE:upheld": changed("upheld"),
   "CHARA_INVALID_STATE:restored": changed("restored"),
-  "CHARA_INVALID_INPUT:reason": { errors: { reason: "Give a reason of 10 to 2000 characters" } },
+  "CHARA_INVALID_INPUT:reason": { errors: { reason: "Give a reason of 10 to 2000 characters." } },
   "CHARA_INVALID_INPUT:outcome": { message: "Choose to uphold the decision or to reverse it." },
 } as const;
 

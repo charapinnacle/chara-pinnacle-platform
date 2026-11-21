@@ -100,7 +100,7 @@ export function licenceFormSchema(rules: LicenceRules) {
 export type LicenceInput = z.input<ReturnType<typeof licenceFormSchema>>;
 
 // The optional evidence file: the form holds the File, the Server Action receives its size and type only.
-export const evidenceFormSchema = z.union([z.undefined(), z.instanceof(File).check(checkFile)]);
+export const evidenceFormSchema = z.instanceof(File).check(checkFile).optional();
 export const evidenceFileSchema = z.object({ name: z.string(), size: z.number(), type: z.string() }).check(checkFile);
 export type EvidenceFile = z.input<typeof evidenceFileSchema>;
 

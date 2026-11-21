@@ -3,6 +3,7 @@ import type { Page } from "@playwright/test";
 import { displayName, expectAccessibleAtBothWidths } from "./support/applications";
 import { formatDate } from "@/lib/i18n/format";
 import { expectNoAxeViolations } from "./support/axe";
+import { choose } from "./support/combobox";
 import { execute, literal, query } from "./support/db";
 import { pdfBytes } from "./support/documents";
 import { waitForHydration } from "./support/hydration";
@@ -149,7 +150,7 @@ async function fillResponse(page: Page, { capacity = "80", amount = "1500.00" } 
   await page.keyboard.press("Space");
   await page.getByLabel("Amount").focus();
   await page.keyboard.type(amount);
-  await page.getByLabel("Currency").selectOption("EUR");
+  await choose(page, "Currency", "Euro");
   await page.getByLabel("Notes (optional)").focus();
   await page.keyboard.type("Travel and visa handling included. ".repeat(5).trim());
 }

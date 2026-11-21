@@ -95,7 +95,7 @@ describe("saveWorkforceOffer (FR-K2)", () => {
     ["industry_code", "industries", "Choose from the list."],
     ["language_code", "languages", "Choose from the list."],
     ["staffing_types", "staffingTypes", "Choose at least one staffing type."],
-    ["staffing_service_required", "staffingTypes", "Tick that you also supply staff to choose staffing types"],
+    ["staffing_service_required", "staffingTypes", "Tick that you also supply staff to choose staffing types."],
   ])("shows the refused value %s at its field (AC3, AC5)", async (details, field, text) => {
     rpcMock.mockResolvedValue(refusal("CHARA_INVALID_INPUT", details));
     await expect(saveWorkforceOffer("manila-skills", input, { onboarding: true })).resolves.toEqual({ errors: { [field]: text } });

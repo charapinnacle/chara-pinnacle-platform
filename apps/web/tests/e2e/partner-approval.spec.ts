@@ -272,7 +272,7 @@ test.describe("Partner reviews (FR-J4)", () => {
     const owner = await newVisitor(browser);
     await logIn(owner.page, first.user, "/en/dashboard/employer");
     await expect(owner.page.getByRole("heading", { name: "Your company is listed", level: 2 })).toBeVisible();
-    await expect(owner.page.getByRole("link", { name: "Complete your workforce profile" })).toHaveAttribute(
+    await expect(owner.page.getByRole("link", { name: "Update your workforce profile" })).toHaveAttribute(
       "href",
       `/en/org/${first.slug}/workforce-profile`,
     );

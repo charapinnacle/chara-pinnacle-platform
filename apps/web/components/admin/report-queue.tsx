@@ -77,7 +77,7 @@ export async function ReportQueue({ lang, filter, after }: { lang: string; filte
           {page.rows.map((row) => (
             <tr key={row.id}>
               <td className={cell}>
-                <TextLink href={adminPath(lang, `reports/${row.id}`)} className="font-mono">
+                <TextLink href={adminPath(lang, `reports/${row.id}`)} className="font-mono whitespace-nowrap">
                   {row.reference}
                 </TextLink>
               </td>

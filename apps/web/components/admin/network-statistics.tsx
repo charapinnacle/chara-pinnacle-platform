@@ -117,17 +117,20 @@ export function NetworkStatistics({ defaults, initial }: { defaults: NetworkStat
                   {group.heading}
                 </h3>
                 {group.metrics.map((metric) => (
-                  <ResultsTable key={metric.key} caption={`${group.heading}: ${metric.label}`} columns={["Period", "Count", "Change"]}>
-                    {metricRows(statistics.counts, metric.key, query.period, statistics.statesFrom).map((row) => (
-                      <tr key={row.periodStart}>
-                        <th scope="row" className={rowHead}>
-                          {periodLabel(row.periodStart, query.period)}
-                        </th>
-                        <td className={cell}>{row.unknown ? "-" : countText(row.count, statistics.minCount)}</td>
-                        <td className={cell}>{row.trend}</td>
-                      </tr>
-                    ))}
-                  </ResultsTable>
+                  <div key={metric.key} className="grid gap-2">
+                    <h4 className="font-medium">{metric.label}</h4>
+                    <ResultsTable caption={`${group.heading}: ${metric.label}`} columns={["Period", "Count", "Change"]}>
+                      {metricRows(statistics.counts, metric.key, query.period, statistics.statesFrom).map((row) => (
+                        <tr key={row.periodStart}>
+                          <th scope="row" className={rowHead}>
+                            {periodLabel(row.periodStart, query.period)}
+                          </th>
+                          <td className={cell}>{row.unknown ? "-" : countText(row.count, statistics.minCount)}</td>
+                          <td className={cell}>{row.trend}</td>
+                        </tr>
+                      ))}
+                    </ResultsTable>
+                  </div>
                 ))}
               </section>
             ))}

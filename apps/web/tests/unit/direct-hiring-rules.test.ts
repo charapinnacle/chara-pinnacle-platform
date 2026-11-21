@@ -63,14 +63,14 @@ describe("the rule form (FR-Q5 AC3, AC10)", () => {
     expect(issues({ sourceCountry: "" })).toEqual({ sourceCountry: "Choose a country" });
     expect(issues({ sourceCountry: "XXX" })).toEqual({ sourceCountry: "Choose a country" });
     expect(issues({ sourceCountry: "DE", destinationCountry: "DE" })).toEqual({
-      destinationCountry: "Choose a destination other than the source country, or all destinations",
+      destinationCountry: "Choose a destination other than the source country, or all destinations.",
     });
-    expect(issues({ rule: "" })).toEqual({ rule: "Choose a rule" });
-    expect(issues({ rule: "partner" })).toEqual({ rule: "Choose a rule" });
+    expect(issues({ rule: "" })).toEqual({ rule: "Choose a rule." });
+    expect(issues({ rule: "partner" })).toEqual({ rule: "Choose a rule." });
     expect(issues({ notice: "n".repeat(19) })).toEqual({ notice: "Write a notice of at least 20 characters" });
     expect(issues({ notice: "n".repeat(1001) })).toEqual({ notice: "The notice can have at most 1,000 characters" });
-    expect(issues({ notice: `${"n".repeat(20)}\n${"n".repeat(5)}` })).toEqual({ notice: "Write the notice as one paragraph without line breaks" });
-    expect(issues({ legalOpinionRef: "   " })).toEqual({ legalOpinionRef: "Enter the legal opinion reference" });
+    expect(issues({ notice: `${"n".repeat(20)}\n${"n".repeat(5)}` })).toEqual({ notice: "Write the notice as one paragraph without line breaks." });
+    expect(issues({ legalOpinionRef: "   " })).toEqual({ legalOpinionRef: "Enter the legal opinion reference." });
     expect(issues({ legalOpinionRef: "r".repeat(201) })).toEqual({ legalOpinionRef: "The reference can have at most 200 characters" });
     expect(issues({ reason: "too short" })).toEqual({ reason: "Give a reason of at least 10 characters." });
   });
@@ -165,11 +165,11 @@ describe("saveDirectHiringRule (FR-Q5 AC1, AC3)", () => {
   it("names the field the database refused and keeps the cause to itself", async () => {
     const cases: [string, Record<string, string>][] = [
       ["source_country", { sourceCountry: "Choose a country" }],
-      ["destination_country", { destinationCountry: "Choose a destination other than the source country, or all destinations" }],
-      ["rule", { rule: "Choose a rule" }],
+      ["destination_country", { destinationCountry: "Choose a destination other than the source country, or all destinations." }],
+      ["rule", { rule: "Choose a rule." }],
       ["notice", { notice: "Write a notice of 20 to 1,000 characters" }],
       ["legal_opinion_ref", { legalOpinionRef: "Enter a reference of 1 to 200 characters" }],
-      ["reason", { reason: "Give a reason of 10 to 500 characters" }],
+      ["reason", { reason: "Give a reason of 10 to 500 characters." }],
     ];
     for (const [detail, errors] of cases) {
       rpcMock.mockResolvedValueOnce(refusal("CHARA_INVALID_INPUT", detail));

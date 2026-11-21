@@ -83,7 +83,7 @@ export async function AppealQueue({ lang, status, after }: { lang: string; statu
           {page.rows.map((row) => (
             <tr key={row.id}>
               <td className={cell}>
-                <TextLink href={adminPath(lang, `appeals/${row.id}`)} className="font-mono">
+                <TextLink href={adminPath(lang, `appeals/${row.id}`)} className="font-mono whitespace-nowrap">
                   {`A-${String(row.id).padStart(6, "0")}`}
                 </TextLink>
               </td>

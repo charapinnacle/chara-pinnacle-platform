@@ -164,7 +164,7 @@ test.describe("candidate documents: upload", () => {
 
     await page.getByLabel("File", { exact: true }).setInputFiles({ name: "big.pdf", mimeType: "application/pdf", buffer: pdfBytes(15_728_641) });
     await upload(page).click();
-    await expect(page.getByText("File is larger than 15 MB", { exact: true })).toBeVisible();
+    await expect(page.getByText("File is larger than 15 MB.", { exact: true })).toBeVisible();
     await page.getByLabel("File", { exact: true }).setInputFiles({ name: "empty.pdf", mimeType: "application/pdf", buffer: Buffer.alloc(0) });
     await upload(page).click();
     await expect(page.getByText("The file is empty.", { exact: true })).toBeVisible();

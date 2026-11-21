@@ -206,7 +206,7 @@ describe("signUp action", () => {
       consents: consents.filter(({ purpose }) => purpose !== "terms-of-service"),
     });
     expect(privacy?.errors?.["accepted.terms-of-service"]).toBe(
-      "Accept the Title of terms-of-service to continue",
+      "Accept the Title of terms-of-service to continue.",
     );
     expect(signUpMock).not.toHaveBeenCalled();
   });
@@ -230,7 +230,7 @@ describe("signUp action", () => {
     expect(result?.errors).toEqual({
       "accepted.terms-of-service":
         "A legal document has changed. Reload the page to see the current version.",
-      "accepted.worker-terms": "Accept the Title of worker-terms to continue",
+      "accepted.worker-terms": "Accept the Title of worker-terms to continue.",
     });
     expect(signUpMock).not.toHaveBeenCalled();
   });

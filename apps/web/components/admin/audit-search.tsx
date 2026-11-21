@@ -53,16 +53,16 @@ export function AuditSearch({ lang }: { lang: string }) {
           {state.rows.map((row) => (
             <tr key={row.id}>
               <td className={cell}>{formatDateTime(row.createdAt)}</td>
-              <td className={`${cell} break-all`}>
+              <td className={`${cell} wrap-break-word`}>
                 {row.actorId ? <TextLink href={adminPath(lang, `users/${row.actorId}`)}>{row.actorId}</TextLink> : "System"}
               </td>
               <td className={`${cell} break-words`}>{row.action}</td>
-              <td className={`${cell} break-all`}>
+              <td className={`${cell} wrap-break-word`}>
                 {row.entityType}
                 {row.entityId ? `: ${row.entityId}` : ""}
               </td>
               <td className={`${cell} break-words`}>{row.reason ?? ""}</td>
-              <td className={`${cell} break-all`}>
+              <td className={`${cell} wrap-break-word`}>
                 {row.requestId}
                 {row.jobId ? ` (job ${row.jobId})` : ""}
               </td>

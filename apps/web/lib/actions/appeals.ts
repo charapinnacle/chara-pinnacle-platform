@@ -17,7 +17,7 @@ const REFUSALS: Record<string, AppealResult> = {
   "CHARA_INVALID_STATE:appeal_exists": { message: "This decision has already been appealed. Reload the page to see the appeal." },
   "CHARA_INVALID_STATE:appeal_window_closed": { message: "The time to appeal this decision has ended." },
   "CHARA_INVALID_STATE:not_in_effect": { message: "This decision is no longer in effect, so there is nothing to appeal. Reload the page." },
-  "CHARA_INVALID_INPUT:grounds": { errors: { grounds: "Give grounds of 20 to 2000 characters" } },
+  "CHARA_INVALID_INPUT:grounds": { errors: { grounds: "Give grounds of 20 to 2000 characters." } },
   "CHARA_FORBIDDEN:release_off": { message: "Appeals are not open at the moment." },
   "CHARA_FORBIDDEN:": { message: "Only the owner or an admin of the organisation can appeal." },
   "CHARA_NOT_FOUND:": { message: "This decision no longer exists." },

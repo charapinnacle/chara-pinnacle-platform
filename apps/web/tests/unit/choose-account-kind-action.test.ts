@@ -81,7 +81,7 @@ describe("chooseAccountKind", () => {
 
   it("names the document that was not accepted and calls nothing", async () => {
     await expect(chooseAccountKind("company", entries.slice(0, 1))).resolves.toEqual({
-      error: "Accept the Title of employer-terms to continue",
+      error: "Accept the Title of employer-terms to continue.",
     });
     expect(rpcMock).not.toHaveBeenCalled();
   });
@@ -89,7 +89,7 @@ describe("chooseAccountKind", () => {
   it("refuses an accepted version that is not the current one", async () => {
     const stale = entries.map((entry) => ({ ...entry, version: 2 }));
     await expect(chooseAccountKind("company", stale)).resolves.toEqual({
-      error: "Accept the Title of terms-of-service to continue",
+      error: "Accept the Title of terms-of-service to continue.",
     });
     expect(rpcMock).not.toHaveBeenCalled();
   });

@@ -442,7 +442,7 @@ describe("notification templates", () => {
     expect(inquiry.subject).toBe("Acme Bau sent you an inquiry");
     const request = await renderEmail("workforce_request_received", { ...SAMPLES.workforce_request_received, ...text }, SITE);
     expect(request.subject).toBe("Acme Bau requests workers from you");
-    expect(request.text).toContain("25 × Welders and flame cutters in Germany from 2027-03-01");
+    expect(request.text).toContain("25 × Welders and flame cutters in Germany from 1 March 2027");
     const invitation = await renderEmail("job_invitation", { ...SAMPLES.job_invitation, ...text }, SITE);
     expect(invitation.subject).toBe("Acme Bau invites you to apply");
     expect(invitation.text).toContain('apply to "Welder MIG/MAG" in Hamburg, Germany');

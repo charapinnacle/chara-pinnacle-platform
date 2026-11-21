@@ -25,7 +25,7 @@ export async function saveRetentionPolicy(input: RetentionInput): Promise<AdminR
   if (error) {
     if (error.code === "23514") return DAYS;
     return adminRefusal(error, path, {
-      "CHARA_INVALID_INPUT:reason": { errors: { reason: "Give a reason of 10 to 500 characters" } },
+      "CHARA_INVALID_INPUT:reason": { errors: { reason: "Give a reason of 10 to 500 characters." } },
       "CHARA_INVALID_INPUT:days": DAYS,
       "CHARA_FORBIDDEN:retention_not_editable": { message: "This period cannot be changed here." },
     });

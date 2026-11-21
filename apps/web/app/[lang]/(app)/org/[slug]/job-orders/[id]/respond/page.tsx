@@ -54,7 +54,7 @@ export default async function RespondToJobOrderPage({ params }: PageProps<"/[lan
           lang={lang}
           slug={slug}
           organization={organization}
-          requirement={{ id: order.id, workersNeeded: order.workersNeeded, countryCode: order.countryCode }}
+          requirement={{ id: order.id, workersNeeded: order.workersNeeded, countryCode: order.countryCode, salaryCurrency: order.salaryCurrency }}
           eligibility={eligibility}
           selfHref={jobOrderRespondPath(lang, slug, order.id)}
         />

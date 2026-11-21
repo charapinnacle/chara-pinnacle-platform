@@ -239,7 +239,7 @@ test.describe("Continue with Google switched on", () => {
     const [first] = await currentDocuments("company");
     await expect(documentBox(page, first.title)).not.toBeChecked();
     await page.getByRole("button", { name: "Create my account" }).click();
-    await expect(page.getByText(/^Accept the .* to continue$/).first()).toBeVisible();
+    await expect(page.getByText(/^Accept the .* to continue\.$/).first()).toBeVisible();
     expect(accountRows(user.id).account.account_kind).toBeNull();
   });
 

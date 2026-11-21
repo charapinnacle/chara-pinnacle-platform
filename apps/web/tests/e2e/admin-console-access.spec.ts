@@ -7,7 +7,7 @@ import { enterCode, newOwner, staffUser } from "./support/mfa";
 import { signInAtAal2 } from "./support/team";
 import { expect, test } from "./support/test";
 
-const TRUST_ENTRIES = ["Users", "Organisations", "Reports", "Vacancy moderation", "Suspensions and reinstatements"];
+const TRUST_ENTRIES = ["Users", "Organisations", "Reports", "Vacancy moderation", "Suspensions"];
 
 async function entries(page: Page): Promise<string[]> {
   return page.getByRole("navigation", { name: "Administration" }).getByRole("link").allInnerTexts();
@@ -122,6 +122,6 @@ test.describe("the administration console: who gets in and what each role sees",
     const staff = await enrolledStaff("admin");
     execute(`insert into public.platform_staff (user_id, role) values (${literal(staff.user.id)}, 'trust_safety')`);
     await signInAtAal2(page, staff.user, staff.secret, "/en/admin");
-    expect(await entries(page)).toEqual([...ADMIN_ENTRIES, "Vacancy moderation", "Suspensions and reinstatements"]);
+    expect(await entries(page)).toEqual([...ADMIN_ENTRIES, "Vacancy moderation", "Suspensions"]);
   });
 });

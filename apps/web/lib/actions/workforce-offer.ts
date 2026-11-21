@@ -30,7 +30,7 @@ const invalidField: Record<string, [keyof WorkforceOfferInput, string]> = {
   language_code: ["languages", FROM_LIST],
   recruitment_type: ["recruitmentType", "Choose a recruitment type."],
   staffing_types: ["staffingTypes", "Choose at least one staffing type."],
-  staffing_service_required: ["staffingTypes", "Tick that you also supply staff to choose staffing types"],
+  staffing_service_required: ["staffingTypes", "Tick that you also supply staff to choose staffing types."],
   service_types: ["staffingTypes", FROM_LIST],
   founded_year: ["foundedYear", `Enter a year between 1800 and ${new Date().getFullYear()}.`],
 };

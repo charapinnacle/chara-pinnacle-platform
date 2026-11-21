@@ -43,7 +43,7 @@ export async function OrganizationView({ lang, id, roles }: { lang: string; id: 
         <ResultsTable caption="Members" columns={["Member", "Role", "Joined"]}>
           {organization.members.map((member) => (
             <tr key={member.userId}>
-              <td className={`${cell} break-all`}>
+              <td className={`${cell} wrap-break-word`}>
                 <TextLink href={adminPath(lang, `users/${member.userId}`)}>{member.displayName ?? member.userId}</TextLink>
               </td>
               <td className={cell}>{roleLabels[member.role]}</td>

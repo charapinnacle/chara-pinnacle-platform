@@ -9,7 +9,7 @@ import { adminPath } from "@/lib/routes";
 import { deleteRuleInputSchema, NOTICE_MAX, NOTICE_MIN, REFERENCE_MAX, RULE_UNCHANGED, ruleFormSchema, type RuleForm } from "@/lib/validation/direct-hiring-rules";
 import { fieldErrors } from "@/lib/validation/sign-up";
 
-const REASON = { "CHARA_INVALID_INPUT:reason": { errors: { reason: "Give a reason of 10 to 500 characters" } } };
+const REASON = { "CHARA_INVALID_INPUT:reason": { errors: { reason: "Give a reason of 10 to 500 characters." } } };
 
 const SEGMENT = "direct-hiring-rules";
 
@@ -34,9 +34,9 @@ export async function saveDirectHiringRule(input: RuleForm): Promise<AdminResult
       ...REASON,
       "CHARA_INVALID_INPUT:source_country": { errors: { sourceCountry: "Choose a country" } },
       "CHARA_INVALID_INPUT:destination_country": {
-        errors: { destinationCountry: "Choose a destination other than the source country, or all destinations" },
+        errors: { destinationCountry: "Choose a destination other than the source country, or all destinations." },
       },
-      "CHARA_INVALID_INPUT:rule": { errors: { rule: "Choose a rule" } },
+      "CHARA_INVALID_INPUT:rule": { errors: { rule: "Choose a rule." } },
       "CHARA_INVALID_INPUT:notice": { errors: { notice: `Write a notice of ${NOTICE_MIN} to ${NOTICE_MAX.toLocaleString("en-GB")} characters` } },
       "CHARA_INVALID_INPUT:legal_opinion_ref": { errors: { legalOpinionRef: `Enter a reference of 1 to ${REFERENCE_MAX} characters` } },
     });

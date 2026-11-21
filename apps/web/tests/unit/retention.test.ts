@@ -106,7 +106,7 @@ describe("saveRetentionPolicy (FR-S3 AC1, AC10)", () => {
     });
     rpcMock.mockResolvedValueOnce(refusal("CHARA_INVALID_INPUT", "reason"));
     expect(await saveRetentionPolicy({ entity: "conversations", days: 365, reason })).toEqual({
-      errors: { reason: "Give a reason of 10 to 500 characters" },
+      errors: { reason: "Give a reason of 10 to 500 characters." },
     });
     rpcMock.mockResolvedValueOnce(refusal("CHARA_FORBIDDEN", "retention_not_editable"));
     expect(await saveRetentionPolicy({ entity: "audit_log", days: 365, reason })).toEqual({ message: "This period cannot be changed here." });

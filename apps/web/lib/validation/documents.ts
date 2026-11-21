@@ -61,7 +61,7 @@ export function checkFile(context: z.core.ParsePayload<FileInfo>) {
   const extension = name.slice(name.lastIndexOf(".") + 1).toLowerCase();
   const issue = (message: string) => context.issues.push({ code: "custom", input: context.value, message });
   if (size === 0) issue("The file is empty.");
-  else if (size > MAX_FILE_BYTES) issue("File is larger than 15 MB");
+  else if (size > MAX_FILE_BYTES) issue("File is larger than 15 MB.");
   else if (!name.includes(".") || !allowedFiles[type]?.includes(extension)) issue(FILE_TYPE_MESSAGE);
 }
 
