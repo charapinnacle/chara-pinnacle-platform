@@ -44,7 +44,7 @@ export function OrganizationSearch({ lang }: { lang: string }) {
                 </TextLink>
               </td>
               <td className={`${cell} break-words`}>{organization.legalName}</td>
-              <td className={`${cell} break-all`}>{organization.slug}</td>
+              <td className={`${cell} wrap-break-word`}>{organization.slug}</td>
               <td className={cell}>
                 <AccountStatusBadge status={organization.status} />
               </td>

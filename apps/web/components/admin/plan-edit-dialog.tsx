@@ -129,7 +129,7 @@ function PlanEditForm({ plan, onClose }: { plan: EditorPlan; onClose: () => void
 
   return (
     <form noValidate className="grid gap-4" onSubmit={handleSubmit(onReview)}>
-      <p className="text-small text-muted-foreground break-all">Plan code {plan.code}. Codes never change.</p>
+      <p className="text-small text-muted-foreground wrap-break-word">Plan code {plan.code}. Codes never change.</p>
       <FormErrorSummary form={form} ids={ids} />
       <InputField control={control} name="name" id={ids.name} label="Name" autoComplete="off" maxLength={60} />
       {plan.priceMinor > 0 ? (

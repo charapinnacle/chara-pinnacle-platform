@@ -122,7 +122,7 @@ function SettingForm({ rule, onClose }: { rule: SettingRule; onClose: () => void
 
   return (
     <form noValidate className="grid gap-4" onSubmit={handleSubmit(onReview)}>
-      <p className="text-small text-muted-foreground break-all">Setting {rule.key}</p>
+      <p className="text-small text-muted-foreground wrap-break-word">Setting {rule.key}</p>
       <FormErrorSummary form={form} ids={ids} />
       {rule.valueType === "boolean" ? (
         <SelectField control={control} name="value" id={ids.value} label="Value" placeholder="Choose on or off" options={booleanOptions} />

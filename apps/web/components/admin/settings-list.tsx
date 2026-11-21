@@ -16,9 +16,9 @@ function SettingsTable({ caption, rules, release }: { caption: string; rules: re
           <tr key={rule.key}>
             <td className={`${cell} break-words`}>
               <span className="block font-medium">{rule.label}</span>
-              <span className="block text-small text-muted-foreground break-all">{rule.key}</span>
+              <span className="block text-small text-muted-foreground wrap-break-word">{rule.key}</span>
             </td>
-            <td className={`${cell} break-all`}>
+            <td className={`${cell} wrap-break-word`}>
               {release ? (
                 <StatusBadge status={rule.value === "true" ? "success" : "neutral"}>{rule.value === "true" ? "Live" : "Off"}</StatusBadge>
               ) : (

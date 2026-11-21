@@ -20,12 +20,12 @@ export async function StaffList({ lang, after }: { lang: string; after: number |
       >
         {page.rows.map((row) => (
           <tr key={row.id}>
-            <td className={`${cell} break-all`}>
+            <td className={`${cell} wrap-break-word`}>
               {row.displayName ? <span className="block font-medium">{row.displayName}</span> : null}
               {row.email}
             </td>
             <td className={cell}>{platformRoleLabels[row.role]}</td>
-            <td className={`${cell} break-all`}>{row.grantedByEmail ?? "Set up by the platform team"}</td>
+            <td className={`${cell} wrap-break-word`}>{row.grantedByEmail ?? "Set up by the platform team"}</td>
             <td className={cell}>{formatShortDate(row.grantedAt)}</td>
             <td className={cell}>{row.revokedAt ? formatShortDate(row.revokedAt) : "Active"}</td>
             <td className={cell}>{row.mfaEnrolled ? "Enrolled" : "Not enrolled"}</td>

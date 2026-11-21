@@ -21,7 +21,7 @@ export async function PlanHistory({ code }: { code: string }) {
               <time dateTime={row.createdAt}>{formatDateTime(row.createdAt)}</time>
             </td>
             <td className={`${cell} break-words`}>{row.actorName ?? "Migration"}</td>
-            <td className={`${cell} break-all`}>{row.field}</td>
+            <td className={`${cell} wrap-break-word`}>{row.field}</td>
             <td className={`${cell} break-words`}>{values.from}</td>
             <td className={`${cell} break-words`}>{values.to}</td>
             <td className={`${cell} break-words`}>{row.reason ?? <span className="text-muted-foreground">None recorded</span>}</td>
