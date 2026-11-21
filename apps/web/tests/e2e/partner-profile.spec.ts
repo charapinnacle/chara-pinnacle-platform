@@ -510,7 +510,7 @@ test.describe("Public partner profile (FR-K4)", () => {
     await expect(dialog).toContainText(`Organisation:${partner.displayName}`);
     await expect(dialog.getByLabel("Statement of reasons")).toBeFocused();
     await staff.page.keyboard.type("Too short");
-    await expect(dialog).toContainText("9 of 2000 characters used");
+    await expect(dialog).toContainText("9 of 2,000 characters used");
     await dialog.getByRole("button", { name: "Hide" }).focus();
     await staff.page.keyboard.press("Enter");
     await expect(dialog.getByText("Give a reason of at least 10 characters.").first()).toBeVisible();
@@ -685,7 +685,7 @@ test.describe("Public partner profile (FR-K4)", () => {
     await expect(dialog).toContainText("We aim to decide within 7 days");
     await expect(dialog.getByLabel("Grounds")).toBeFocused();
     await page.keyboard.type("Nineteen characters");
-    await expect(dialog).toContainText("19 of 2000 characters used");
+    await expect(dialog).toContainText("19 of 2,000 characters used");
     await dialog.getByRole("button", { name: "Send appeal" }).click();
     await expect(dialog.getByText("Give grounds of at least 20 characters").first()).toBeVisible();
     await dialog.getByLabel("Grounds").fill(grounds);

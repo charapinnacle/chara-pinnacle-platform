@@ -15,6 +15,7 @@ import { changeApplicantStage } from "@/lib/actions/applicants";
 import { changeSubmissionStage } from "@/lib/actions/submission-pipeline";
 import { applicationStatusLabels } from "@/lib/applications/presentation";
 import type { Database } from "@chara-pinnacle/db-types";
+import { characterCount } from "@/lib/i18n/format";
 import {
   declineReasonOptions,
   stageChangeFormSchema,
@@ -143,7 +144,7 @@ export function StageChangeForm({
               name="note"
               id={ids.note}
               label={noteLabel}
-              description={`${declining ? "" : "Optional. "}The candidate sees this text. ${noteLength}/${noteMaxChars}`}
+              description={`${declining ? "" : "Optional. "}The candidate sees this text. ${characterCount(noteLength, noteMaxChars)}.`}
             />
           ) : null}
           <div className="grid gap-3 sm:grid-cols-2">

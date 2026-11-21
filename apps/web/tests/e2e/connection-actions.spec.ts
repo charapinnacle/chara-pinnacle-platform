@@ -101,7 +101,7 @@ test.describe("Structured connection actions (FR-P2)", () => {
     await page.keyboard.press("Enter");
     const dialog = page.getByRole("dialog", { name: `Send an inquiry to ${rekrut.name}` });
     const body = dialog.getByLabel("Your inquiry");
-    await expect(dialog).toContainText("0/2,000 characters");
+    await expect(dialog).toContainText("0 of 2,000 characters");
     await body.fill("Too short");
     await dialog.getByRole("button", { name: "Send inquiry" }).click();
     await expect(dialog.locator("#inquiry-body-error")).toContainText("Write at least 20 characters");

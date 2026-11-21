@@ -121,7 +121,7 @@ test.describe("Contact requests (FR-Q3)", () => {
     await send.click();
     const dialog = page.getByRole("dialog", { name: "Send a contact request" });
     const message = dialog.getByLabel("Message to the worker");
-    await expect(dialog).toContainText("0/1,000 characters");
+    await expect(dialog).toContainText("0 of 1,000 characters");
     const vacancy = dialog.getByLabel("Invite to apply to a vacancy (optional)");
     await expect(vacancy.locator("option")).toHaveText(["No vacancy", "Pipe fitter", "Welder MIG/MAG"]);
     await expectNoAxeViolations(page);

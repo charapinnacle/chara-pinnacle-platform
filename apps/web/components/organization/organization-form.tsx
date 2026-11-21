@@ -16,6 +16,7 @@ import { partnerTypeLabels } from "@/components/forms/account-kind-options";
 import { createOrganization, createPartnerOrganization } from "@/lib/actions/organizations";
 import { identifierPurpose } from "@/lib/billing/presentation";
 import type { ReferenceItem } from "@/lib/dal/reference";
+import { characterCount } from "@/lib/i18n/format";
 import { toOptions } from "@/lib/reference-options";
 import { onboardingPath } from "@/lib/routes";
 import {
@@ -165,7 +166,7 @@ export function OrganizationForm({ lang, countries, industries, defaultCountry, 
             name="description"
             id={ids.description}
             label="About your company (optional)"
-            description={`Plain text: what you do and for whom. Line breaks are kept. ${descriptionLength}/${DESCRIPTION_MAX_CHARS}`}
+            description={`Plain text: what you do and for whom. Line breaks are kept. ${characterCount(descriptionLength, DESCRIPTION_MAX_CHARS)}.`}
           />
         ) : null}
       </fieldset>
