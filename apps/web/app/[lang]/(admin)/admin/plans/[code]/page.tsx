@@ -25,7 +25,7 @@ export default async function PlanHistoryPage({ params }: PageProps<"/[lang]/adm
         title={`History of ${plan.name}`}
         breadcrumb={<Breadcrumbs items={[{ label: "Plans and limits", href: adminPath(lang, "plans") }, { label: plan.code }]} />}
       >
-        <p className="text-body text-muted-foreground break-all">Plan code {plan.code}. Newest change first.</p>
+        <p className="text-body text-muted-foreground break-words">Plan code {plan.code}. Newest change first.</p>
       </PageHeader>
       <PlanEditorTabs lang={lang} />
       <Suspense fallback={<LoadingSkeleton rows={4} />}>
