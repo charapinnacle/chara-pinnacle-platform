@@ -62,7 +62,7 @@ type LicencesSectionProps = {
   profilePath?: string;
 };
 
-type FormValues = LicenceInput & { file: File | undefined };
+type FormValues = LicenceInput & { file?: File };
 type Outcome = { errors?: Record<string, string>; message?: string; saved?: true; fileNotSent?: string };
 
 // The licences of a partner (FR-J2): one entry per country with the issuing authority, the number, the valid-until date
