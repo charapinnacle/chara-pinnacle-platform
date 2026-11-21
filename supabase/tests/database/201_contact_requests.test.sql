@@ -1,5 +1,5 @@
 begin;
-select plan(100);
+select plan(101);
 
 \ir jobs_fixture.inc
 
@@ -450,6 +450,13 @@ select is(
   'contact_request|t', 'AC8: one conversation of context contact_request is opened and answered'
 );
 select set_config('t.acme_conv', current_setting('t.conv'), true);
+select is(
+  (select format('%s|%s|%s|%s', count(*), min(m.sender_organization_id::text) = current_setting('t.a'),
+     bool_and(m.body = r.message), bool_and(m.created_at = r.created_at))
+   from public.messages m join public.contact_requests r on r.id = current_setting('t.acme_w')::uuid
+   where m.conversation_id = current_setting('t.conv')::uuid),
+  '1|t|t|t', 'AC8: the request''s message is the first message of the conversation, from Acme, dated when it was sent'
+);
 select is(
   (select string_agg(coalesce(p.organization_id::text, 'worker:' || (p.user_id = :'w')::text), ',' order by p.organization_id nulls last)
    from public.conversation_participants p where p.conversation_id = current_setting('t.conv')::uuid),

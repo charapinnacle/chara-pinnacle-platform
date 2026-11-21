@@ -172,7 +172,7 @@ test.describe("release 2c journeys (NFR-O4, NFR-U4, NFR-P4)", () => {
     await expect(wp).toHaveURL(/\/en\/messages\/[0-9a-f-]{36}$/);
     const conversation = new URL(wp.url()).pathname.split("/").at(-1) ?? "";
     await expect(wp.getByRole("heading", { level: 1, name: employer })).toBeVisible();
-    await expect(wp.getByText("No messages yet")).toBeVisible();
+    await expect(wp.getByRole("main").getByText(/We build ships in Hamburg/), "the request is the first message").toBeVisible();
     await expectAccessibleAtBothWidths(wp);
     await wp.setViewportSize({ width: 1280, height: 900 });
     expect(query<{ status: string }>(`select status::text from public.contact_requests where id = ${literal(request.id)}`)).toEqual([{ status: "accepted" }]);
@@ -203,7 +203,7 @@ test.describe("release 2c journeys (NFR-O4, NFR-U4, NFR-P4)", () => {
       await deliver(wp, employer, memberLog, "Thank you, I will read it and answer."),
     ];
     for (const time of times) expect(time, `a message took ${time} ms to show`).toBeLessThan(DELIVERY_MS);
-    await expect(memberLog.getByRole("listitem")).toHaveCount(4);
+    await expect(memberLog.getByRole("listitem"), "the request and the four messages").toHaveCount(5);
     await expectAccessibleAtBothWidths(page);
 
     // The inbox lists the conversation under Contact requests with the worker's name.
