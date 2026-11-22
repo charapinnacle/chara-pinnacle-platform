@@ -160,7 +160,7 @@ test.describe("Structured connection actions (FR-P2)", () => {
     const dialog = page.getByRole("dialog", { name: `Request workforce from ${staffit.name}` });
     await choose(page, "Occupation", "Welders and flame cutters");
     await dialog.getByLabel("Number of workers").fill("25");
-    await expect(dialog.getByLabel("Country of work"), "the employer's country comes preselected").toHaveValue("Germany");
+    await expect(dialog.getByRole("combobox", { name: "Country of work", exact: true }), "the employer's country comes preselected").toHaveValue("Germany");
     await dialog.getByLabel("City or region").fill("Hamburg");
     const start = new Date(Date.now() + 60 * 86_400_000).toISOString().slice(0, 10);
     await pickDate(dialog.getByLabel("Start date"), start);
