@@ -4,6 +4,7 @@ import { enrollTotp } from "./support/login";
 import { createCommittedPartner, partnerWithCompany, pickWithKeys, setPartnerRelease } from "./support/partners";
 import { signInAtAal1, signInAtAal2 } from "./support/team";
 import { expect, test } from "./support/test";
+import { pickDate } from "./support/date-picker";
 
 interface ListingRow {
   id: string;
@@ -72,7 +73,7 @@ test.describe("Workforce availability (FR-K3)", () => {
     await pickWithKeys(page, "Source country", "Phil", "Philippines");
     await dialog.getByLabel("Workers available now").fill("120");
     await dialog.getByLabel("Monthly capacity").fill("40");
-    await dialog.getByLabel("Available from").fill("2027-03-01");
+    await pickDate(dialog.getByLabel("Available from"), "2027-03-01");
     await expectAccessibleAtBothWidths(page);
     await page.setViewportSize({ width: 1280, height: 900 });
     await dialog.getByRole("button", { name: "Save listing" }).press("Enter");
@@ -160,10 +161,10 @@ test.describe("Workforce availability (FR-K3)", () => {
     await expect(edit).toContainText("Welders and flame cutters from Philippines");
     await expect(edit.getByLabel("Workers available now")).toHaveValue("60");
     await edit.getByLabel("Workers available now").fill("75");
-    await edit.getByLabel("Available from").fill(inDays(800));
+    await pickDate(edit.getByLabel("Available from"), inDays(800));
     await edit.getByRole("button", { name: "Save listing" }).click();
     await expect(edit.getByText("Choose a date up to 730 days ahead.").first()).toBeVisible();
-    await edit.getByLabel("Available from").fill(inDays(30));
+    await pickDate(edit.getByLabel("Available from"), inDays(30));
     execute(`revoke execute on function public.update_workforce_availability(uuid, integer, integer, date) from authenticated`);
     try {
       await edit.getByRole("button", { name: "Save listing" }).click();

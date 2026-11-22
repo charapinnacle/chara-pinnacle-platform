@@ -9,6 +9,7 @@ import { newOwner, staffUser } from "./support/mfa";
 import { createCommittedPartner, setPartnerRelease } from "./support/partners";
 import { captureActionRequests } from "./support/server-action";
 import { expect, test } from "./support/test";
+import { pickDate } from "./support/date-picker";
 
 const STATISTICS = "/en/admin/statistics";
 const FUNCTION = "public.admin_network_counts(date, date, text)";
@@ -79,7 +80,7 @@ async function showRange(page: Page, from: string, to: string, period = "Month")
   const fromField = network.getByLabel("From", { exact: true });
   await waitForHydration(fromField);
   await fromField.fill(from);
-  await network.getByLabel("To", { exact: true }).fill(to);
+  await pickDate(network.getByLabel("To", { exact: true }), to);
   await network.getByLabel("Period", { exact: true }).selectOption({ label: period });
   await network.getByRole("button", { name: "Show" }).click();
 }

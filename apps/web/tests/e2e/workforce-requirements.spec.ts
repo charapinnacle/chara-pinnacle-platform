@@ -12,6 +12,7 @@ import { captureActionRequests } from "./support/server-action";
 import { summary } from "./support/signup-page";
 import { addMember, newTeam, newVisitor, signInAtAal1, signInAtAal2, type Team } from "./support/team";
 import { expect, test } from "./support/test";
+import { pickDate } from "./support/date-picker";
 
 const requirementsUrl = (slug: string) => `/en/org/${slug}/requirements`;
 const newRequirementUrl = (slug: string) => `${requirementsUrl(slug)}/new`;
@@ -92,7 +93,7 @@ async function fillRequirement(page: Page, { skills = "MIG/MAG welding, blueprin
   await page.getByLabel("Quantity of Structural-metal preparers and erectors", { exact: true }).fill("20");
   await page.getByLabel("Skills (optional)", { exact: true }).fill(skills);
   await page.getByLabel("Experience in years (optional)", { exact: true }).fill("2");
-  await page.getByLabel("Start date", { exact: true }).fill(startDate());
+  await pickDate(page.getByLabel("Start date", { exact: true }), startDate());
   await page.getByLabel("Project duration in months (optional)", { exact: true }).fill("12");
   await page.getByLabel("Employment type").selectOption({ value: "full_time" });
   await page.getByLabel("Salary minimum").fill("2800");

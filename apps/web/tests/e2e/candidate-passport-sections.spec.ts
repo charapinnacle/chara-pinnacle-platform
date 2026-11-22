@@ -2,6 +2,7 @@ import { expect, test } from "./support/test";
 import { choose } from "./support/combobox";
 import { createCommittedUser } from "./support/login";
 import { childRows, daysFromToday, profileRows, signIn } from "./support/passport";
+import { pickDate, shownDate } from "./support/date-picker";
 
 test.describe("candidate passport: sections", () => {
   test("FR-B1 AC5: a candidate completes each section, the values persist and the meter follows", async ({ page }) => {
@@ -42,7 +43,7 @@ test.describe("candidate passport: sections", () => {
     const from = daysFromToday(30);
     await page.getByLabel("Years of experience", { exact: true }).fill("6");
     await page.getByLabel("Availability", { exact: true }).selectOption({ label: "From a date" });
-    await page.getByLabel("Available from", { exact: true }).fill(from);
+    await pickDate(page.getByLabel("Available from", { exact: true }), from);
     await page.getByRole("button", { name: "Set availability" }).click();
     await expect(page.getByText("Your experience and availability were saved", { exact: true })).toBeVisible();
 
@@ -52,7 +53,7 @@ test.describe("candidate passport: sections", () => {
 
     const expiry = daysFromToday(365);
     await choose(page, "Country where you may work", "Germany");
-    await page.getByLabel("Expiry date", { exact: true }).fill(expiry);
+    await pickDate(page.getByLabel("Expiry date", { exact: true }), expiry);
     await page.getByRole("button", { name: "Add work authorisation" }).click();
     await expect(page.getByRole("button", { name: "Remove work authorisation for Germany" })).toBeVisible();
 
@@ -64,7 +65,7 @@ test.describe("candidate passport: sections", () => {
     await expect(page.getByRole("listitem").filter({ hasText: "English (B2)" })).toBeVisible();
     await expect(page.getByLabel("Years of experience", { exact: true })).toHaveValue("6");
     await expect(page.getByLabel("Availability", { exact: true })).toHaveValue("from_date");
-    await expect(page.getByLabel("Available from", { exact: true })).toHaveValue(from);
+    await expect(page.getByLabel("Available from", { exact: true })).toContainText(shownDate(from));
     await expect(page.getByRole("button", { name: "Remove Germany" })).toBeVisible();
     await expect(page.getByText(/\(until .+\)/)).toBeVisible();
 
@@ -129,13 +130,13 @@ test.describe("candidate passport: sections", () => {
     await page.goto("/en/passport");
 
     await choose(page, "Country where you may work", "Spain");
-    await page.getByLabel("Expiry date", { exact: true }).fill(daysFromToday(-1));
+    await pickDate(page.getByLabel("Expiry date", { exact: true }), daysFromToday(-1));
     await page.getByRole("button", { name: "Add work authorisation" }).click();
     await expect(page.getByText("Choose today or a later date, up to 50 years ahead.")).toBeVisible();
     expect(childRows(user.id).authorizations).toEqual([]);
 
     await page.getByLabel("Availability", { exact: true }).selectOption({ label: "From a date" });
-    await page.getByLabel("Available from", { exact: true }).fill(daysFromToday(900));
+    await pickDate(page.getByLabel("Available from", { exact: true }), daysFromToday(900));
     await page.getByRole("button", { name: "Set availability" }).click();
     await expect(page.getByText("Choose a date from today to 24 months ahead.")).toBeVisible();
     expect(profileRows(user.id)[0].availability).toBeNull();

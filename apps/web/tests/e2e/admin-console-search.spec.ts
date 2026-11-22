@@ -7,6 +7,7 @@ import { waitForHydration } from "./support/hydration";
 import { newCompany, seedJob } from "./support/jobs";
 import { createCommittedUser } from "./support/login";
 import { expect, test } from "./support/test";
+import { pickDate } from "./support/date-picker";
 
 function rows(page: Page, table: string) {
   return page.getByRole("table", { name: table }).getByRole("row").filter({ has: page.getByRole("cell") });
@@ -173,12 +174,12 @@ test.describe("the search of users, organisations and the audit log", () => {
     await expect(page.getByLabel("Actor (user id)")).toHaveAttribute("aria-describedby", /error/);
     await page.getByLabel("Actor (user id)").fill("");
 
-    await page.getByLabel("From (UTC)").fill("2026-12-31");
-    await page.getByLabel("To (UTC)").fill("2026-01-01");
+    await pickDate(page.getByLabel("From (UTC)"), "2026-12-31");
+    await pickDate(page.getByLabel("To (UTC)"), "2026-01-01");
     await page.getByRole("button", { name: "Search" }).click();
     await expect(page.getByText("The start date must not be after the end date.").first()).toBeVisible();
-    await page.getByLabel("From (UTC)").fill("");
-    await page.getByLabel("To (UTC)").fill("");
+    await pickDate(page.getByLabel("From (UTC)"), "");
+    await pickDate(page.getByLabel("To (UTC)"), "");
 
     await action.fill(`e2e.${tag}`);
     await action.press("Enter");

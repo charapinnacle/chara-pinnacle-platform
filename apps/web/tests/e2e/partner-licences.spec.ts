@@ -7,6 +7,7 @@ import { aal2Token } from "./support/staff";
 import { signInAtAal1, signInAtAal2 } from "./support/team";
 import { expect, test } from "./support/test";
 import { createTestUser } from "./support/test-user";
+import { pickDate } from "./support/date-picker";
 
 const STAFF_ONLY = "Seen only by Chara Pinnacle staff until verification is available";
 const ADD_GRANT = "public.add_partner_licence(uuid, text, text, text, date, boolean)";
@@ -106,7 +107,7 @@ test.describe("Licences (FR-J2)", () => {
     await pickWithKeys(page, "Country", "Philipp", "Philippines");
     await dialog.getByLabel("Issuing authority").fill("Department of Migrant Workers");
     await dialog.getByLabel("Licence or registration number").fill("DMW-123-LB-031522-R");
-    await dialog.getByLabel("Valid until").fill("2028-03-15");
+    await pickDate(dialog.getByLabel("Valid until"), "2028-03-15");
     await dialog.getByLabel("Supporting document (optional)").setInputFiles({
       name: "licence.pdf",
       mimeType: "application/pdf",
@@ -225,7 +226,7 @@ test.describe("Licences (FR-J2)", () => {
     await pickWithKeys(page, "Country", "Neth", "Netherlands");
     await dialog.getByLabel("Issuing authority").fill("Inspectorate SZW");
     await dialog.getByLabel("Licence or registration number").fill("NL-UZB-778");
-    await dialog.getByLabel("Valid until").fill(daysFromToday(200));
+    await pickDate(dialog.getByLabel("Valid until"), daysFromToday(200));
     await dialog.getByRole("checkbox", { name: "I confirm that this entry is accurate" }).check();
     execute(`revoke execute on function ${ADD_GRANT} from authenticated`);
     try {
@@ -247,7 +248,7 @@ test.describe("Licences (FR-J2)", () => {
     await pickWithKeys(page, "Country", "Neth", "Netherlands");
     await dialog.getByLabel("Issuing authority").fill("Inspectorate SZW");
     await dialog.getByLabel("Licence or registration number").fill("NL-UZB-778");
-    await dialog.getByLabel("Valid until").fill(daysFromToday(200));
+    await pickDate(dialog.getByLabel("Valid until"), daysFromToday(200));
     await dialog.getByRole("checkbox", { name: "I confirm that this entry is accurate" }).check();
     await dialog.getByRole("button", { name: "Save licence" }).click();
     await expect(dialog.getByText("You have already added this number for this country.").first()).toBeVisible();
@@ -257,7 +258,7 @@ test.describe("Licences (FR-J2)", () => {
     await items.first().getByRole("button", { name: "Edit the licence for Germany" }).click();
     const edit = page.getByRole("dialog", { name: "Edit the licence" });
     await expect(edit.getByLabel("Licence or registration number")).toHaveValue("BA-2026-17");
-    await edit.getByLabel("Valid until").fill(daysFromToday(365));
+    await pickDate(edit.getByLabel("Valid until"), daysFromToday(365));
     await edit.getByRole("button", { name: "Save licence" }).click();
     await expect(edit.getByText("Confirm that this entry is accurate.").first()).toBeVisible();
     await edit.getByRole("checkbox", { name: "I confirm that this entry is accurate" }).check();

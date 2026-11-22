@@ -11,6 +11,7 @@ import { partnerWithCompany, setPartnerRelease } from "./support/partners";
 import { addMember, enforceLimits, newTeam, newVisitor, restoreLimits, signInAtAal1, signInAtAal2, type Team } from "./support/team";
 import type { TestUser } from "./support/test-user";
 import { expect, test } from "./support/test";
+import { pickDate } from "./support/date-picker";
 
 // The response pages (V46; FR-N2 AC1, AC4, AC9, AC11, AC12; FR-O2 AC1, AC4, AC5, AC8 to AC11; FR-O1 AC8, AC9; FR-J2
 // AC10; NFR-U3, NFR-U4, NFR-S11): a member of an eligible partner reads the eligibility panel on the job order page,
@@ -141,7 +142,7 @@ function panel(page: Page) {
 async function fillResponse(page: Page, { capacity = "80", amount = "1500.00" } = {}): Promise<void> {
   await page.getByLabel("Workers you can supply").focus();
   await page.keyboard.type(capacity);
-  await page.getByLabel("Available from").fill("2027-01-10");
+  await pickDate(page.getByLabel("Available from"), "2027-01-10");
   await page.getByLabel("Timeline (optional)").focus();
   await page.keyboard.type("First 40 workers in January, the rest by March");
   await page.getByLabel("Relevant experience").focus();

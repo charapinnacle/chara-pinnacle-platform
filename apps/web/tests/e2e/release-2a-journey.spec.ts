@@ -12,6 +12,7 @@ import { uniqueToken } from "./support/organizations";
 import { fillPartnerCompany, fillPartnerSignup, pickWithKeys, setPartnerRelease } from "./support/partners";
 import { newVisitor } from "./support/team";
 import { expect, test } from "./support/test";
+import { pickDate } from "./support/date-picker";
 
 const OCCUPATIONS = "Which occupations do you recruit or supply?";
 const COMMITMENT = "We charge workers no recruitment fees or related costs";
@@ -104,7 +105,7 @@ test.describe("release 2a journey (NFR-O4)", () => {
     await pickWithKeys(page, "Country", "Philipp", "Philippines");
     await licence.getByLabel("Issuing authority").fill("Department of Migrant Workers");
     await licence.getByLabel("Licence or registration number").fill(`DMW-${token}`);
-    await licence.getByLabel("Valid until").fill("2029-06-30");
+    await pickDate(licence.getByLabel("Valid until"), "2029-06-30");
     await licence.getByRole("checkbox", { name: "I confirm that this entry is accurate" }).check();
     await licence.getByRole("button", { name: "Save licence" }).click();
     await expect(page.getByText("Licence saved", { exact: true })).toBeVisible();
@@ -117,7 +118,7 @@ test.describe("release 2a journey (NFR-O4)", () => {
     await pickWithKeys(page, "Source country", "Phil", "Philippines");
     await listing.getByLabel("Workers available now").fill("60");
     await listing.getByLabel("Monthly capacity").fill("15");
-    await listing.getByLabel("Available from").fill(new Date(Date.now() + 14 * 86_400_000).toISOString().slice(0, 10));
+    await pickDate(listing.getByLabel("Available from"), new Date(Date.now() + 14 * 86_400_000).toISOString().slice(0, 10));
     await listing.getByRole("button", { name: "Save listing" }).click();
     await expect(page.getByText("Listing saved", { exact: true })).toBeVisible();
     await expectAccessibleAtBothWidths(page);
