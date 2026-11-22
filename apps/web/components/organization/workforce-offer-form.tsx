@@ -9,6 +9,7 @@ import { UpgradePrompt } from "@/components/billing/upgrade-prompt";
 import { toast, toastError } from "@/components/feedback/toast-store";
 import { CheckboxField } from "@/components/forms/checkbox-field";
 import { CheckboxGroupField } from "@/components/forms/checkbox-group-field";
+import { StepCard } from "@/components/onboarding/step-card";
 import { ChipsField, type ChipOption } from "@/components/forms/chips-field";
 import { FormButton } from "@/components/forms/form-button";
 import { FormErrorSummary } from "@/components/forms/form-error-summary";
@@ -123,63 +124,69 @@ export function WorkforceOfferForm({
     );
   }
 
-  return (
-    <form noValidate className="grid gap-8" onSubmit={handleSubmit(onSubmit)}>
-      <FormErrorSummary form={form} summaryRef={summaryRef} ids={ids} />
-      <ChipsField
-        control={control}
-        name="occupations"
-        id={ids.occupations}
-        label="Which occupations do you recruit or supply?"
-        description="Search the ISCO-08 list by name, for example welder. Only occupations from the list can be saved."
-        options={occupationOptions}
-        placeholder="Type an occupation"
-        emptyText="No matching occupation"
-        noneChosen="No occupations chosen yet."
-        noun={occupationNoun}
-        limit={occupationsPrompt?.limit ?? null}
-        limitNotice={
-          occupationsPrompt === null ? null : (
-            <UpgradePrompt
-              organizationId={organizationId}
-              organizationType={partnerType}
-              prompt={{ ...occupationsPrompt, used: occupationsPrompt.limit }}
-              billingHref={billingHref}
-              canUpgrade
-            />
-          )
-        }
-      />
-      <ChipsField
-        control={control}
-        name="industries"
-        id={ids.industries}
-        label="Which industries do you serve? (optional)"
-        options={toOptions(industries)}
-        placeholder="Type an industry"
-        emptyText="No matching industry"
-        noneChosen="No industries chosen yet."
-        noun={industryNoun}
-        limit={null}
-      />
-      <ChipsField
-        control={control}
-        name="languages"
-        id={ids.languages}
-        label="Which languages do your candidates speak? (optional)"
-        options={toOptions(languages)}
-        placeholder="Type a language"
-        emptyText="No matching language"
-        noneChosen="No languages chosen yet."
-        noun={languageNoun}
-        limit={null}
-      />
+  const occupationsField = (
+    <ChipsField
+      control={control}
+      name="occupations"
+      id={ids.occupations}
+      label="Which occupations do you recruit or supply?"
+      description="Search the ISCO-08 list by name, for example welder. Only occupations from the list can be saved."
+      options={occupationOptions}
+      placeholder="Type an occupation"
+      emptyText="No matching occupation"
+      noneChosen="No occupations chosen yet."
+      noun={occupationNoun}
+      limit={occupationsPrompt?.limit ?? null}
+      limitNotice={
+        occupationsPrompt === null ? null : (
+          <UpgradePrompt
+            organizationId={organizationId}
+            organizationType={partnerType}
+            prompt={{ ...occupationsPrompt, used: occupationsPrompt.limit }}
+            billingHref={billingHref}
+            canUpgrade
+          />
+        )
+      }
+    />
+  );
+  const industriesField = (
+    <ChipsField
+      control={control}
+      name="industries"
+      id={ids.industries}
+      label="Which industries do you serve? (optional)"
+      options={toOptions(industries)}
+      placeholder="Type an industry"
+      emptyText="No matching industry"
+      noneChosen="No industries chosen yet."
+      noun={industryNoun}
+      limit={null}
+    />
+  );
+  const languagesField = (
+    <ChipsField
+      control={control}
+      name="languages"
+      id={ids.languages}
+      label="Which languages do your candidates speak? (optional)"
+      options={toOptions(languages)}
+      placeholder="Type a language"
+      emptyText="No matching language"
+      noneChosen="No languages chosen yet."
+      noun={languageNoun}
+      limit={null}
+    />
+  );
+  const recruitmentFields = (
+    <>
       <RadioGroupField
         control={control}
         name="recruitmentType"
         id={ids.recruitmentType}
         legend="Recruitment type"
         options={recruitmentTypeOptions}
+        threeColumns={onboarding}
       />
       {partnerType === "recruitment_company" ? (
         <CheckboxField control={control} name="staffingService" id={ids.staffingService}>
@@ -195,23 +202,58 @@ export function WorkforceOfferForm({
           options={staffingTypeOptions}
         />
       ) : null}
-      <SelectField
-        control={control}
-        name="sizeBand"
-        id={ids.sizeBand}
-        label="Company size (optional)"
-        placeholder="Choose a size"
-        options={sizeBandOptions}
-      />
-      <InputField
-        control={control}
-        name="foundedYear"
-        id={ids.foundedYear}
-        label="Year founded (optional)"
-        inputMode="numeric"
-        maxLength={4}
-        autoComplete="off"
-      />
+    </>
+  );
+  const sizeField = (
+    <SelectField
+      control={control}
+      name="sizeBand"
+      id={ids.sizeBand}
+      label="Company size (optional)"
+      placeholder="Choose a size"
+      options={sizeBandOptions}
+    />
+  );
+  const foundedField = (
+    <InputField
+      control={control}
+      name="foundedYear"
+      id={ids.foundedYear}
+      label="Year founded (optional)"
+      inputMode="numeric"
+      maxLength={4}
+      autoComplete="off"
+    />
+  );
+
+  return (
+    <form noValidate className="grid gap-8" onSubmit={handleSubmit(onSubmit)}>
+      <FormErrorSummary form={form} summaryRef={summaryRef} ids={ids} />
+      {onboarding ? (
+        <>
+          <StepCard title="Occupations">
+            {occupationsField}
+          </StepCard>
+          <StepCard title="Industries and languages" columns>
+            {industriesField}
+            {languagesField}
+          </StepCard>
+          <StepCard title="How you recruit">{recruitmentFields}</StepCard>
+          <StepCard title="Your company" columns>
+            {sizeField}
+            {foundedField}
+          </StepCard>
+        </>
+      ) : (
+        <>
+          {occupationsField}
+          {industriesField}
+          {languagesField}
+          {recruitmentFields}
+          {sizeField}
+          {foundedField}
+        </>
+      )}
       {listingCounts ? (
         <Suspense fallback={null}>
           <ListingRemovalNotice

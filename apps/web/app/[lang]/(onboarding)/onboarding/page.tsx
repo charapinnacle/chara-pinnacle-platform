@@ -10,6 +10,7 @@ import { Notice } from "@/components/forms/notice";
 import { partnerTypeLabels } from "@/components/forms/account-kind-options";
 import { TextLink } from "@/components/forms/text-link";
 import { EnrolmentStartForm } from "@/components/mfa/enrolment-start-form";
+import { Card } from "@/components/layout/card";
 import { OnboardingPanel } from "@/components/onboarding/onboarding-panel";
 import { OnboardingSteps } from "@/components/onboarding/onboarding-steps";
 import { PartnerReadyStep, PartnerReviewPending } from "@/components/onboarding/partner-ready";
@@ -111,7 +112,7 @@ export default async function OnboardingPage({
     if (partnerType.success) {
       return (
         <OnboardingPanel
-          steps={<OnboardingSteps kind="partner" current={0} />}
+          partnerStep={{ current: 0 }}
           title="Tell us about your company"
           description="Our team reviews these details before your company is listed. You can edit most of them later."
         >
@@ -275,7 +276,7 @@ async function PartnerNextStep({ lang, aal, organization, countries, industries,
       : "No company registration number or VAT number is recorded yet.";
     return (
       <OnboardingPanel
-        steps={<OnboardingSteps kind="partner" current={0} />}
+        partnerStep={{ current: 0 }}
         title="Your company details"
         description="Our team checks these details in the review."
       >
@@ -322,7 +323,7 @@ async function PartnerNextStep({ lang, aal, organization, countries, industries,
     const basedIn = countries.find(({ code }) => code === profile?.country)?.name ?? profile?.country ?? "";
     return (
       <OnboardingPanel
-        steps={<OnboardingSteps kind="partner" current={1} />}
+        partnerStep={{ current: 1 }}
         title="Where you serve"
         description="Employers and job orders reach you through these countries, not through your address. Choose them from the list."
       >
@@ -350,7 +351,7 @@ async function PartnerNextStep({ lang, aal, organization, countries, industries,
     ]);
     return (
       <OnboardingPanel
-        steps={<OnboardingSteps kind="partner" current={2} />}
+        partnerStep={{ current: 2 }}
         title="What you offer"
         description="Employers, job orders and the directories find you by the occupations you recruit or supply. Choose them from the list."
       >
@@ -377,7 +378,7 @@ async function PartnerNextStep({ lang, aal, organization, countries, industries,
     const owner = organization.role === "owner";
     return (
       <OnboardingPanel
-        steps={<OnboardingSteps kind="partner" current={3} />}
+        partnerStep={{ current: 3 }}
         title="Commitments"
         description={
           commitment.accepted
@@ -429,15 +430,17 @@ async function PartnerNextStep({ lang, aal, organization, countries, industries,
   if (!twoStepDone) {
     return (
       <OnboardingPanel
-        steps={<OnboardingSteps kind="partner" current={4} />}
+        partnerStep={{ current: 4 }}
         title="Secure your account"
         description={`As ${organization.role === "owner" ? "the owner" : "an admin"} of ${organization.displayName} you will manage its team, billing, job orders and candidates, so ${BRAND_NAME} asks for a code from an authenticator app before you open them. It takes about a minute.`}
       >
-        <p className="text-body leading-relaxed">
-          You scan a QR code with an authenticator app such as Google Authenticator, 1Password or Authy, then enter the code it
-          shows.
-        </p>
-        <EnrolmentStartForm first next={onboardingPath(lang)} />
+        <Card padding="lg" elevated className="gap-5">
+          <p className="text-body leading-relaxed">
+            You scan a QR code with an authenticator app such as Google Authenticator, 1Password or Authy, then enter the code
+            it shows.
+          </p>
+          <EnrolmentStartForm first next={onboardingPath(lang)} />
+        </Card>
       </OnboardingPanel>
     );
   }
@@ -469,7 +472,7 @@ type StepPendingProps = {
 // A step of the partner journey that is not open yet, or that someone else completes.
 function StepPending({ lang, current, title, children }: StepPendingProps) {
   return (
-    <OnboardingPanel steps={<OnboardingSteps kind="partner" current={current} />} title={title}>
+    <OnboardingPanel partnerStep={{ current: current }} title={title}>
       <Notice tone="info" role="status">
         {children}
       </Notice>

@@ -1,7 +1,7 @@
 import { Notice } from "@/components/forms/notice";
 import { TextLink } from "@/components/forms/text-link";
+import { Card } from "@/components/layout/card";
 import { OnboardingPanel } from "@/components/onboarding/onboarding-panel";
-import { OnboardingSteps } from "@/components/onboarding/onboarding-steps";
 import { ReviewChecks } from "@/components/onboarding/review-checks";
 import { SubmitForReview } from "@/components/onboarding/submit-for-review";
 import { WelcomeTiles } from "@/components/onboarding/welcome-tiles";
@@ -55,7 +55,7 @@ export function PartnerReadyStep({ lang, organization, manager, targetDays, info
   const reopen = infoStep ? reopenLinks[infoStep](lang, organization.slug) : null;
   return (
     <OnboardingPanel
-      steps={<OnboardingSteps kind="partner" current={5} reopened={infoStep ? infoStepIndexes[infoStep] : undefined} />}
+      partnerStep={{ current: 5, reopened: infoStep ? infoStepIndexes[infoStep] : undefined }}
       title={infoRequested ? "Submit your company again" : "Submit your company for review"}
       description={`Our team reviews ${organization.displayName} before it is listed in the partner directories. A review usually takes ${reviewTimeText(targetDays)}.`}
     >
@@ -78,19 +78,21 @@ export function PartnerReadyStep({ lang, organization, manager, targetDays, info
           ) : null}
         </Notice>
       ) : null}
-      <ReviewChecks id="review-checks" />
-      <p className="text-body">
-        Licences are optional before you submit. Add the licence or registration you hold for each country where you work
-        on your workforce profile, so our team can check it in the review.{" "}
-        <TextLink href={licencesPath(lang, organization.slug)}>Add your licences</TextLink>
-      </p>
-      {manager ? (
-        <SubmitForReview slug={organization.slug} again={infoRequested} />
-      ) : (
-        <Notice tone="info" role="status">
-          The owner or an admin of {organization.displayName} submits the company for review.
-        </Notice>
-      )}
+      <Card padding="lg" elevated className="gap-5">
+        <ReviewChecks id="review-checks" />
+        <p className="text-body">
+          Licences are optional before you submit. Add the licence or registration you hold for each country where you work
+          on your workforce profile, so our team can check it in the review.{" "}
+          <TextLink href={licencesPath(lang, organization.slug)}>Add your licences</TextLink>
+        </p>
+        {manager ? (
+          <SubmitForReview slug={organization.slug} again={infoRequested} />
+        ) : (
+          <Notice tone="info" role="status">
+            The owner or an admin of {organization.displayName} submits the company for review.
+          </Notice>
+        )}
+      </Card>
       <div className="flex flex-wrap gap-x-6 gap-y-3">
         {manager
           ? [
@@ -129,7 +131,7 @@ type PartnerReviewPendingProps = {
 export function PartnerReviewPending({ lang, organization, targetDays, wasListed, manager }: PartnerReviewPendingProps) {
   return (
     <OnboardingPanel
-      steps={<OnboardingSteps kind="partner" current={5} />}
+      partnerStep={{ current: 5 }}
       title="Your company is waiting for review"
       description={`Our team is reviewing ${organization.displayName}. A review usually takes ${reviewTimeText(targetDays)}. ${wasListed ? "Your company stays listed while our team reviews the change." : "Until it is done, your company is not shown to employers."}`}
     >

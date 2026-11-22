@@ -443,7 +443,7 @@ describe("the layout of onboarding", () => {
     expect(home).toMatch(/<span aria-hidden="true"[^>]*>Pinnacle<\/span>/);
     expect(html).toContain("Log out");
     expect(html).toContain(`© ${new Date().getFullYear()} Chara Pinnacle`);
-    expect(html).toMatch(/<main id="main-content"[^>]*><div class="[^"]*max-w-\[35rem\][^"]*"><p>Step<\/p><\/div><\/main>/);
+    expect(html).toMatch(/<main id="main-content"[^>]*><div class="[^"]*max-w-6xl[^"]*"><p>Step<\/p><\/div><\/main>/);
     expect(html).toContain('href="/en/imprint"');
     expect(html).not.toContain('aria-label="Main"');
     expect(html).not.toContain("Account");

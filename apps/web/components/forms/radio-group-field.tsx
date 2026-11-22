@@ -10,6 +10,7 @@ import {
 } from "react-hook-form";
 import { FieldMessage } from "@/components/forms/field-message";
 import { FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
+import { cn } from "@/lib/utils";
 
 type RadioOption = { value: string; label: string; icon: LucideIcon; description?: string };
 
@@ -21,6 +22,8 @@ type RadioGroupFieldProps<T extends FieldValues, N extends FieldPath<T>> = {
   description?: string;
   options: readonly RadioOption[];
   onValueChange?: (value: string) => void;
+  // Three short options fit one row on a wide form.
+  threeColumns?: boolean;
 };
 
 // A choice between a few options as equal cards: the chosen one gets a near-black border and a check in its round
@@ -34,6 +37,7 @@ export function RadioGroupField<T extends FieldValues, N extends FieldPath<T>>({
   description,
   options,
   onValueChange,
+  threeColumns = false,
 }: RadioGroupFieldProps<T, N>) {
   const generatedId = useId();
   const id = idProp ?? generatedId;
@@ -65,7 +69,7 @@ export function RadioGroupField<T extends FieldValues, N extends FieldPath<T>>({
                 {description}
               </p>
             ) : null}
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className={cn("grid gap-3 sm:grid-cols-2", threeColumns && "lg:grid-cols-3")}>
               {options.map((option, index) => {
                 const optionId = index === 0 ? id : `${id}-${option.value}`;
                 const optionDescriptionId = `${optionId}-description`;

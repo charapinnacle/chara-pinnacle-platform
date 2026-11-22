@@ -18,7 +18,7 @@ export default async function OnboardingLayout({ children, params }: LayoutProps
         </div>
       </header>
       <main id={MAIN_CONTENT_ID} tabIndex={-1} className="flex-1 outline-none">
-        <div className="mx-auto w-full max-w-[35rem] px-4 pt-6 pb-16 sm:px-6 sm:pt-12 lg:pt-16">{children}</div>
+        <div className="mx-auto w-full max-w-6xl px-4 pt-6 pb-16 sm:px-6 sm:pt-12 lg:pt-16">{children}</div>
       </main>
       <footer className="border-t">
         <div className="mx-auto flex w-full max-w-content flex-wrap items-center justify-between gap-x-6 gap-y-1 px-4 py-4 text-small text-muted-foreground sm:px-6 lg:px-10">
