@@ -417,11 +417,7 @@ async function PartnerNextStep({ lang, aal, organization, countries, industries,
             <TextLink standalone href={partnerStepPath(lang, "ready")}>
               Back to Ready
             </TextLink>
-          ) : (
-            <TextLink standalone href={`/${lang}`}>
-              Go to the home page
-            </TextLink>
-          )}
+          ) : null}
         </div>
       </OnboardingPanel>
     );
