@@ -281,7 +281,10 @@ test.describe("release 2c journeys (NFR-O4, NFR-U4, NFR-P4)", () => {
       `select id from public.messages where conversation_id = ${literal(conversation)} and body = 'Please send us the fee and the timeline.'`,
     );
     const report = partnerLog.getByRole("listitem").filter({ hasText: "Please send us the fee and the timeline." }).getByRole("link", { name: /^Report/ });
-    await expect(report).toHaveAttribute("href", `/en/report?type=message&message=${reported.id}`);
+    await expect(report, "the report keeps the way back to the conversation").toHaveAttribute(
+      "href",
+      `/en/report?type=message&message=${reported.id}&back=${encodeURIComponent(new URL(pp.url()).pathname)}`,
+    );
     await report.click();
     await expect(pp.getByRole("heading", { level: 1, name: "Report a message" })).toBeVisible();
     await expectAccessibleAtBothWidths(pp);

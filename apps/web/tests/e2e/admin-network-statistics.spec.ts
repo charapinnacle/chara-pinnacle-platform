@@ -79,7 +79,7 @@ async function showRange(page: Page, from: string, to: string, period = "Month")
   const network = section(page);
   const fromField = network.getByLabel("From", { exact: true });
   await waitForHydration(fromField);
-  await fromField.fill(from);
+  await pickDate(fromField, from);
   await pickDate(network.getByLabel("To", { exact: true }), to);
   await network.getByLabel("Period", { exact: true }).selectOption({ label: period });
   await network.getByRole("button", { name: "Show" }).click();

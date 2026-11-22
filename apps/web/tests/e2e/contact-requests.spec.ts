@@ -127,7 +127,7 @@ test.describe("Contact requests (FR-Q3)", () => {
     await expectNoAxeViolations(page);
     const text = "We are hiring welders for our Hamburg yard and would like to talk to you.";
     await message.fill(text);
-    await expect(dialog).toContainText(`${text.length}/1,000 characters`);
+    await expect(dialog).toContainText(`${text.length} of 1,000 characters`);
     await vacancy.selectOption({ label: "Welder MIG/MAG" });
     await dialog.getByRole("button", { name: "Send request" }).click();
     await expect(page.getByText("Contact request sent", { exact: true })).toBeVisible();

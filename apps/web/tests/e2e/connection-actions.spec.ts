@@ -109,7 +109,7 @@ test.describe("Structured connection actions (FR-P2)", () => {
     await expectNoAxeViolations(page);
     const text = "We need twenty welders for our Hamburg yard from April. Can you help?";
     await body.fill(text);
-    await expect(dialog).toContainText(`${text.length}/2,000 characters`);
+    await expect(dialog).toContainText(`${text.length} of 2,000 characters`);
     await dialog.getByRole("button", { name: "Send inquiry" }).click();
     await expect(page).toHaveURL(new RegExp(`/en/org/${acme.slug}/messages/[0-9a-f-]{36}$`));
     const conversationUrl = new URL(page.url()).pathname;
