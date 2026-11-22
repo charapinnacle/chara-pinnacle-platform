@@ -84,7 +84,7 @@ test.describe("Find recruitment partners (FR-L1)", () => {
     await destination.fill("Germany");
     await page.getByRole("option", { name: "Germany", exact: true }).click();
     await page.getByRole("combobox", { name: "Occupation", exact: true }).fill("welders");
-    await page.getByRole("option", { name: /^7212 · Welders and flame cutters$/ }).click();
+    await page.getByRole("option", { name: /^Welders and flame cutters$/ }).click();
     await page.getByRole("button", { name: "Search partners" }).click();
 
     await expect(page).toHaveURL(`${DIRECTORY}?destination=DE&occupation=7212`);

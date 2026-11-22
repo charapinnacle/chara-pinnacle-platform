@@ -103,8 +103,8 @@ export function WorkforceOfferForm({
   const showStaffingTypes = partnerType === "staffing_company" || staffingService;
   const occupationOptions: ChipOption[] = occupations.map(({ code, label, synonyms }) => ({
     value: code,
-    label: `${code} · ${label}`,
-    keywords: synonyms.join(" "),
+    label,
+    keywords: [code, ...synonyms].join(" "),
     chip: label,
   }));
 

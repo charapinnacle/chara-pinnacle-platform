@@ -85,10 +85,10 @@ async function fillRequirement(page: Page, { skills = "MIG/MAG welding, blueprin
   await chooseFromList(page, "Country", "Germany", /^Germany$/);
   await page.getByLabel("City or region", { exact: true }).fill("Hamburg");
   await chooseFromList(page, "Industry", "Manufacturing", "Manufacturing");
-  await chooseFromList(page, "Occupation 1", "weld", "7212 · Welders and flame cutters");
+  await chooseFromList(page, "Occupation 1", "weld", "Welders and flame cutters");
   await page.getByLabel("Quantity of Welders and flame cutters", { exact: true }).fill("80");
   await page.getByRole("button", { name: "Add occupation" }).click();
-  await chooseFromList(page, "Occupation 2", "7214", "7214 · Structural-metal preparers and erectors");
+  await chooseFromList(page, "Occupation 2", "7214", "Structural-metal preparers and erectors");
   await page.getByLabel("Quantity of Structural-metal preparers and erectors", { exact: true }).fill("20");
   await page.getByLabel("Skills (optional)", { exact: true }).fill(skills);
   await page.getByLabel("Experience in years (optional)", { exact: true }).fill("2");

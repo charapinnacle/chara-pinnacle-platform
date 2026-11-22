@@ -87,12 +87,12 @@ test.describe("What you offer (FR-K2)", () => {
     expect(offer(id)).toBe("||||");
 
     // AC2: "weld" lists Welders and flame cutters; arrows and Enter take it, and the chip has its own remove button.
-    await pickWithKeys(page, OCCUPATIONS, "weld", "7212 · Welders and flame cutters");
+    await pickWithKeys(page, OCCUPATIONS, "weld", "Welders and flame cutters");
     await expect(page.getByRole("combobox", { name: OCCUPATIONS, exact: true })).toHaveValue("");
     await expect(chips(page, OCCUPATIONS)).toHaveText(["Welders and flame cutters"]);
     await expect(page.getByRole("button", { name: "Remove Welders and flame cutters" })).toBeVisible();
     // AC2: a synonym finds its occupation ("pipefitter" is not in the label).
-    await pickWithKeys(page, OCCUPATIONS, "pipefitter", "7126 · Plumbers and pipe fitters");
+    await pickWithKeys(page, OCCUPATIONS, "pipefitter", "Plumbers and pipe fitters");
     await expect(chips(page, OCCUPATIONS)).toHaveText(["Welders and flame cutters", "Plumbers and pipe fitters"]);
     await expect(page.getByText("2 occupations", { exact: true })).toBeVisible();
     // AC2: typed text that matches no occupation offers nothing to choose and is never saved.

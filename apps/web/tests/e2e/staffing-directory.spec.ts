@@ -366,7 +366,7 @@ test.describe("Find staffing partners and available workforce (FR-L2, FR-K3)", (
     await page.goto(DIRECTORY);
     const section = page.getByRole("region", { name: "Available workforce" });
     await waitForHydration(section.getByRole("combobox", { name: "Occupation" }));
-    await choose(page, section.getByRole("combobox", { name: "Occupation" }), "welders", /^7212 · Welders and flame cutters$/);
+    await choose(page, section.getByRole("combobox", { name: "Occupation" }), "welders", /^Welders and flame cutters$/);
     await choose(page, section.getByRole("combobox", { name: "Destination" }), "Luxembourg", /^Luxembourg$/);
     await section.getByRole("textbox", { name: "Workers needed" }).fill("100");
     await section.getByRole("textbox", { name: "Within (days)" }).fill("60");
@@ -413,7 +413,7 @@ test.describe("Find staffing partners and available workforce (FR-L2, FR-K3)", (
       await page.goto(DIRECTORY);
       const section = page.getByRole("region", { name: "Available workforce" });
       await waitForHydration(section.getByRole("combobox", { name: "Occupation" }));
-      await choose(page, section.getByRole("combobox", { name: "Occupation" }), "welders", /^7212 · Welders and flame cutters$/);
+      await choose(page, section.getByRole("combobox", { name: "Occupation" }), "welders", /^Welders and flame cutters$/);
       await choose(page, section.getByRole("combobox", { name: "Destination" }), "Germany", /^Germany$/);
       await section.getByRole("textbox", { name: "Workers needed" }).fill("100");
       await section.getByRole("textbox", { name: "Within (days)" }).fill("60");

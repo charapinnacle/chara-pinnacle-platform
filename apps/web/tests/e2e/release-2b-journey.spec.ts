@@ -103,7 +103,7 @@ test.describe("release 2b journeys (NFR-O4, NFR-U4)", () => {
     await chooseFromList(page, "Country", "Slovenia", /^Slovenia$/);
     await page.getByLabel("City or region", { exact: true }).fill("Ljubljana");
     await chooseFromList(page, "Industry", "Manufacturing", "Manufacturing");
-    await chooseFromList(page, "Occupation 1", "weld", "7212 · Welders and flame cutters");
+    await chooseFromList(page, "Occupation 1", "weld", "Welders and flame cutters");
     await page.getByLabel("Quantity of Welders and flame cutters", { exact: true }).fill("100");
     await page.getByLabel("Start date", { exact: true }).fill(startDate(120));
     await page.getByLabel("Employment type").selectOption({ value: "full_time" });

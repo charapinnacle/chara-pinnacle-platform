@@ -78,8 +78,8 @@ test.describe("release 2a journey (NFR-O4)", () => {
     await pickWithKeys(page, "Where do you recruit for?", "ger", "Germany");
     await page.getByRole("button", { name: "Continue" }).click();
     await expect(page.getByRole("heading", { name: "What you offer", level: 1 })).toBeVisible();
-    await pickWithKeys(page, OCCUPATIONS, "weld", "7212 · Welders and flame cutters");
-    await pickWithKeys(page, OCCUPATIONS, "electricians", "7411 · Building and related electricians");
+    await pickWithKeys(page, OCCUPATIONS, "weld", "Welders and flame cutters");
+    await pickWithKeys(page, OCCUPATIONS, "electricians", "Building and related electricians");
     await pickWithKeys(page, "Which languages do your candidates speak? (optional)", "engl", "English");
     await page.getByRole("radiogroup", { name: "Recruitment type" }).getByRole("radio", { name: "International", exact: true }).check();
     await page.getByRole("button", { name: "Continue" }).click();
@@ -177,7 +177,7 @@ test.describe("release 2a journey (NFR-O4)", () => {
     await destination.fill("Iceland");
     await visitor.page.getByRole("option", { name: "Iceland", exact: true }).click();
     await visitor.page.getByRole("combobox", { name: "Occupation", exact: true }).fill("electricians");
-    await visitor.page.getByRole("option", { name: /^7411 · Building and related electricians$/ }).click();
+    await visitor.page.getByRole("option", { name: /^Building and related electricians$/ }).click();
     await visitor.page.getByRole("button", { name: "Search partners" }).click();
     await expect(visitor.page).toHaveURL("/en/partners/recruitment?destination=IS&occupation=7411");
     // The card is found by the token of this run's name; on a database that earlier runs left partners for Iceland and

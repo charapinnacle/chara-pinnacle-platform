@@ -110,7 +110,7 @@ export function FindEmployersFilterForm(props: FindEmployersFilterFormProps) {
               label="Occupation"
               placeholder="Any occupation"
               emptyText="No matching occupation"
-              options={occupations.map(({ code, label, synonyms }) => ({ value: code, label: `${code} · ${label}`, keywords: synonyms.join(" ") }))}
+              options={occupations.map(({ code, label, synonyms }) => ({ value: code, label, keywords: [code, ...synonyms].join(" ") }))}
             />
             <InputField
               control={control}
