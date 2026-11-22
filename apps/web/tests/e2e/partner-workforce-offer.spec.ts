@@ -222,7 +222,7 @@ test.describe("What you offer (FR-K2)", () => {
 
     // AC10: an eleventh occupation is not added; the limit is announced with the way to upgrade.
     const [{ label }] = query<{ label: string }>(`select label from public.occupations where code = ${literal(codes[10])}`);
-    await pickWithKeys(page, OCCUPATIONS, label, `${codes[10]} · ${label}`);
+    await pickWithKeys(page, OCCUPATIONS, label, label);
     await expect(chips(page, OCCUPATIONS)).toHaveCount(10);
     const notice = page.getByRole("status").filter({ hasText: LIMIT_MESSAGE });
     await expect(notice).toBeVisible();
@@ -246,7 +246,7 @@ test.describe("What you offer (FR-K2)", () => {
     // Removing one makes room; the staffing types change and the recruitment type too.
     const [{ first }] = query<{ first: string }>(`select label as first from public.occupations where code = ${literal(codes[0])}`);
     await page.getByRole("button", { name: `Remove ${first}` }).click();
-    await pickWithKeys(page, OCCUPATIONS, label, `${codes[10]} · ${label}`);
+    await pickWithKeys(page, OCCUPATIONS, label, label);
     await expect(chips(page, OCCUPATIONS)).toHaveCount(10);
     await staffingTypes.getByRole("checkbox", { name: "Temporary" }).uncheck();
     await page.getByRole("button", { name: "Save what you offer" }).click();
