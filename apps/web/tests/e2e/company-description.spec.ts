@@ -31,7 +31,7 @@ test.describe("the company description", () => {
 
     await page.setViewportSize({ width: 1280, height: 900 });
     await field.fill(text);
-    await expect(page.getByText(`${text.length}/2000`)).toBeVisible();
+    await expect(page.getByText(`${text.length.toLocaleString("en")} of 2,000 characters`)).toBeVisible();
     await page.getByRole("button", { name: "Save profile" }).click();
     await expect(page.getByText("Company profile saved", { exact: true })).toBeVisible();
     expect(stored(team.id)).toBe(text);

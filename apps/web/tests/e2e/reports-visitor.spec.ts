@@ -32,7 +32,7 @@ test.describe("reporting as a visitor", () => {
     await expectAccessibleAtBothWidths(page);
 
     await fillReport(page, { email: "Visitor.Reporter@Example.test" });
-    await expect(page.getByText(`${DETAILS.length}/2000`)).toBeVisible();
+    await expect(page.getByText(`${DETAILS.length.toLocaleString("en")} of 2,000 characters`)).toBeVisible();
     const reference = await sendReport(page);
     await evidence(page, "report-received-visitor");
     await expect(page.getByText("We do not email you about it")).toBeVisible();
