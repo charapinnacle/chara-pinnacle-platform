@@ -384,11 +384,19 @@ export function reportPath(
   type: keyof typeof reportTargetParams,
   target?: string,
   category?: Database["public"]["Enums"]["report_category"],
+  back?: string,
 ): string {
   const query = new URLSearchParams({ type });
   if (target) query.set(reportTargetParams[type], target);
   if (category) query.set("category", category);
+  if (back) query.set("back", back);
   return `/${lang}/report?${query.toString()}`;
+}
+
+// The conversation a report form was opened from, when ?back= names one exactly (a worker's or an organisation's); anything
+// else is ignored, so the link cannot lead elsewhere.
+export function conversationBackPath(back: string | undefined): string | undefined {
+  return back && /^\/[a-z]{2}\/(org\/[a-z0-9-]+\/)?messages\/[0-9a-f-]{36}$/.test(back) ? back : undefined;
 }
 
 // A member reports an applicant of the organisation from the applicant page.

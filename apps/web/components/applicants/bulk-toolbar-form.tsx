@@ -17,6 +17,7 @@ import { Card } from "@/components/layout/card";
 import { bulkChangeApplicantStage } from "@/lib/actions/applicants";
 import { applicationStatusLabels } from "@/lib/applications/presentation";
 import { allowedTargets } from "@/lib/applications/stage-machine";
+import { characterCount } from "@/lib/i18n/format";
 import {
   bulkSelectionSchema,
   declineReasonOptions,
@@ -160,7 +161,7 @@ export function BulkToolbarForm({ slug, shortlisting, noteMaxChars }: BulkToolba
             name="note"
             id={ids.note}
             label={declining ? "Other reason (visible to the candidate)" : "Note (visible to the candidate)"}
-            description={`${declining ? "" : "Optional. "}The candidates see this text. ${noteLength}/${noteMaxChars}`}
+            description={`${declining ? "" : "Optional. "}The candidates see this text. ${characterCount(noteLength, noteMaxChars)}.`}
           />
         ) : null}
         <FormButton type="submit" className="w-full sm:w-auto sm:justify-self-start" disabled={selected.length === 0}>

@@ -121,13 +121,13 @@ test.describe("Contact requests (FR-Q3)", () => {
     await send.click();
     const dialog = page.getByRole("dialog", { name: "Send a contact request" });
     const message = dialog.getByLabel("Message to the worker");
-    await expect(dialog).toContainText("0/1,000 characters");
+    await expect(dialog).toContainText("0 of 1,000 characters");
     const vacancy = dialog.getByLabel("Invite to apply to a vacancy (optional)");
     await expect(vacancy.locator("option")).toHaveText(["No vacancy", "Pipe fitter", "Welder MIG/MAG"]);
     await expectNoAxeViolations(page);
     const text = "We are hiring welders for our Hamburg yard and would like to talk to you.";
     await message.fill(text);
-    await expect(dialog).toContainText(`${text.length}/1,000 characters`);
+    await expect(dialog).toContainText(`${text.length} of 1,000 characters`);
     await vacancy.selectOption({ label: "Welder MIG/MAG" });
     await dialog.getByRole("button", { name: "Send request" }).click();
     await expect(page.getByText("Contact request sent", { exact: true })).toBeVisible();
@@ -298,6 +298,18 @@ test.describe("Contact requests (FR-Q3)", () => {
       const target = staff.page.locator("#target");
       await expect(target).toContainText(acmeName);
       await expect(target).not.toContainText("300 euros");
+      // The text of a contact request is read, and decided on, only by the administrator who puts the report in review.
+      const review = staff.page.getByRole("button", { name: "Mark in review" });
+      await waitForHydration(review);
+      await review.click();
+      const reviewDialog = staff.page.getByRole("dialog", { name: "Put the report in review" });
+      await reviewDialog.getByLabel("Reason").fill("Reading the reported contact request.");
+      await reviewDialog.getByRole("button", { name: "Mark in review" }).click();
+      await expect(staff.page.getByText("The report is in review", { exact: true })).toBeVisible();
+      const show = target.getByRole("button", { name: "Show the reported contact request" });
+      await waitForHydration(show);
+      await show.click();
+      await expect(target).toContainText("Pay us 300 euros and the job is yours.");
       const hide = staff.page.getByRole("button", { name: "Hide", exact: true });
       await waitForHydration(hide);
       await hide.click();

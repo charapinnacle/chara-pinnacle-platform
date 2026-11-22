@@ -11,6 +11,7 @@ import { partnerWithCompany, type PartnerType } from "./support/partners";
 import { addMember, newTeam, newVisitor, signInAtAal1, signInWithCode, subscribe, type Team } from "./support/team";
 import type { TestUser } from "./support/test-user";
 import { expect, test } from "./support/test";
+import { pickDate } from "./support/date-picker";
 
 // Structured connection actions (V71; FR-P2 AC1 to AC5, AC9, AC10; SOP P2-27 steps Send inquiry, Request workforce, Invite to
 // job, Track; NFR-U3, NFR-U4): an employer member sends a listed partner an inquiry from its profile and lands in the
@@ -101,14 +102,14 @@ test.describe("Structured connection actions (FR-P2)", () => {
     await page.keyboard.press("Enter");
     const dialog = page.getByRole("dialog", { name: `Send an inquiry to ${rekrut.name}` });
     const body = dialog.getByLabel("Your inquiry");
-    await expect(dialog).toContainText("0/2,000 characters");
+    await expect(dialog).toContainText("0 of 2,000 characters");
     await body.fill("Too short");
     await dialog.getByRole("button", { name: "Send inquiry" }).click();
     await expect(dialog.locator("#inquiry-body-error")).toContainText("Write at least 20 characters");
     await expectNoAxeViolations(page);
     const text = "We need twenty welders for our Hamburg yard from April. Can you help?";
     await body.fill(text);
-    await expect(dialog).toContainText(`${text.length}/2,000 characters`);
+    await expect(dialog).toContainText(`${text.length} of 2,000 characters`);
     await dialog.getByRole("button", { name: "Send inquiry" }).click();
     await expect(page).toHaveURL(new RegExp(`/en/org/${acme.slug}/messages/[0-9a-f-]{36}$`));
     const conversationUrl = new URL(page.url()).pathname;
@@ -159,10 +160,10 @@ test.describe("Structured connection actions (FR-P2)", () => {
     const dialog = page.getByRole("dialog", { name: `Request workforce from ${staffit.name}` });
     await choose(page, "Occupation", "Welders and flame cutters");
     await dialog.getByLabel("Number of workers").fill("25");
-    await expect(dialog.getByLabel("Country of work"), "the employer's country comes preselected").toHaveValue("Germany");
+    await expect(dialog.getByRole("combobox", { name: "Country of work", exact: true }), "the employer's country comes preselected").toHaveValue("Germany");
     await dialog.getByLabel("City or region").fill("Hamburg");
     const start = new Date(Date.now() + 60 * 86_400_000).toISOString().slice(0, 10);
-    await dialog.getByLabel("Start date").fill(start);
+    await pickDate(dialog.getByLabel("Start date"), start);
     await expectNoAxeViolations(page);
     await dialog.getByRole("button", { name: "Send request" }).click();
     await expect(page).toHaveURL(new RegExp(`/en/org/${acme.slug}/messages/[0-9a-f-]{36}$`));

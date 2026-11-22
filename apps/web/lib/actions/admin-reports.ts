@@ -74,7 +74,15 @@ export async function decideReport(input: ReportDecisionInput): Promise<AdminRes
 
   const path = adminPath(defaultLocale, `reports/${id}`);
   const { error } = await (await adminClient()).rpc("moderation_decide", { p_decision: decision, p_reasons: reason, p_report: id });
-  if (error) return adminRefusal(error, path, { ...REPORT_CHANGED, ...TARGET_CHANGED });
+  if (error) {
+    return adminRefusal(error, path, {
+      ...REPORT_CHANGED,
+      ...TARGET_CHANGED,
+      "CHARA_INVALID_STATE:not_in_review": {
+        message: "Only the administrator who put this report in review decides it, after reading what was reported.",
+      },
+    });
+  }
   revalidatePath(path);
   return { done: true };
 }

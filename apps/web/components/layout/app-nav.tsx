@@ -37,7 +37,7 @@ export function useAppNavigation({ lang, email, accountKind, organizations, subm
   const organization = accountKind === "company" ? currentOrganization(lang, pathname, orgParam, organizations) : undefined;
   const offered = accountKind === "worker" ? workerLinks(lang, { submissions, contactRequests, messaging: messages }) : organization ? organizationLinks(lang, organization) : [];
   const links = isGatePage(lang, pathname) ? [] : offered;
-  const roleLabel = accountKind === "worker" ? "Worker" : accountKind === "company" ? (organization?.roleLabel ?? "Employer") : undefined;
+  const roleLabel = accountKind === "worker" ? "Worker" : accountKind === "company" ? (organization?.roleLabel ?? "Company account") : undefined;
   const switcher = organizations.length > 1 ? organization : undefined;
   const account = { email, roleLabel, links: accountKind ? accountLinks(lang, accountKind, switcher?.slug) : [] };
   return { pathname, organization, links, switcher, account };

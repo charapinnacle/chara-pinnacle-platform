@@ -12,10 +12,12 @@ import { Notice } from "@/components/forms/notice";
 import { SelectField } from "@/components/forms/select-field";
 import { TextLink } from "@/components/forms/text-link";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
+import { StepCard } from "@/components/onboarding/step-card";
 import { partnerTypeLabels } from "@/components/forms/account-kind-options";
 import { createOrganization, createPartnerOrganization } from "@/lib/actions/organizations";
 import { identifierPurpose } from "@/lib/billing/presentation";
 import type { ReferenceItem } from "@/lib/dal/reference";
+import { characterCount } from "@/lib/i18n/format";
 import { toOptions } from "@/lib/reference-options";
 import { onboardingPath } from "@/lib/routes";
 import {
@@ -106,93 +108,124 @@ export function OrganizationForm({ lang, countries, industries, defaultCountry, 
     );
   }
 
+  const legalName = (
+    <InputField control={control} name="legalName" id={ids.legalName} label="Legal company name" autoComplete="organization" />
+  );
+  const displayName = (
+    <InputField
+      control={control}
+      name="displayName"
+      id={ids.displayName}
+      label="Display name (optional)"
+      description={
+        partnerType
+          ? "The name employers and other companies see. Defaults to the legal name."
+          : "The name candidates see. Defaults to the legal name."
+      }
+    />
+  );
+  const country = (
+    <ComboboxField
+      control={control}
+      name="country"
+      id={ids.country}
+      label={partnerType ? "Country where you are based" : "Country"}
+      placeholder="Choose a country"
+      options={toOptions(countries)}
+    />
+  );
+  const industry = (
+    <ComboboxField
+      control={control}
+      name="industry"
+      id={ids.industry}
+      label="Industry"
+      placeholder="Choose an industry"
+      options={toOptions(industries)}
+    />
+  );
+  const website = (
+    <InputField control={control} name="website" id={ids.website} label="Website (optional)" type="url" autoComplete="url" />
+  );
+  const description = (
+    <TextareaField
+      control={control}
+      name="description"
+      id={ids.description}
+      label="About your company (optional)"
+      description={`Plain text: what you do and for whom. Line breaks are kept. ${characterCount(descriptionLength, DESCRIPTION_MAX_CHARS)}.`}
+    />
+  );
+  const identifier = (
+    <InputField
+      control={control}
+      name="identifier"
+      id={ids.identifier}
+      label={
+        partnerType
+          ? "Company registration number, VAT number or other identifier"
+          : "Company registration number or VAT number (optional until you start your trial)"
+      }
+      description={partnerType ? PARTNER_IDENTIFIER_HELP : IDENTIFIER_HELP}
+    />
+  );
+  const identifierKind = (
+    <SelectField
+      control={control}
+      name="identifierKind"
+      id={ids.identifierKind}
+      label="Type of identifier"
+      placeholder="Choose a type"
+      options={identifierKindOptions}
+    />
+  );
+
   return (
     <form noValidate className="grid gap-6" onSubmit={handleSubmit(onSubmit)}>
       <FormErrorSummary form={form} summaryRef={summaryRef} ids={ids} />
-      <fieldset className="grid min-w-0 gap-6">
-        <legend className={groupTitleClassName}>Company</legend>
-        {partnerType ? (
-          <p className="text-body leading-relaxed">
-            Company type: <strong className="font-semibold">{partnerTypeLabels[partnerType]}</strong>. You chose it when you
-            signed up; only our team can correct it.
-          </p>
-        ) : null}
-        <InputField
-          control={control}
-          name="legalName"
-          id={ids.legalName}
-          label="Legal company name"
-          autoComplete="organization"
-        />
-        <InputField
-          control={control}
-          name="displayName"
-          id={ids.displayName}
-          label="Display name (optional)"
-          description={
-            partnerType
-              ? "The name employers and other companies see. Defaults to the legal name."
-              : "The name candidates see. Defaults to the legal name."
-          }
-        />
-        <ComboboxField
-          control={control}
-          name="country"
-          id={ids.country}
-          label={partnerType ? "Country where you are based" : "Country"}
-          placeholder="Choose a country"
-          options={toOptions(countries)}
-        />
-        <ComboboxField
-          control={control}
-          name="industry"
-          id={ids.industry}
-          label="Industry"
-          placeholder="Choose an industry"
-          options={toOptions(industries)}
-        />
-        <InputField
-          control={control}
-          name="website"
-          id={ids.website}
-          label="Website (optional)"
-          type="url"
-          autoComplete="url"
-        />
-        {partnerType ? (
-          <TextareaField
-            control={control}
-            name="description"
-            id={ids.description}
-            label="About your company (optional)"
-            description={`Plain text: what you do and for whom. Line breaks are kept. ${descriptionLength}/${DESCRIPTION_MAX_CHARS}`}
-          />
-        ) : null}
-      </fieldset>
-      <div className="border-t pt-8">
-        <fieldset className="grid min-w-0 gap-6">
-          <legend className={groupTitleClassName}>Registration</legend>
-          <InputField
-            control={control}
-            name="identifier"
-            id={ids.identifier}
-            label={
-              partnerType
-                ? "Company registration number, VAT number or other identifier"
-                : "Company registration number or VAT number (optional until you start your trial)"
+      {partnerType ? (
+        <>
+          <StepCard
+            title="Company details"
+            hint={
+              <>
+                Company type: <strong className="font-semibold text-foreground">{partnerTypeLabels[partnerType]}</strong>. You
+                chose it when you signed up; only our team can correct it.
+              </>
             }
-            description={partnerType ? PARTNER_IDENTIFIER_HELP : IDENTIFIER_HELP}
-          />
-          <SelectField
-            control={control}
-            name="identifierKind"
-            id={ids.identifierKind}
-            label="Type of identifier"
-            placeholder="Choose a type"
-            options={identifierKindOptions}
-          />
-        </fieldset>
-      </div>
+            columns
+          >
+            {legalName}
+            {displayName}
+            {country}
+            {industry}
+            <div className="sm:col-span-2">{website}</div>
+            <div className="sm:col-span-2">{description}</div>
+          </StepCard>
+          <StepCard title="Registration" columns>
+            {identifier}
+            {identifierKind}
+          </StepCard>
+        </>
+      ) : (
+        <>
+          <fieldset className="grid min-w-0 gap-6">
+            <legend className={groupTitleClassName}>Company</legend>
+            {legalName}
+            {displayName}
+            {country}
+            {industry}
+            {website}
+          </fieldset>
+          <div className="border-t pt-8">
+            <fieldset className="grid min-w-0 gap-6">
+              <legend className={groupTitleClassName}>Registration</legend>
+              {identifier}
+              {identifierKind}
+            </fieldset>
+          </div>
+        </>
+      )}
       <FormButton type="submit" busy={formState.isSubmitting}>
         {formState.isSubmitting ? "Creating company..." : "Continue"}
       </FormButton>

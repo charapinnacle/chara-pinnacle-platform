@@ -9,6 +9,7 @@ import { newOwner, staffUser } from "./support/mfa";
 import { uniqueName } from "./support/organizations";
 import { newTeam, signInAtAal2 } from "./support/team";
 import { expect, test } from "./support/test";
+import { pickDate } from "./support/date-picker";
 
 // The plan, limit, feature, override and settings editor (FR-R2 AC1, AC5, AC7, AC10, AC11). The tests change plan rows and
 // settings of the whole database that no spec of this project reads (the partner plans, staffing_professional and an
@@ -177,7 +178,7 @@ test.describe("the plan and settings editor of the console (FR-R2)", () => {
     await page.getByLabel("Organisation", { exact: true }).selectOption({ label: `${name} (employer_enterprise)` });
     await page.getByLabel("Limit", { exact: true }).selectOption({ label: "Team members" });
     await page.getByLabel("Value", { exact: true }).fill("40");
-    await page.getByLabel("Expires on", { exact: true }).fill(inDays(90));
+    await pickDate(page.getByLabel("Expires on", { exact: true }), inDays(90));
     await page.getByLabel("Reason for the change", { exact: true }).fill("Fair-use raise agreed in the contract");
     await page.getByRole("button", { name: "Save override" }).click();
     await expect(page.getByText("The override is saved", { exact: true })).toBeVisible();

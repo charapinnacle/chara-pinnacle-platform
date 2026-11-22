@@ -46,7 +46,7 @@ test.describe("apply to a vacancy", () => {
     await expect(page).toHaveURL(applyUrl(jobId));
     await waitForHydration(page.getByLabel("Cover note (optional)"));
     await page.getByLabel("Cover note (optional)").fill(note);
-    await expect(page.getByText("200/2000")).toBeVisible();
+    await expect(page.getByText("200 of 2,000 characters")).toBeVisible();
     await page.getByLabel("CV.pdf").check();
     await page.getByLabel(CONSENT_LABEL(employer)).check();
     await page.getByRole("button", { name: "Submit application" }).click();
@@ -157,7 +157,7 @@ test.describe("apply to a vacancy", () => {
     await logIn(page, withDocuments, applyUrl(jobId));
     await expect(page).toHaveURL(applyUrl(jobId));
     await waitForHydration(page.getByLabel("Cover note (optional)"));
-    await expect(page.getByText("0/2000")).toBeVisible();
+    await expect(page.getByText("0 of 2,000 characters")).toBeVisible();
     const submit = page.getByRole("button", { name: "Submit application" });
     await expect(page.getByText(notice)).toBeVisible();
     const noticeBox = (await page.getByText(notice).boundingBox())!;

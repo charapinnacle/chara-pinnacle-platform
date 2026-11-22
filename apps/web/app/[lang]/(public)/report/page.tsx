@@ -10,7 +10,7 @@ import { getPartnerProfile } from "@/lib/dal/partner-profile";
 import { isReleased, type ReleaseSwitch } from "@/lib/dal/release";
 import { getCurrentUser } from "@/lib/dal/session";
 import { contentPathFrom, vacancyIdFrom } from "@/lib/reports/target";
-import { loginPath, reportPath } from "@/lib/routes";
+import { conversationBackPath, loginPath, reportPath } from "@/lib/routes";
 import { isParticipantReport, reportCategorySchema, reportTargetTypes, type ParticipantReportType } from "@/lib/validation/report";
 import { slugSchema } from "@/lib/validation/team";
 
@@ -86,7 +86,14 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/[
       <PageContainer layout="page" className="grid max-w-3xl gap-8">
         <PageHeader title={headings[kind]} />
         {user ? (
-          <ReportForm lang={lang} type={kind} target={id.data} category={category} signedIn />
+          <ReportForm
+            lang={lang}
+            type={kind}
+            target={id.data}
+            category={category}
+            signedIn
+            backHref={conversationBackPath(first(query.back))}
+          />
         ) : (
           <p className="text-body">
             Only the people who take part in it can report it.{" "}

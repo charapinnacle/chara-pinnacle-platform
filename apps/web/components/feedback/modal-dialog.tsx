@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef } from "react";
+import { cn } from "@/lib/utils";
 
 type ModalDialogProps = {
   open: boolean;
@@ -8,6 +9,8 @@ type ModalDialogProps = {
   title: string;
   children: React.ReactNode;
   closeOnBackdrop?: boolean;
+  // A form with fields side by side needs the wider box.
+  wide?: boolean;
 };
 
 // The native dialog element gives a modal its focus trap, Escape to close and the return of focus to the control that
@@ -15,8 +18,8 @@ type ModalDialogProps = {
 // only when asked for, because a dialog that holds typed input must not lose it to a stray click. Escape and the backdrop
 // close it through onClose at once: the native close event comes a task later, and a press on the trigger in between
 // would find the state still open and be lost. For the same reason a close event that arrives once the dialog is open
-// again is ignored.
-export function ModalDialog({ open, onClose, title, children, closeOnBackdrop = false }: ModalDialogProps) {
+// again is ignored. It sits near the top, not centred, so its title and fields stay still when an error summary appears.
+export function ModalDialog({ open, onClose, title, children, closeOnBackdrop = false, wide = false }: ModalDialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
 
@@ -42,7 +45,10 @@ export function ModalDialog({ open, onClose, title, children, closeOnBackdrop = 
           event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom;
         if (outside) onClose();
       }}
-      className="m-auto w-[calc(100%-2rem)] max-w-md rounded-2xl border bg-card p-card-xl text-foreground shadow-card backdrop:bg-black/50 sm:p-card-2xl"
+      className={cn(
+        "mx-auto mt-[min(12vh,6rem)] mb-auto w-[calc(100%-2rem)] rounded-2xl border bg-card p-card-xl text-foreground shadow-card backdrop:bg-black/50 sm:p-card-2xl",
+        wide ? "max-w-2xl" : "max-w-md",
+      )}
     >
       {open ? (
         <div className="grid gap-5">

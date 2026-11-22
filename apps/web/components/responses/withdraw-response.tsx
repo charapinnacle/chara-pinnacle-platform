@@ -10,6 +10,7 @@ import { FormErrorSummary } from "@/components/forms/form-error-summary";
 import { TextareaField } from "@/components/forms/form-field";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { withdrawMyResponse } from "@/lib/actions/responses";
+import { characterCount } from "@/lib/i18n/format";
 import { WITHDRAWAL_REASON_MAX, withdrawFormSchema, type WithdrawFormInput, type WithdrawFormOutput } from "@/lib/validation/response";
 
 const REASON_ID = "withdraw-reason";
@@ -66,7 +67,7 @@ function WithdrawForm({ slug, responseId, onClose }: WithdrawResponseProps & { o
         name="reason"
         id={REASON_ID}
         label="Reason (optional)"
-        description={`The employer reads the reason. ${length}/${WITHDRAWAL_REASON_MAX}`}
+        description={`The employer reads the reason. ${characterCount(length, WITHDRAWAL_REASON_MAX)}.`}
       />
       <div className="grid gap-3 sm:grid-cols-2">
         <FormButton type="button" variant="secondary" onClick={onClose}>

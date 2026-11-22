@@ -12,7 +12,7 @@ import { Notice } from "@/components/forms/notice";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { submitCandidate } from "@/lib/actions/submissions";
 import type { OrganizationType, UsagePrompt } from "@/lib/billing/limits";
-import { formatCount } from "@/lib/i18n/format";
+import { characterCount, formatCount } from "@/lib/i18n/format";
 import { characters } from "@/lib/utils";
 import {
   CANDIDATE_EMAIL_MAX,
@@ -83,7 +83,7 @@ export function SubmitCandidateForm({ slug, requirementId, organization, billing
         name="note"
         id={ids.note}
         label="Note to the candidate (optional)"
-        description={`The candidate reads the note, and the employer too once the candidate approves. ${formatCount(noteLength)}/${formatCount(SUBMISSION_NOTE_MAX)}`}
+        description={`The candidate reads the note, and the employer too once the candidate approves. ${characterCount(noteLength, SUBMISSION_NOTE_MAX)}.`}
       />
       {limitReached ? (
         <Notice tone="warning" role="status">

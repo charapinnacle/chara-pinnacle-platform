@@ -29,12 +29,13 @@ export default async function AppealPage({ params }: PageProps<"/[lang]/appeals/
   if (!decision) notFound();
   if (decision.canAppeal && decision.organizationId && user.aal !== "aal2") redirect(mfaPath(lang, appealPath(lang, decisionId)));
 
+  const label = appealableDecisionLabel(decision.action, decision.targetType);
   return (
     <div className="grid w-full max-w-3xl gap-section">
       <PageHeader
-        title={appealableDecisionLabel(decision.action, decision.targetType)}
+        title={label}
         description={decision.title}
-        breadcrumb={<Breadcrumbs items={[{ label: "Moderation decisions", href: appealsPath(lang) }, { label: decision.title }]} />}
+        breadcrumb={<Breadcrumbs items={[{ label: "Moderation decisions", href: appealsPath(lang) }, { label }]} />}
       />
       <Section id="decision" title="The decision">
         <DetailList

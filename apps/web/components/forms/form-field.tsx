@@ -9,6 +9,7 @@ import {
   type FieldValues,
 } from "react-hook-form";
 import { controlClassName } from "@/components/forms/control-class";
+import { DatePicker } from "@/components/forms/date-picker";
 import { FieldMessage } from "@/components/forms/field-message";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -105,18 +106,31 @@ export function InputField<T extends FieldValues, N extends FieldPath<T>>({
 }: InputFieldProps<T, N>) {
   return (
     <FormField {...fieldProps}>
-      {(controlProps) => (
-        <Input
-          type={type}
-          autoComplete={autoComplete}
-          inputMode={inputMode}
-          readOnly={readOnly}
-          maxLength={maxLength}
-          placeholder={placeholder}
-          className={cn("h-12", controlClassName, readOnly && "bg-muted")}
-          {...controlProps}
-        />
-      )}
+      {(controlProps) =>
+        type === "date" ? (
+          <DatePicker
+            id={controlProps.id}
+            name={controlProps.name}
+            value={String(controlProps.value ?? "")}
+            onChange={controlProps.onChange}
+            onBlur={controlProps.onBlur}
+            inputRef={controlProps.ref}
+            aria-invalid={controlProps["aria-invalid"]}
+            aria-describedby={controlProps["aria-describedby"]}
+          />
+        ) : (
+          <Input
+            type={type}
+            autoComplete={autoComplete}
+            inputMode={inputMode}
+            readOnly={readOnly}
+            maxLength={maxLength}
+            placeholder={placeholder}
+            className={cn("h-12", controlClassName, readOnly && "bg-muted")}
+            {...controlProps}
+          />
+        )
+      }
     </FormField>
   );
 }

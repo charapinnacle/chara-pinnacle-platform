@@ -19,6 +19,7 @@ import {
   type ResponseDecision,
   type ResponseStatus,
 } from "@/lib/responses/presentation";
+import { characterCount } from "@/lib/i18n/format";
 import { DECISION_NOTE_MAX, decisionFormSchema, type DecisionFormInput, type DecisionFormOutput } from "@/lib/validation/response";
 
 type Target = { slug: string; requirementId: string; responseId: string; partnerName: string };
@@ -144,7 +145,7 @@ function DecisionForm({
         name="note"
         id={noteId}
         label="Note to the partner"
-        description={`Optional. The partner will see this note, no one else. ${length}/${DECISION_NOTE_MAX}`}
+        description={`Optional. The partner will see this note, no one else. ${characterCount(length, DECISION_NOTE_MAX)}.`}
       />
       <div className="grid gap-3 sm:grid-cols-2">
         <FormButton type="button" variant="secondary" onClick={onClose}>

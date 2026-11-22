@@ -12,6 +12,7 @@ import { Notice } from "@/components/forms/notice";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { updateOrganizationProfile } from "@/lib/actions/organizations";
 import type { ReferenceItem } from "@/lib/dal/reference";
+import { characterCount } from "@/lib/i18n/format";
 import { toOptions } from "@/lib/reference-options";
 import {
   DESCRIPTION_MAX_CHARS,
@@ -117,7 +118,7 @@ export function ProfileForm({ slug, defaults, legalNameLocked, countries, indust
         name="description"
         id={ids.description}
         label="About your company (optional)"
-        description={`Plain text, shown to ${partner ? "employers on your profile" : "candidates on your vacancies"}. Line breaks are kept. ${descriptionLength}/${DESCRIPTION_MAX_CHARS}`}
+        description={`Plain text, shown to ${partner ? "employers on your profile" : "candidates on your vacancies"}. Line breaks are kept. ${characterCount(descriptionLength, DESCRIPTION_MAX_CHARS)}.`}
       />
       {duplicateLegalName ? (
         <Notice tone="info" role="status">

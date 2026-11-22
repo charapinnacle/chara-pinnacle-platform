@@ -94,7 +94,7 @@ test.describe("Partner review, licence and availability notifications (FR-T1)", 
 
     for (const user of [listed.user, admin]) {
       const mail = await waitForMessage(user.email, { subject: `${listed.displayName} is now listed on Chara Pinnacle` });
-      expect(siteLinks(mail)).toEqual([`${SITE}/en/dashboard/employer`]);
+      expect(siteLinks(mail), "the link opens this company's dashboard").toEqual([`${SITE}/en/dashboard/employer?org=${listed.slug}`]);
       expect(`${mail.Text}${mail.HTML}`).not.toMatch(FORBIDDEN_WORDS);
       expect(`${mail.Text}${mail.HTML}`).not.toContain(staff.email);
       expect(mail.Text).not.toContain("Registry entry and website match");
@@ -104,7 +104,7 @@ test.describe("Partner review, licence and availability notifications (FR-T1)", 
     expect(siteLinks(askMail)).toEqual([`${SITE}/en/onboarding?step=where-you-serve`]);
     const declineMail = await waitForMessage(declined.user.email, { subject: `${declined.displayName} was not listed` });
     expect(declineMail.Text).toContain(declineReason);
-    expect(siteLinks(declineMail)).toEqual([`${SITE}/en/dashboard/employer`]);
+    expect(siteLinks(declineMail)).toEqual([`${SITE}/en/dashboard/employer?org=${declined.slug}`]);
     expect(`${declineMail.Text}${askMail.Text}`).not.toContain(staff.email);
 
     await logIn(page, listed.user, "/en/notifications");

@@ -6,6 +6,7 @@ import {
   expiryInstant,
   gapLines,
   isFutureDay,
+  lowersPlanLimit,
   overrideFormSchema,
   planChanges,
   planFormSchema,
@@ -151,6 +152,15 @@ describe("the changes a plan edit makes (FR-R2 AC10)", () => {
 
 describe("overrides (FR-R2 AC5)", () => {
   const now = new Date("2026-10-26T12:00:00Z");
+
+  it("warn when the value gives less than the plan, an unlimited plan included, and not before a value is typed", () => {
+    expect(lowersPlanLimit(null, "40")).toBe(true);
+    expect(lowersPlanLimit(50, "40")).toBe(true);
+    expect(lowersPlanLimit(50, "50")).toBe(false);
+    expect(lowersPlanLimit(50, "80")).toBe(false);
+    expect(lowersPlanLimit(50, "")).toBe(false);
+    expect(lowersPlanLimit(undefined, "1")).toBe(false);
+  });
 
   it("take a day after today as the expiry, at the start of that day in UTC", () => {
     expect(isFutureDay("2026-10-27", now)).toBe(true);

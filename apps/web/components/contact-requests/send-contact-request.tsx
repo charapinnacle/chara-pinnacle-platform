@@ -12,7 +12,7 @@ import { SelectField } from "@/components/forms/select-field";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { sendContactRequest } from "@/lib/actions/contact-requests";
 import { CONTACT_MESSAGE_MAX } from "@/lib/contact-requests/presentation";
-import { formatCount } from "@/lib/i18n/format";
+import { characterCount } from "@/lib/i18n/format";
 import { characters } from "@/lib/utils";
 import {
   contactRequestFormSchema,
@@ -83,7 +83,7 @@ function SendForm({ slug, cardId, destination, vacancies, onClose }: Omit<SendCo
         name="message"
         id={MESSAGE_ID}
         label="Message to the worker"
-        description={`${formatCount(length)}/${formatCount(CONTACT_MESSAGE_MAX)} characters`}
+        description={`${characterCount(length, CONTACT_MESSAGE_MAX)}`}
       />
       {vacancies.length > 0 ? (
         <SelectField

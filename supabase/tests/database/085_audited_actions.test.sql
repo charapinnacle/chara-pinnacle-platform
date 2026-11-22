@@ -307,7 +307,7 @@ language sql as $$
       'admin_list_limit_overrides', 'admin_list_enterprise_organizations', 'admin_list_settings', 'admin_get_plan_price',
       'admin_list_retention_policies', 'admin_partner_search_stats', 'admin_get_partner_moderation', 'admin_list_appeals',
       'admin_get_appeal', 'admin_appeal_stats', 'admin_network_counts', 'admin_network_kpis', 'admin_list_direct_hiring_rules',
-      'admin_list_direct_hiring_rule_history')
+      'admin_list_direct_hiring_rule_history', 'admin_report_in_my_review')
     and p.prosrc !~ 'audit\.record|private\.audit_admin|private\.record_moderation|private\.(set_job_moderation|suspend_organization_with|reinstate_organization_with)\('
     and not (p.proname in ('grant_platform_role', 'revoke_platform_role') and p.prosrc ~ '(insert into|update) public\.platform_staff')
     and not (p.prosrc ~ 'private\.plan_editor_reason' and p.prosrc ~ '(insert into|update|delete from) billing\.(plans|plan_limits|plan_features|organization_limit_overrides)|private\.plan_editor_set_(plan|limit|feature)\(')

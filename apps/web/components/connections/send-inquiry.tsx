@@ -12,7 +12,7 @@ import { TextareaField } from "@/components/forms/form-field";
 import { TextLink } from "@/components/forms/text-link";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { sendInquiry } from "@/lib/actions/connection-actions";
-import { formatCount } from "@/lib/i18n/format";
+import { characterCount } from "@/lib/i18n/format";
 import { characters } from "@/lib/utils";
 import { INQUIRY_MAX, inquiryFormSchema, type InquiryFormInput, type InquiryFormOutput } from "@/lib/validation/connection-actions";
 
@@ -85,7 +85,7 @@ function InquiryForm({ slug, employerName, partnerId, partnerName, onClose }: Se
         name="body"
         id={BODY_ID}
         label="Your inquiry"
-        description={`${formatCount(length)}/${formatCount(INQUIRY_MAX)} characters`}
+        description={`${characterCount(length, INQUIRY_MAX)}`}
       />
       <div className="grid gap-3 sm:grid-cols-2">
         <FormButton type="button" variant="secondary" onClick={onClose}>

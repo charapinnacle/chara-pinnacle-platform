@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applicationsPath, companyDashboardPath, dashboardSegments, homePath, isDashboardSegment, jobsPath, mfaPath, onboardingPath, signUpPath } from "@/lib/routes";
+import { applicationsPath, companyDashboardPath, conversationBackPath, dashboardSegments, homePath, isDashboardSegment, jobsPath, mfaPath, onboardingPath, reportPath, signUpPath } from "@/lib/routes";
 
 describe("homePath", () => {
   it("sends each account kind to its own dashboard", () => {
@@ -87,5 +87,19 @@ describe("jobsPath", () => {
     expect(jobsPath("en", "acme", { status: "open", after: "2026-10-06T10:00:00.000000+00:00|id" })).toBe(
       "/en/org/acme/jobs?status=open&after=2026-10-06T10%3A00%3A00.000000%2B00%3A00%7Cid",
     );
+  });
+});
+
+describe("the way back from a report", () => {
+  const id = "3cbf5c0e-34e8-445b-a874-ed55fd2e3301";
+  it("carries the conversation the report was opened from", () => {
+    expect(reportPath("en", "message", "m-1", undefined, `/en/messages/${id}`)).toBe(`/en/report?type=message&message=m-1&back=%2Fen%2Fmessages%2F${id}`);
+  });
+  it("takes back only a worker's or an organisation's conversation", () => {
+    expect(conversationBackPath(`/en/messages/${id}`)).toBe(`/en/messages/${id}`);
+    expect(conversationBackPath(`/en/org/team-bau/messages/${id}`)).toBe(`/en/org/team-bau/messages/${id}`);
+    expect(conversationBackPath("//evil.example/en/messages/x")).toBeUndefined();
+    expect(conversationBackPath("/en/admin")).toBeUndefined();
+    expect(conversationBackPath(undefined)).toBeUndefined();
   });
 });

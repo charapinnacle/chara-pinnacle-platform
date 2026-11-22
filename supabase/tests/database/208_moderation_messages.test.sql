@@ -1,5 +1,5 @@
 begin;
-select plan(66);
+select plan(70);
 
 \ir apply_fixture.inc
 
@@ -261,6 +261,21 @@ select is(pg_temp.writes(), :'w0', 'and nothing was written by a refused decisio
 
 -- FR-S1 AC4, AC8: hide the member's message --------------------------------------------------------------------------------------
 
+select is(pg_temp.decide(:'t1', 'hide', 'The message asks the candidate to pay a visa fee.', :fee_report), 'P0001|CHARA_INVALID_STATE|not_in_review',
+  'NFR-C5: a report on a message is not decided before it is in review, as its text is unread until then');
+select pg_temp.read_as(:'t1', format($f$select 'ok' from public.admin_set_report_status(%s, 'in_review', 'Reading the message now.')$f$, :fee_report)) as fee_review \gset
+select is(pg_temp.decide(:'t2', 'hide', 'The message asks the candidate to pay a visa fee.', :fee_report), 'P0001|CHARA_INVALID_STATE|not_in_review',
+  'NFR-C5: nor by a second administrator, who cannot read it while T1 has it in review');
+select is(pg_temp.read_as(:'t1', format($f$select 'ok' from public.admin_set_report_status(%s, 'dismissed', 'Nothing in it breaks the rules.')$f$, :fee_report)),
+  'P0001|CHARA_INVALID_STATE|not_in_review', 'NFR-C5: a report on a message is not closed by setting its status, only by a decision');
+select is(
+  pg_temp.read_as(:'t2', format($f$select 'ok' from public.admin_set_report_status(%s, 'in_review', 'Taking this over while T1 is away.')$f$, :fee_report))
+    || ';' || pg_temp.read_as(:'t2', format('select public.admin_report_in_my_review(%s)::text', :fee_report))
+    || ';' || pg_temp.read_as(:'t1', format('select public.admin_report_in_my_review(%s)::text', :fee_report))
+    || ';' || pg_temp.read_as(:'t2', format($f$select 'ok' from public.admin_set_report_status(%s, 'in_review', 'Taking this over again.')$f$, :fee_report))
+    || ';' || pg_temp.read_as(:'t1', format($f$select 'ok' from public.admin_set_report_status(%s, 'in_review', 'Back from leave, reading it now.')$f$, :fee_report)),
+  'ok;true;false;P0001|CHARA_INVALID_STATE|in_review;ok',
+  'a second administrator takes a report in review over and then has it; the same one cannot again; T1 takes it back');
 select pg_temp.decide(:'t1', 'hide', 'The message asks the candidate to pay a visa fee.', :fee_report) as hid \gset
 select ok(:'hid' ~ '^\d+\|actioned$', 'FR-S1 AC4: T1 hides the reported message and the report is actioned');
 select split_part(:'hid', '|', 1)::bigint as act_fee \gset
@@ -317,8 +332,8 @@ select is(pg_temp.report(:'wa', 'message', :'fee_msg', 'harassment'), 'P0002|CHA
 -- Appeal of the organisation's message: the sender or the owners and admins, at aal2 ------------------------------------------
 
 select is(
-  pg_temp.read_as(:'mem', format('select format(''%%s|%%s'', title, can_appeal) from public.list_my_appeals(%s)', :act_fee), 'aal1'),
-  'Message|t', 'FR-S1 step Appeal: the member who sent the message reads the decision and may appeal it');
+  pg_temp.read_as(:'mem', format('select format(''%%s|%%s'', title ~ ''^Sent on \d{1,2} \w+ \d{4} at \d\d:\d\d UTC in the conversation with Amina Okafor$'', can_appeal) from public.list_my_appeals(%s)', :act_fee), 'aal1'),
+  't|t', 'FR-S1 step Appeal: the member who sent the message reads the decision, named by when it was sent and to whom, and may appeal it');
 select is(
   pg_temp.read_as(:'own2', format('select count(*)::text from public.list_my_appeals(%s)', :act_fee)) || ';'
     || pg_temp.read_as(:'wa', format('select count(*)::text from public.list_my_appeals(%s)', :act_fee), 'aal1'),
@@ -335,6 +350,7 @@ select is(
 
 -- A worker's message: hidden without a suspension, appealed by the worker ------------------------------------------------------
 
+select pg_temp.read_as(:'t1', format($f$select 'ok' from public.admin_set_report_status(%s, 'in_review', 'Reading the message now.')$f$, :wa_report)) as wa_review \gset
 select is(pg_temp.decide(:'t1', 'suspend_organization', 'The candidate sent an abusive message.', :wa_report),
   'P0001|CHARA_INVALID_INPUT|decision', 'a worker''s message has no organisation to suspend');
 select pg_temp.decide(:'t1', 'hide', 'The message contains abusive language.', :wa_report) as hid_wa \gset
@@ -348,8 +364,8 @@ select is(
   'Please pay 500 euros for the visa before we continue./When can you start?',
   'Acme no longer reads the worker''s hidden message and still reads its own, hidden one');
 select is(
-  pg_temp.read_as(:'wa', format('select format(''%%s|%%s|%%s'', title, organization_id is null, can_appeal) from public.list_my_appeals(%s)', :act_wa), 'aal1'),
-  'Message|t|t', 'the worker reads the decision on the own message and may appeal it');
+  pg_temp.read_as(:'wa', format('select format(''%%s|%%s|%%s'', title ~ '' in the conversation with Acme Bau$'', organization_id is null, can_appeal) from public.list_my_appeals(%s)', :act_wa), 'aal1'),
+  't|t|t', 'the worker reads the decision on the own message, named with the organisation it was sent to, and may appeal it');
 select is(
   pg_temp.read_as(:'wb', format($f$select appeal_id::text from public.submit_appeal(%s, 'This was not abusive, please look again.')$f$, :act_wa), 'aal1')
     || ';' || pg_temp.read_as(:'own1', format($f$select appeal_id::text from public.submit_appeal(%s, 'This was not abusive, please look again.')$f$, :act_wa)),
@@ -410,6 +426,7 @@ select is(
   'true;false', 'the owner may appeal the hidden request; the member who sent it reads it only');
 
 select pg_temp.report_id(pg_temp.report(:'wb', 'contact_request', :'cr_b', 'misleading_or_fraud')) as crb_report \gset
+select pg_temp.read_as(:'t1', format($f$select 'ok' from public.admin_set_report_status(%s, 'in_review', 'Reading the request now.')$f$, :crb_report)) as crb_review \gset
 select pg_temp.decide(:'t1', 'suspend_organization', 'The organisation sends misleading job offers.', :crb_report) as sus_b \gset
 select is(
   (select format('%s|%s|%s', a.target_type, a.target_id, a.action) from public.moderation_actions a where a.id = split_part(:'sus_b', '|', 1)::bigint)

@@ -18,6 +18,7 @@ import type { RefusalLink } from "@/lib/applications/apply-refusal";
 import { CROSS_BORDER_NOTICE } from "@/lib/applications/presentation";
 import type { ApplyDocument } from "@/lib/dal/applications";
 import type { HiringRule } from "@/lib/dal/hiring-rules";
+import { characterCount } from "@/lib/i18n/format";
 import { applyFormSchema, type ApplyFormInput, type ApplyLimits } from "@/lib/validation/application";
 
 type ApplyFormProps = {
@@ -84,7 +85,7 @@ export function ApplyForm({ jobId, lang, employerName, limits, documents, hiring
         name="coverNote"
         id={ids.coverNote}
         label="Cover note (optional)"
-        description={`${noteLength}/${limits.coverNoteMaxChars}`}
+        description={`${characterCount(noteLength, limits.coverNoteMaxChars)}`}
       />
 
       {documents.length > 0 ? (

@@ -83,7 +83,7 @@ export function JobOrderFilterForm({ lang, slug, query, occupations, industries,
           label="Occupation"
           placeholder="Any occupation"
           emptyText="No matching occupation"
-          options={occupations.map(({ code, label, synonyms }) => ({ value: code, label: `${code} · ${label}`, keywords: synonyms.join(" ") }))}
+          options={occupations.map(({ code, label, synonyms }) => ({ value: code, label, keywords: [code, ...synonyms].join(" ") }))}
         />
         <ComboboxField
           control={control}

@@ -17,6 +17,7 @@ import { execute, literal } from "./support/db";
 import { waitForHydration } from "./support/hydration";
 import { createCommittedUser } from "./support/login";
 import { daysFromToday } from "./support/passport";
+import { pickDate } from "./support/date-picker";
 
 const today = new Intl.DateTimeFormat("en-GB", { dateStyle: "long", timeZone: "UTC" }).format(new Date());
 
@@ -133,7 +134,7 @@ test.describe("candidate documents: upload", () => {
       title: "Welding certificate",
       file: { name: "weld.png", mimeType: "image/png", buffer: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]) },
     });
-    await page.getByLabel("Expiry date (optional)").fill(daysFromToday(20));
+    await pickDate(page.getByLabel("Expiry date (optional)"), daysFromToday(20));
     await upload(page).click();
     await expect(page.getByText("Document uploaded", { exact: true })).toBeVisible();
     const [document] = documentRows(user.id);

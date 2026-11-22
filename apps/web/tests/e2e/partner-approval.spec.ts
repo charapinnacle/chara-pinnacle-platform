@@ -205,7 +205,7 @@ test.describe("Partner reviews (FR-J4)", () => {
     await page.getByRole("button", { name: "Approve and list" }).click();
     const approve = page.getByRole("dialog", { name: "List partner" });
     await approve.getByLabel("Reason").fill("Registry entry and website match");
-    await expect(approve.getByText("32 of 2000 characters")).toBeVisible();
+    await expect(approve.getByText("32 of 2,000 characters")).toBeVisible();
     await expectAccessibleAtBothWidths(page);
     await page.setViewportSize({ width: 1280, height: 900 });
     await approve.getByRole("button", { name: "List partner" }).click();
@@ -232,7 +232,7 @@ test.describe("Partner reviews (FR-J4)", () => {
     await expect(decline.getByLabel("Reason")).toBeFocused();
     const reason = "The registry has no company with this registration number.";
     await page.keyboard.type(reason);
-    await expect(decline.getByText(`${reason.length} of 2000 characters`)).toBeVisible();
+    await expect(decline.getByText(`${reason.length.toLocaleString("en")} of 2,000 characters`)).toBeVisible();
     execute("revoke execute on function public.admin_decide_partner(uuid, text, text, text) from authenticated");
     try {
       await decline.getByRole("button", { name: "Decline partner" }).focus();

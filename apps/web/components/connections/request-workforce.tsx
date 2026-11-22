@@ -12,7 +12,7 @@ import { FormErrorSummary } from "@/components/forms/form-error-summary";
 import { InputField, TextareaField } from "@/components/forms/form-field";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { requestWorkforce } from "@/lib/actions/connection-actions";
-import { formatCount } from "@/lib/i18n/format";
+import { characterCount } from "@/lib/i18n/format";
 import { characters } from "@/lib/utils";
 import {
   NOTE_MAX,
@@ -126,7 +126,7 @@ function RequestForm({
         name="body"
         id={IDS.body}
         label="Message (optional)"
-        description={`${formatCount(length)}/${formatCount(NOTE_MAX)} characters`}
+        description={`${characterCount(length, NOTE_MAX)}`}
       />
       <div className="grid gap-3 sm:grid-cols-2">
         <FormButton type="button" variant="secondary" onClick={onClose}>

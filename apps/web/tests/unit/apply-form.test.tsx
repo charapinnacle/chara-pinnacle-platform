@@ -24,7 +24,7 @@ describe("ApplyForm", () => {
     const html = render();
     const at = (text: string) => html.indexOf(text);
     expect(at("Cover note (optional)")).toBeGreaterThan(-1);
-    expect(html).toContain("0/2000");
+    expect(html).toContain("0 of 2,000 characters");
     const order = ["Cover note (optional)", "CV.pdf", "Certificate.pdf", "I agree to share the selected documents", NOTICE, "Submit application"].map(at);
     expect(order).toEqual([...order].sort((a, b) => a - b));
     expect(order.every((position) => position > -1)).toBe(true);

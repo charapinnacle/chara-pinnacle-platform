@@ -296,7 +296,7 @@ test.describe("working the reports queue", () => {
       await staff.getByRole("dialog", { name: "Dismiss the report" }).getByLabel("Note").fill("Nothing in it breaks the platform rules.");
     }
     const counted = page.getByRole("dialog", { name: "Dismiss the report" });
-    await expect(counted).toContainText("40 of 2000 characters used");
+    await expect(counted).toContainText("40 of 2,000 characters used");
     await expectNoAxeViolations(page);
     await first.page.getByRole("dialog", { name: "Dismiss the report" }).getByRole("button", { name: "Dismiss report" }).click();
     await expect(first.page.getByText("The report is dismissed", { exact: true })).toBeVisible();

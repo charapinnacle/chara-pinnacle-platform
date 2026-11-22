@@ -156,7 +156,12 @@ export function Combobox({
           show(freeText ? -1 : 0);
           if (freeText || event.target.value === "") onChange(event.target.value);
         }}
-        onClick={() => {
+        // A chosen value is selected on entry, so typing replaces it instead of being appended to the shown name.
+        onFocus={(event) => {
+          if (!freeText && query === null && selected) event.currentTarget.select();
+        }}
+        onClick={(event) => {
+          if (!freeText && query === null && selected && !open) event.currentTarget.select();
           if (!open) show(startIndex);
         }}
         onKeyDown={onKeyDown}

@@ -12,6 +12,7 @@ import { uniqueToken } from "./support/organizations";
 import { fillPartnerCompany, fillPartnerSignup, pickWithKeys, setPartnerRelease } from "./support/partners";
 import { newVisitor } from "./support/team";
 import { expect, test } from "./support/test";
+import { pickDate } from "./support/date-picker";
 
 const OCCUPATIONS = "Which occupations do you recruit or supply?";
 const COMMITMENT = "We charge workers no recruitment fees or related costs";
@@ -78,8 +79,8 @@ test.describe("release 2a journey (NFR-O4)", () => {
     await pickWithKeys(page, "Where do you recruit for?", "ger", "Germany");
     await page.getByRole("button", { name: "Continue" }).click();
     await expect(page.getByRole("heading", { name: "What you offer", level: 1 })).toBeVisible();
-    await pickWithKeys(page, OCCUPATIONS, "weld", "7212 · Welders and flame cutters");
-    await pickWithKeys(page, OCCUPATIONS, "electricians", "7411 · Building and related electricians");
+    await pickWithKeys(page, OCCUPATIONS, "weld", "Welders and flame cutters");
+    await pickWithKeys(page, OCCUPATIONS, "electricians", "Building and related electricians");
     await pickWithKeys(page, "Which languages do your candidates speak? (optional)", "engl", "English");
     await page.getByRole("radiogroup", { name: "Recruitment type" }).getByRole("radio", { name: "International", exact: true }).check();
     await page.getByRole("button", { name: "Continue" }).click();
@@ -104,7 +105,7 @@ test.describe("release 2a journey (NFR-O4)", () => {
     await pickWithKeys(page, "Country", "Philipp", "Philippines");
     await licence.getByLabel("Issuing authority").fill("Department of Migrant Workers");
     await licence.getByLabel("Licence or registration number").fill(`DMW-${token}`);
-    await licence.getByLabel("Valid until").fill("2029-06-30");
+    await pickDate(licence.getByLabel("Valid until"), "2029-06-30");
     await licence.getByRole("checkbox", { name: "I confirm that this entry is accurate" }).check();
     await licence.getByRole("button", { name: "Save licence" }).click();
     await expect(page.getByText("Licence saved", { exact: true })).toBeVisible();
@@ -117,7 +118,7 @@ test.describe("release 2a journey (NFR-O4)", () => {
     await pickWithKeys(page, "Source country", "Phil", "Philippines");
     await listing.getByLabel("Workers available now").fill("60");
     await listing.getByLabel("Monthly capacity").fill("15");
-    await listing.getByLabel("Available from").fill(new Date(Date.now() + 14 * 86_400_000).toISOString().slice(0, 10));
+    await pickDate(listing.getByLabel("Available from"), new Date(Date.now() + 14 * 86_400_000).toISOString().slice(0, 10));
     await listing.getByRole("button", { name: "Save listing" }).click();
     await expect(page.getByText("Listing saved", { exact: true })).toBeVisible();
     await expectAccessibleAtBothWidths(page);
@@ -177,7 +178,7 @@ test.describe("release 2a journey (NFR-O4)", () => {
     await destination.fill("Iceland");
     await visitor.page.getByRole("option", { name: "Iceland", exact: true }).click();
     await visitor.page.getByRole("combobox", { name: "Occupation", exact: true }).fill("electricians");
-    await visitor.page.getByRole("option", { name: /^7411 · Building and related electricians$/ }).click();
+    await visitor.page.getByRole("option", { name: /^Building and related electricians$/ }).click();
     await visitor.page.getByRole("button", { name: "Search partners" }).click();
     await expect(visitor.page).toHaveURL("/en/partners/recruitment?destination=IS&occupation=7411");
     // The card is found by the token of this run's name; on a database that earlier runs left partners for Iceland and

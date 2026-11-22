@@ -23,9 +23,9 @@ const FORBIDDEN = {
 };
 
 const CASES: [NotificationKind, Record<string, unknown>, string, string][] = [
-  ["partner_approved", decision, "Manila Recruit is now listed on Chara Pinnacle", "/en/dashboard/employer"],
+  ["partner_approved", decision, "Manila Recruit is now listed on Chara Pinnacle", "/en/dashboard/employer?org=manila-recruit"],
   ["partner_info_requested", { ...decision, info_step: "company", reason: REASON }, "Our team needs more information about Manila Recruit", "/en/onboarding?step=company"],
-  ["partner_declined", { ...decision, reason: REASON }, "Manila Recruit was not listed", "/en/dashboard/employer"],
+  ["partner_declined", { ...decision, reason: REASON }, "Manila Recruit was not listed", "/en/dashboard/employer?org=manila-recruit"],
   ["licence_expiring", { ...licence, valid_until: "2026-12-26" }, "Your licence for Philippines expires on 26 December 2026", "/en/org/manila-recruit/workforce-profile#licences-heading"],
   ["partner_licence_expired", { ...licence, valid_until: "2026-11-25" }, "Your licence for Philippines has expired", "/en/org/manila-recruit/workforce-profile#licences-heading"],
   [

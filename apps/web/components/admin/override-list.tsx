@@ -67,6 +67,9 @@ export async function OverrideList() {
               id: organization.id,
               label: `${organization.displayName} (${organization.planCode})`,
               orgType: organization.orgType,
+              planLimits: Object.fromEntries(
+                (plans.find((plan) => plan.code === organization.planCode)?.limits ?? []).map(({ key, value }) => [key, value]),
+              ),
             }))}
             limitKeys={limitKeys}
           />

@@ -94,7 +94,8 @@ test.describe("partner registration (FR-J1)", () => {
       await expect(page.getByRole("radio", { name: PARTNER_LABEL[type] })).toBeChecked();
       const documents = await partnerDocuments(type);
       expect(documents.map(({ title }) => displayTitle(title))).toEqual(expected[type]);
-      await expect(page.getByRole("checkbox")).toHaveCount(4);
+      await expect(page.getByRole("checkbox")).toHaveCount(documents.length + 1);
+      await expect(page.getByRole("checkbox", { name: "Accept all" })).not.toBeChecked();
       for (const { slug, title } of documents) {
         await expect(documentBox(page, title)).not.toBeChecked();
         const link = page.locator(`a[href="/en/legal/${slug}"]`);

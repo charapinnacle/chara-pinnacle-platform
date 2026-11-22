@@ -218,7 +218,7 @@ describe("reporting a message and the Workers never pay notice (FR-P3 AC6, AC11)
       <ConversationThread lang="en" organization={null} conversationId={CONVERSATION} counterpart="Acme Bau" initialMessages={[]} maxChars={4000} />,
     );
     expect(html.match(/>Report<span/g)).toHaveLength(1);
-    expect(html).toContain(`href="/en/report?type=message&amp;message=${MESSAGE}"`);
+    expect(html).toContain(`href="/en/report?type=message&amp;message=${MESSAGE}&amp;back=%2Fen%2Forg%2Facme%2Fmessages%2Fc"`);
     expect(html).toContain("the message of Mia Member, Acme Bau");
   });
 
