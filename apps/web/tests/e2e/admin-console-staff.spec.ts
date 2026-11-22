@@ -5,6 +5,7 @@ import { waitForHydration } from "./support/hydration";
 import { createCommittedUser } from "./support/login";
 import { staffUser } from "./support/mfa";
 import { expect, test } from "./support/test";
+import { pickDate } from "./support/date-picker";
 
 const REASON = "New hire of the support team, ticket 4812";
 
@@ -155,8 +156,8 @@ test.describe("the staff page, the legal documents, the statistics and the two-s
     await expect(table).toContainText("All stages");
     await expectNoAxeViolations(page);
 
-    await page.getByLabel("From", { exact: true }).fill("2026-12-31");
-    await page.getByLabel("To", { exact: true }).fill("2026-01-01");
+    await pickDate(page.getByLabel("From", { exact: true }), "2026-12-31");
+    await pickDate(page.getByLabel("To", { exact: true }), "2026-01-01");
     await page.getByRole("button", { name: "Show" }).click();
     await expect(page.getByRole("alert").filter({ hasText: /\S/ })).toContainText("The start date must not be after the end date.");
     await page.goto("/en/admin/statistics?from=2024-01-01&to=2025-06-01");

@@ -33,7 +33,7 @@ export async function PlanList({ lang }: { lang: string }) {
                   <tr key={plan.code}>
                     <td className={`${cell} break-words`}>
                       <span className="block font-medium">{plan.name}</span>
-                      <span className="block text-small text-muted-foreground break-all">{plan.code}</span>
+                      <span className="block text-small text-muted-foreground wrap-break-word">{plan.code}</span>
                     </td>
                     <td className={`${cell} whitespace-nowrap`}>{formatPrice(plan.priceMinor, plan.currency)}</td>
                     <td className={cell}>{plan.isPublic ? "Public" : "Not public"}</td>

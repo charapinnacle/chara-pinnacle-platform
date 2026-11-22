@@ -168,7 +168,7 @@ test.describe("Network analytics (FR-R6, release 2a and 2b)", () => {
     await owner.page.goto(analyticsUrl(fresh.slug));
     await expect(owner.page.getByRole("heading", { name: "No activity yet" })).toBeVisible();
     await expect(owner.page.getByText("Figures appear the day after employers or partners interact with your profile.")).toBeVisible();
-    await expect(owner.page.getByRole("link", { name: "Complete your profile" })).toHaveAttribute("href", `/en/org/${fresh.slug}/workforce-profile`);
+    await expect(owner.page.getByRole("link", { name: "Update your profile" })).toHaveAttribute("href", `/en/org/${fresh.slug}/workforce-profile`);
     await expectAccessibleAtBothWidths(owner.page);
 
     execute(`revoke execute on function ${ACCESS_FUNCTION} from authenticated`);

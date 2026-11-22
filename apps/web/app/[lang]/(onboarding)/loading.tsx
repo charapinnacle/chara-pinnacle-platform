@@ -1,5 +1,9 @@
 import { LoadingSkeleton } from "@/components/feedback/loading-skeleton";
 
 export default function Loading() {
-  return <LoadingSkeleton rows={4} />;
+  return (
+    <div className="mx-auto w-full max-w-[35rem]">
+      <LoadingSkeleton rows={4} />
+    </div>
+  );
 }

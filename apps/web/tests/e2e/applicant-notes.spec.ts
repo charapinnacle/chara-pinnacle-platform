@@ -32,7 +32,7 @@ test.describe("the internal notes of the applicant detail page", () => {
     await add.click();
     await expect(notes.getByRole("alert").first()).toContainText("Enter a note.");
     await field.fill("a".repeat(2001));
-    await expect(notes.getByText("2001/2000")).toBeVisible();
+    await expect(notes.getByText("2,001 of 2,000 characters")).toBeVisible();
     await add.click();
     await expect(notes.getByRole("alert").first()).toContainText("Note must be at most 2000 characters");
     await field.fill("b".repeat(2000));

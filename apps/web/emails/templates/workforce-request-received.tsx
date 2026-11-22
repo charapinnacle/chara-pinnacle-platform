@@ -1,5 +1,5 @@
 import { Action, Layout, Paragraph } from "../layout.tsx";
-import { field, url } from "../payload.ts";
+import { field, longDate, url } from "../payload.ts";
 import type { Template } from "../template.ts";
 
 // FR-P2 AC11 (step Request workforce): an employer asks the staffing partner for workers and invited it to a draft
@@ -12,7 +12,7 @@ export const workforceRequestReceived: Template = {
     const quantity = field(payload, "quantity");
     const occupation = field(payload, "occupation");
     const country = field(payload, "country_name");
-    const start = field(payload, "start_date");
+    const start = longDate(field(payload, "start_date"));
     const slug = field(payload, "org_slug");
     const id = field(payload, "conversation_id");
     const need = [quantity && occupation ? `${quantity} × ${occupation}` : occupation, country ? `in ${country}` : null, start ? `from ${start}` : null]

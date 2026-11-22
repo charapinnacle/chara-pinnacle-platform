@@ -76,7 +76,7 @@ describe("decidePartner (FR-J4 AC3, AC4)", () => {
   it.each([
     [failure("CHARA_INVALID_TRANSITION", "listed"), { message: "This partner was decided by someone else. Reload the page." }],
     [failure("CHARA_FORBIDDEN", "own_organization"), { message: "You are a member of this company, so another reviewer decides." }],
-    [failure("CHARA_INVALID_INPUT", "reason"), { errors: { reason: "Give a reason of 10 to 2000 characters" } }],
+    [failure("CHARA_INVALID_INPUT", "reason"), { errors: { reason: "Give a reason of 10 to 2000 characters." } }],
     [failure("CHARA_FORBIDDEN"), { message: "You are not allowed to do this." }],
   ])("tells the reviewer what the database refused (%o)", async (answer, expected) => {
     rpcMock.mockResolvedValue(answer);

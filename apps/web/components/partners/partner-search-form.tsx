@@ -98,8 +98,8 @@ export function PartnerSearchForm({ lang, kind, query, occupations, industries, 
           emptyText="No matching occupation"
           options={occupations.map(({ code, label, synonyms }) => ({
             value: code,
-            label: `${code} · ${label}`,
-            keywords: synonyms.join(" "),
+            label,
+            keywords: [code, ...synonyms].join(" "),
           }))}
         />
         <FormButton type="submit" busy={searching} className="md:w-auto md:px-8">

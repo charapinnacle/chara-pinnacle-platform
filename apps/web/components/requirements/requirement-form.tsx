@@ -110,7 +110,7 @@ export function RequirementForm({
   const [removed, setRemoved] = useState("");
 
   const occupationOptions = useMemo(
-    () => occupations.map(({ code, label, synonyms }) => ({ value: code, label: `${code} · ${label}`, keywords: synonyms.join(" ") })),
+    () => occupations.map(({ code, label, synonyms }) => ({ value: code, label, keywords: [code, ...synonyms].join(" ") })),
     [occupations],
   );
   const labelOf = useMemo(() => new Map(occupations.map(({ code, label }) => [code, label])), [occupations]);

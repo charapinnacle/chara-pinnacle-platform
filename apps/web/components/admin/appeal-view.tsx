@@ -27,6 +27,9 @@ export function undoOf(appeal: AppealDetail): string {
   if (!appeal.inEffect) {
     return `The decision is no longer in effect (${notInEffectWhy(appeal)}), so nothing is undone; the outcome is recorded and sent.`;
   }
+  if (appeal.action === "content_hidden" && appeal.targetType !== "partner_profile" && appealTargetLabels[appeal.targetType]) {
+    return `The ${appealTargetLabels[appeal.targetType].toLowerCase()} is shown again.`;
+  }
   return undoText[appeal.action] ?? "What the decision took away is restored.";
 }
 

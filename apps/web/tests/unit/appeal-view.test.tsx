@@ -124,6 +124,8 @@ describe("the reversal statement of an appeal", () => {
     expect(gone).toContain("or the vacancy was deleted");
     expect(gone).toContain("nothing is undone");
     expect(undoOf(appeal({ action: "something_else" }))).toBe("What the decision took away is restored.");
+    expect(undoOf(appeal({ targetType: "message" }))).toBe("The message is shown again.");
+    expect(undoOf(appeal({ targetType: "partner_response" }))).toBe("The response is shown again.");
     const profile = undoOf(appeal({ inEffect: false }));
     expect(profile).toContain("(a later decision changed it)");
     expect(profile).not.toContain("vacancy");

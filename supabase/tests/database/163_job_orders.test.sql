@@ -1,5 +1,5 @@
 begin;
-select plan(183);
+select plan(185);
 
 \ir jobs_fixture.inc
 
@@ -299,7 +299,7 @@ select is(pg_temp.jo(:'u1', :'p1') || pg_temp.titles(), 'okNamed welders,Germany
 
 select is(pg_temp.jo(:'u1', :'p1'), 'ok', 'P1 lists');
 select is(pg_temp.row_of(:'r') - 'published_on',
-  jsonb_build_object('id', :'r', 'eligible', true, 'reasons', '[]'::jsonb, 'title', 'Germany, 100 Welders and flame cutters', 'country_code', 'DE',
+  jsonb_build_object('id', :'r', 'eligible', true, 'reasons', '[]'::jsonb, 'title', 'Germany, 80 Welders and flame cutters, 20 Structural-metal preparers and erectors', 'country_code', 'DE',
     'workers_needed', 100, 'countries', '["DE"]'::jsonb, 'city_region', 'Hamburg', 'industry_code', 'C',
     'occupations', '[{"code": "7212", "name": "Welders and flame cutters", "quantity": 80}, {"code": "7214", "name": "Structural-metal preparers and erectors", "quantity": 20}]'::jsonb,
     'start_date', '2027-01-15', 'employment_type', 'full_time', 'recruitment_preference', 'both', 'response_count', null,
@@ -309,7 +309,7 @@ select is(pg_temp.row_of(:'r') ->> 'published_on', ((now() - interval '10 days')
   'AC2, NFR-S11: the publication is a date, not a time');
 select is(pg_temp.one(:'u1', :'p1', :'r'), 'ok', 'P1 opens R');
 select is(pg_temp.result() - 'published_on',
-  jsonb_build_object('id', :'r', 'open', true, 'eligible', true, 'reasons', '[]'::jsonb, 'title', 'Germany, 100 Welders and flame cutters',
+  jsonb_build_object('id', :'r', 'open', true, 'eligible', true, 'reasons', '[]'::jsonb, 'title', 'Germany, 80 Welders and flame cutters, 20 Structural-metal preparers and erectors',
     'country_code', 'DE', 'workers_needed', 100, 'countries', '["DE"]'::jsonb, 'city_region', 'Hamburg', 'industry_code', 'C',
     'occupations', '[{"code": "7212", "name": "Welders and flame cutters", "quantity": 80}, {"code": "7214", "name": "Structural-metal preparers and erectors", "quantity": 20}]'::jsonb,
     'skills', null, 'experience_years', null, 'start_date', '2027-01-15', 'duration_months', 12,
@@ -325,7 +325,7 @@ select is(pg_temp.jo(:'us', :'ps') || (pg_temp.row_of(:'r') ->> 'eligible'), 'ok
 
 select is(pg_temp.jo(:'u2', :'p2'), 'ok', 'P2 (serves PL only) lists');
 select is(pg_temp.row_of(:'r'),
-  jsonb_build_object('id', :'r', 'eligible', false, 'reasons', '["served_country_missing"]'::jsonb, 'title', 'Germany, 100 Welders and flame cutters',
+  jsonb_build_object('id', :'r', 'eligible', false, 'reasons', '["served_country_missing"]'::jsonb, 'title', 'Germany, 80 Welders and flame cutters, 20 Structural-metal preparers and erectors',
     'country_code', 'DE', 'workers_needed', 100, 'countries', null, 'city_region', null, 'industry_code', null, 'occupations', null,
     'start_date', null, 'employment_type', null, 'recruitment_preference', null, 'published_on', null, 'response_count', null,
     'responses_fewer_than', null, 'employer_name', null, 'employer_company_slug', null, 'next_cursor', null, 'n', 2),
@@ -531,9 +531,16 @@ select ok(private.city_names_organization('Muellerhaus Halle', '00000000-0000-00
 update public.organizations set website = 'https://www.mueller.co.uk' where id = '00000000-0000-0000-0000-0000000f39b1';
 select is((private.organization_name_keys('00000000-0000-0000-0000-0000000f39b1'))[4], 'muller',
   'a two-part public suffix (co.uk) gives the label before it');
-select is(private.job_order_neutral_title(:'r'), 'Germany, 100 Welders and flame cutters', 'the generated title');
+select is(private.job_order_neutral_title(:'r'), 'Germany, 80 Welders and flame cutters, 20 Structural-metal preparers and erectors', 'the generated title');
 delete from public.requirement_occupations where requirement_id = :'rtc';
 select is(private.job_order_neutral_title(:'rtc'), 'Germany, 30', 'without an occupation the title has no trailing space');
+insert into public.requirement_occupations (requirement_id, occupation_id, quantity) values (:'rtc', '7411', 10);
+select is(private.job_order_neutral_title(:'rtc'), 'Germany, 10 Building and related electricians',
+  'one occupation is named with its own quantity, not all the workers');
+insert into public.requirement_occupations (requirement_id, occupation_id, quantity) values (:'rtc', '7212', 20);
+select is(private.job_order_neutral_title(:'rtc'), 'Germany, 20 Welders and flame cutters, 10 Building and related electricians',
+  'several occupations are each named with their quantity, the largest first');
+delete from public.requirement_occupations where requirement_id = :'rtc';
 insert into public.requirement_occupations (requirement_id, occupation_id, quantity) values (:'rtc', '7212', 30);
 
 -- Several destinations: the full row names them all; the reduced row only the main one -------------------------------------

@@ -25,7 +25,7 @@ export const adminEntries = [
   { label: "MFA reset", segment: "mfa-reset", roles: ["admin"] },
   { label: "Reports", segment: "reports", roles: both },
   { label: "Vacancy moderation", segment: "moderation", roles: ["trust_safety"] },
-  { label: "Suspensions and reinstatements", segment: "suspensions", roles: ["trust_safety"] },
+  { label: "Suspensions", segment: "suspensions", roles: ["trust_safety"] },
   {
     label: "Partner reviews",
     segment: "partners",

@@ -13,6 +13,7 @@ import { TextareaField } from "@/components/forms/form-field";
 import { SelectField } from "@/components/forms/select-field";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { decidePartner } from "@/lib/actions/admin-partner-reviews";
+import { characterCount } from "@/lib/i18n/format";
 import { adminPath } from "@/lib/routes";
 import {
   decisionFormSchema,
@@ -199,7 +200,7 @@ function DecisionFormView({ lang, organizationId, companyName, decision, onClose
         description={`Required, 10 to ${REASON_MAX} characters. ${words[decision].audience}`}
       />
       <p aria-live="polite" className="-mt-2 text-small text-muted-foreground tabular-nums">
-        {length} of {REASON_MAX} characters
+        {characterCount(length, REASON_MAX)}
       </p>
       <div className="grid gap-3 sm:grid-cols-2">
         <FormButton type="button" variant="secondary" onClick={onClose}>

@@ -18,6 +18,8 @@ const NON_COUNTRY_REGIONS = 'AC CP DG EA EU EZ IC TA UN XA XB ZZ AN BU CS DD FX 
 const RETIRED_CURRENCIES = 'ANG CUC HRK SLL ZWL'.split(' ')
 // ISO 639-1 codes that CLDR names as aliases of another language (Indonesian, Hebrew, Yiddish, Javanese, Romanian, Serbian).
 const ALIAS_LANGUAGES = 'in iw ji jw mo sh'.split(' ')
+// CLDR names Twi "Akan" (a duplicate of ak) and Tagalog only "Filipino", so neither is found by its own name.
+const LANGUAGE_NAMES = { tw: 'Twi', tl: 'Filipino (Tagalog)' }
 
 const ISIC_SECTIONS = [
   'A|Agriculture, forestry and fishing',
@@ -62,9 +64,9 @@ function namedCodes(codes, type) {
 const countries = namedCodes(twoLetterCodes(true), 'region').filter(
   ([code]) => !NON_COUNTRY_REGIONS.includes(code),
 )
-const languages = namedCodes(twoLetterCodes(false), 'language').filter(
-  ([code]) => !ALIAS_LANGUAGES.includes(code),
-)
+const languages = namedCodes(twoLetterCodes(false), 'language')
+  .filter(([code]) => !ALIAS_LANGUAGES.includes(code))
+  .map(([code, name]) => [code, LANGUAGE_NAMES[code] ?? name])
 const currencies = namedCodes(Intl.supportedValuesOf('currency'), 'currency').filter(
   ([code]) => !RETIRED_CURRENCIES.includes(code),
 )

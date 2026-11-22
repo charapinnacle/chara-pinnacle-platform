@@ -197,7 +197,7 @@ describe("the partner network range", () => {
     expect(after.success).toBe(false);
     expect(after.error?.issues).toEqual([expect.objectContaining({ path: ["from"], message: "The start date must not be after the end date." })]);
     expect(networkStatisticsSchema.safeParse({ from: "2025-03-01", to: "2026-03-02", period: "month" }).error?.issues[0].message).toBe(
-      "Choose at most 366 days",
+      "Choose at most 366 days.",
     );
     expect(networkStatisticsSchema.safeParse({ from: "2025-03-02", to: "2026-03-02", period: "month" }).success).toBe(true);
     for (const period of ["week", "month", "quarter", "year"]) {

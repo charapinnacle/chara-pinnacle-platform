@@ -269,9 +269,9 @@ describe("notification templates", () => {
       deletion_requested: settingsPath("en"),
       member_invitation: `/en/invitations/${TOKEN}`,
       account_exists: "/en/login",
-      partner_approved: "/en/dashboard/employer",
+      partner_approved: "/en/dashboard/employer?org=manila-recruit",
       partner_info_requested: "/en/onboarding?step=where-you-serve",
-      partner_declined: "/en/dashboard/employer",
+      partner_declined: "/en/dashboard/employer?org=manila-recruit",
       licence_expiring: "/en/org/manila-recruit/workforce-profile#licences-heading",
       partner_licence_expired: "/en/org/manila-recruit/workforce-profile#licences-heading",
       listing_confirmation_due: "/en/org/manila-recruit/workforce-profile#availability-heading",
@@ -442,7 +442,7 @@ describe("notification templates", () => {
     expect(inquiry.subject).toBe("Acme Bau sent you an inquiry");
     const request = await renderEmail("workforce_request_received", { ...SAMPLES.workforce_request_received, ...text }, SITE);
     expect(request.subject).toBe("Acme Bau requests workers from you");
-    expect(request.text).toContain("25 × Welders and flame cutters in Germany from 2027-03-01");
+    expect(request.text).toContain("25 × Welders and flame cutters in Germany from 1 March 2027");
     const invitation = await renderEmail("job_invitation", { ...SAMPLES.job_invitation, ...text }, SITE);
     expect(invitation.subject).toBe("Acme Bau invites you to apply");
     expect(invitation.text).toContain('apply to "Welder MIG/MAG" in Hamburg, Germany');

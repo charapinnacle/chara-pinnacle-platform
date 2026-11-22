@@ -6,13 +6,13 @@ import { useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { ModalDialog } from "@/components/feedback/modal-dialog";
 import { toast } from "@/components/feedback/toast-store";
+import { ComboboxField } from "@/components/forms/combobox-field";
 import { FormButton } from "@/components/forms/form-button";
 import { FormErrorSummary } from "@/components/forms/form-error-summary";
 import { InputField, TextareaField } from "@/components/forms/form-field";
-import { SelectField } from "@/components/forms/select-field";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { requestWorkforce } from "@/lib/actions/connection-actions";
-import { formatCount } from "@/lib/i18n/format";
+import { characterCount } from "@/lib/i18n/format";
 import { characters } from "@/lib/utils";
 import {
   NOTE_MAX,
@@ -100,22 +100,24 @@ function RequestForm({
         {partnerName} is invited to a private draft requirement with these details and sees your organisation&apos;s name. It
         can reply in the conversation and responds once you publish the requirement.
       </p>
-      <SelectField
+      <ComboboxField
         control={control}
         name="occupation"
         id={IDS.occupation}
         label="Occupation"
         placeholder="Select an occupation"
         options={occupations}
+        emptyText="No matching occupation"
       />
       <InputField control={control} name="quantity" id={IDS.quantity} label="Number of workers" inputMode="numeric" />
-      <SelectField
+      <ComboboxField
         control={control}
         name="destination"
         id={IDS.destination}
         label="Country of work"
         placeholder="Select a country"
         options={countries}
+        emptyText="No matching country"
       />
       <InputField control={control} name="cityRegion" id={IDS.cityRegion} label="City or region" maxLength={100} />
       <InputField control={control} name="startDate" id={IDS.startDate} label="Start date" type="date" />
@@ -124,7 +126,7 @@ function RequestForm({
         name="body"
         id={IDS.body}
         label="Message (optional)"
-        description={`${formatCount(length)}/${formatCount(NOTE_MAX)} characters`}
+        description={`${characterCount(length, NOTE_MAX)}`}
       />
       <div className="grid gap-3 sm:grid-cols-2">
         <FormButton type="button" variant="secondary" onClick={onClose}>

@@ -17,7 +17,7 @@ import {
 } from "@/lib/validation/admin";
 import { fieldErrors } from "@/lib/validation/sign-up";
 
-const REASON = { "CHARA_INVALID_INPUT:reason": { errors: { reason: "Give a reason of 10 to 500 characters" } } };
+const REASON = { "CHARA_INVALID_INPUT:reason": { errors: { reason: "Give a reason of 10 to 500 characters." } } };
 
 export async function grantRole(input: GrantForm): Promise<AdminResult> {
   const parsed = grantFormSchema.safeParse(input);

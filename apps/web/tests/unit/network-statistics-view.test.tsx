@@ -46,6 +46,7 @@ describe("the partner network section", () => {
   it("shows a table per metric with the periods, hidden values as fewer than the threshold and the change in words", () => {
     const html = render(ready);
     expect(html).toContain('aria-label="Recruitment companies: Listed at the end of the period"');
+    expect(html).toContain('<h4 class="font-medium">Listed at the end of the period</h4>');
     expect(html).toContain("March 2026");
     expect(html).toContain("April 2026");
     expect(html).toContain("up from 9");

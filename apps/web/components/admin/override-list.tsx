@@ -31,7 +31,7 @@ export async function OverrideList() {
               <tr key={`${row.organizationId}-${row.limitKey}`}>
                 <td className={`${cell} break-words`}>
                   <span className="block font-medium">{row.organizationName}</span>
-                  <span className="block text-small text-muted-foreground break-all">{row.planCode}</span>
+                  <span className="block text-small text-muted-foreground wrap-break-word">{row.planCode}</span>
                 </td>
                 <td className={cell}>{row.limitLabel}</td>
                 <td className={`${cell} tabular-nums`}>{limitText(row.value)}</td>
@@ -67,6 +67,9 @@ export async function OverrideList() {
               id: organization.id,
               label: `${organization.displayName} (${organization.planCode})`,
               orgType: organization.orgType,
+              planLimits: Object.fromEntries(
+                (plans.find((plan) => plan.code === organization.planCode)?.limits ?? []).map(({ key, value }) => [key, value]),
+              ),
             }))}
             limitKeys={limitKeys}
           />

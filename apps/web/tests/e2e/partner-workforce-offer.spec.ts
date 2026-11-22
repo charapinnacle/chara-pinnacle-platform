@@ -87,12 +87,12 @@ test.describe("What you offer (FR-K2)", () => {
     expect(offer(id)).toBe("||||");
 
     // AC2: "weld" lists Welders and flame cutters; arrows and Enter take it, and the chip has its own remove button.
-    await pickWithKeys(page, OCCUPATIONS, "weld", "7212 · Welders and flame cutters");
+    await pickWithKeys(page, OCCUPATIONS, "weld", "Welders and flame cutters");
     await expect(page.getByRole("combobox", { name: OCCUPATIONS, exact: true })).toHaveValue("");
     await expect(chips(page, OCCUPATIONS)).toHaveText(["Welders and flame cutters"]);
     await expect(page.getByRole("button", { name: "Remove Welders and flame cutters" })).toBeVisible();
     // AC2: a synonym finds its occupation ("pipefitter" is not in the label).
-    await pickWithKeys(page, OCCUPATIONS, "pipefitter", "7126 · Plumbers and pipe fitters");
+    await pickWithKeys(page, OCCUPATIONS, "pipefitter", "Plumbers and pipe fitters");
     await expect(chips(page, OCCUPATIONS)).toHaveText(["Welders and flame cutters", "Plumbers and pipe fitters"]);
     await expect(page.getByText("2 occupations", { exact: true })).toBeVisible();
     // AC2: typed text that matches no occupation offers nothing to choose and is never saved.
@@ -107,7 +107,7 @@ test.describe("What you offer (FR-K2)", () => {
     await pickWithKeys(page, INDUSTRIES, "manuf", "Manufacturing");
     await pickWithKeys(page, INDUSTRIES, "constr", "Construction");
     await pickWithKeys(page, LANGUAGES, "engl", "English");
-    await pickWithKeys(page, LANGUAGES, "filip", "Filipino");
+    await pickWithKeys(page, LANGUAGES, "tagal", "Filipino (Tagalog)");
     await pickWithKeys(page, LANGUAGES, "arab", "Arabic");
     await recruitmentType.getByRole("radio", { name: "International", exact: true }).check();
 
@@ -133,7 +133,7 @@ test.describe("What you offer (FR-K2)", () => {
       execute(`grant execute on function ${SET_OFFER} to authenticated`);
     }
     await expect(chips(page, OCCUPATIONS)).toHaveText(["Welders and flame cutters", "Plumbers and pipe fitters"]);
-    await expect(chips(page, LANGUAGES)).toHaveText(["English", "Filipino", "Arabic"]);
+    await expect(chips(page, LANGUAGES)).toHaveText(["English", "Filipino (Tagalog)", "Arabic"]);
     await expect(staffingTypes.getByRole("checkbox", { name: "Temporary" })).toBeChecked();
     expect(offer(id)).toBe("||||");
 
@@ -222,7 +222,7 @@ test.describe("What you offer (FR-K2)", () => {
 
     // AC10: an eleventh occupation is not added; the limit is announced with the way to upgrade.
     const [{ label }] = query<{ label: string }>(`select label from public.occupations where code = ${literal(codes[10])}`);
-    await pickWithKeys(page, OCCUPATIONS, label, `${codes[10]} · ${label}`);
+    await pickWithKeys(page, OCCUPATIONS, label, label);
     await expect(chips(page, OCCUPATIONS)).toHaveCount(10);
     const notice = page.getByRole("status").filter({ hasText: LIMIT_MESSAGE });
     await expect(notice).toBeVisible();
@@ -246,7 +246,7 @@ test.describe("What you offer (FR-K2)", () => {
     // Removing one makes room; the staffing types change and the recruitment type too.
     const [{ first }] = query<{ first: string }>(`select label as first from public.occupations where code = ${literal(codes[0])}`);
     await page.getByRole("button", { name: `Remove ${first}` }).click();
-    await pickWithKeys(page, OCCUPATIONS, label, `${codes[10]} · ${label}`);
+    await pickWithKeys(page, OCCUPATIONS, label, label);
     await expect(chips(page, OCCUPATIONS)).toHaveCount(10);
     await staffingTypes.getByRole("checkbox", { name: "Temporary" }).uncheck();
     await page.getByRole("button", { name: "Save what you offer" }).click();

@@ -43,7 +43,7 @@ function StaffMessage({ outcome, label }: { outcome: ReviewOutcome; label: strin
 export function PartnerReviewCard({ lang, organization, status, wasListed, outcome, targetDays, canManage }: PartnerReviewCardProps) {
   const profileLink = (
     <TextLink standalone href={workforceProfilePath(lang, organization.slug)}>
-      {canManage ? "Complete your workforce profile" : "See your workforce profile"}
+      {canManage ? "Update your workforce profile" : "See your workforce profile"}
     </TextLink>
   );
   return awaitingReview(status) ? (

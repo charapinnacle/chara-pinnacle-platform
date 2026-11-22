@@ -56,13 +56,13 @@ export async function PartnerReviewQueue({ lang, after, decided }: PartnerReview
                 </td>
                 <td className={cell}>{partnerTypeLabels[row.type]}</td>
                 <td className={cell}>{countryName.get(row.country) ?? row.country}</td>
-                <td className={`${cell} break-all`}>
+                <td className={`${cell} wrap-break-word`}>
                   <span className="font-mono">{row.identifier}</span>
                   {row.identifierKind ? (
                     <span className="block text-small text-muted-foreground">{identifierKindLabels[row.identifierKind]}</span>
                   ) : null}
                 </td>
-                <td className={`${cell} break-all`}>{row.website ?? "None given"}</td>
+                <td className={`${cell} wrap-break-word`}>{row.website ?? "None given"}</td>
                 <td className={cell}>
                   <time dateTime={row.submittedAt} title={formatDateTime(row.submittedAt)}>
                     {formatRelative(row.submittedAt, now)}

@@ -1,9 +1,10 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { FileCheck, Upload } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import * as z from "zod";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { ModalDialog } from "@/components/feedback/modal-dialog";
@@ -12,12 +13,10 @@ import { toast, toastError } from "@/components/feedback/toast-store";
 import { useActionCall } from "@/components/feedback/use-action-call";
 import { CheckboxField } from "@/components/forms/checkbox-field";
 import { ComboboxField } from "@/components/forms/combobox-field";
-import { controlClassName } from "@/components/forms/control-class";
 import { FormButton } from "@/components/forms/form-button";
 import { FormErrorSummary } from "@/components/forms/form-error-summary";
 import { FormField, InputField } from "@/components/forms/form-field";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
-import { Input } from "@/components/ui/input";
 import { deleteLicence, getEvidenceDownload, saveLicence, startEvidenceUpload } from "@/lib/actions/licences";
 import { BRAND_NAME } from "@/lib/brand";
 import type { PartnerLicence } from "@/lib/dal/licences";
@@ -62,7 +61,7 @@ type LicencesSectionProps = {
   profilePath?: string;
 };
 
-type FormValues = LicenceInput & { file: File | undefined };
+type FormValues = LicenceInput & { file?: File };
 type Outcome = { errors?: Record<string, string>; message?: string; saved?: true; fileNotSent?: string };
 
 // The licences of a partner (FR-J2): one entry per country with the issuing authority, the number, the valid-until date
@@ -148,7 +147,7 @@ export function LicencesSection({
           </ul>
         </>
       )}
-      <ModalDialog open={editing !== null} onClose={close} title={editing === "new" ? "Add a licence" : "Edit the licence"}>
+      <ModalDialog wide open={editing !== null} onClose={close} title={editing === "new" ? "Add a licence" : "Edit the licence"}>
         {editing ? (
           <LicenceForm
             slug={slug}
@@ -213,6 +212,7 @@ function LicenceForm({ slug, licence, initialCountry, countries, patterns, maxYe
     shouldFocusError: false,
   });
   const { control, formState, handleSubmit } = form;
+  const file = useWatch({ control, name: "file" });
   const { summaryRef, submit } = useServerFormSubmit(form, { failureTitle: SAVE_FAILED });
 
   function onSubmit() {
@@ -245,26 +245,37 @@ function LicenceForm({ slug, licence, initialCountry, countries, patterns, maxYe
   }
 
   return (
-    <form noValidate className="grid gap-4" onSubmit={handleSubmit(onSubmit)}>
+    <form noValidate className="grid gap-6" onSubmit={handleSubmit(onSubmit)}>
+      <p className="-mt-2 text-body leading-relaxed text-muted-foreground">
+        The licence or registration your company holds in one country. {LICENCE_STAFF_ONLY}.
+      </p>
       <FormErrorSummary form={form} summaryRef={summaryRef} ids={ids} />
-      <ComboboxField
-        control={control}
-        name="country"
-        id={ids.country}
-        label="Country"
-        placeholder="Choose a country"
-        options={toOptions(countries)}
-        emptyText="No matching country"
-      />
-      <InputField control={control} name="issuingAuthority" id={ids.issuingAuthority} label="Issuing authority" />
-      <InputField
-        control={control}
-        name="licenceNumber"
-        id={ids.licenceNumber}
-        label="Licence or registration number"
-        autoComplete="off"
-      />
-      <InputField control={control} name="validUntil" id={ids.validUntil} label="Valid until" type="date" />
+      <div className="grid gap-5 sm:grid-cols-2 sm:items-start">
+        <ComboboxField
+          control={control}
+          name="country"
+          id={ids.country}
+          label="Country"
+          placeholder="Choose a country"
+          options={toOptions(countries)}
+          emptyText="No matching country"
+        />
+        <InputField control={control} name="validUntil" id={ids.validUntil} label="Valid until" type="date" />
+        <InputField
+          control={control}
+          name="issuingAuthority"
+          id={ids.issuingAuthority}
+          label="Issuing authority"
+          placeholder="For example, the labour ministry"
+        />
+        <InputField
+          control={control}
+          name="licenceNumber"
+          id={ids.licenceNumber}
+          label="Licence or registration number"
+          autoComplete="off"
+        />
+      </div>
       <FormField
         control={control}
         name="file"
@@ -277,28 +288,53 @@ function LicenceForm({ slug, licence, initialCountry, countries, patterns, maxYe
         }
       >
         {(field) => (
-          <Input
-            type="file"
-            id={field.id}
-            name={field.name}
-            ref={field.ref}
-            accept={evidenceAccept}
-            aria-invalid={field["aria-invalid"]}
-            aria-describedby={field["aria-describedby"]}
-            className={cn("h-auto py-2.5", controlClassName)}
-            onBlur={field.onBlur}
-            onChange={(event) => field.onChange(event.target.files?.[0])}
-          />
+          <div
+            className={cn(
+              "relative flex min-h-24 items-center gap-4 rounded-xl border border-dashed border-input bg-secondary/40 px-4 py-4 transition-colors hover:border-muted-foreground has-focus-visible:border-primary has-focus-visible:ring-2 has-focus-visible:ring-ring",
+              field["aria-invalid"] && "border-destructive",
+            )}
+          >
+            <span aria-hidden className="grid size-10 shrink-0 place-items-center rounded-full border bg-card">
+              {file ? <FileCheck className="size-5" /> : <Upload className="size-5 text-muted-foreground" />}
+            </span>
+            <span aria-hidden className="grid min-w-0 gap-0.5">
+              <span className="truncate text-body font-medium">
+                {file ? file.name : licence?.evidence ? "Current document kept" : "Choose a file or drop it here"}
+              </span>
+              <span className="text-small text-muted-foreground">
+                {file
+                  ? `${formatFileSize(file.size)} · choose again to replace it`
+                  : licence?.evidence
+                    ? `${formatFileSize(licence.evidence.sizeBytes)} · choose a file to replace it`
+                    : "Click to browse your files"}
+              </span>
+            </span>
+            {/* The native input covers the box, so a click or a dropped file reaches it and its label stays its name. */}
+            <input
+              type="file"
+              id={field.id}
+              name={field.name}
+              ref={field.ref}
+              accept={evidenceAccept}
+              aria-invalid={field["aria-invalid"]}
+              aria-describedby={field["aria-describedby"]}
+              className="absolute inset-0 size-full cursor-pointer opacity-0"
+              onBlur={field.onBlur}
+              onChange={(event) => field.onChange(event.target.files?.[0])}
+            />
+          </div>
         )}
       </FormField>
-      <CheckboxField control={control} name="confirmed" id={ids.confirmed}>
-        I confirm that this entry is accurate
-      </CheckboxField>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <FormButton type="button" variant="secondary" disabled={formState.isSubmitting} onClick={onClose}>
+      <div className="rounded-xl border bg-secondary/40 px-4">
+        <CheckboxField control={control} name="confirmed" id={ids.confirmed}>
+          I confirm that this entry is accurate
+        </CheckboxField>
+      </div>
+      <div className="flex flex-col-reverse gap-3 border-t pt-5 sm:flex-row sm:justify-end">
+        <FormButton type="button" variant="secondary" className="sm:w-auto" disabled={formState.isSubmitting} onClick={onClose}>
           Cancel
         </FormButton>
-        <FormButton type="submit" busy={formState.isSubmitting}>
+        <FormButton type="submit" className="sm:w-auto sm:min-w-40" busy={formState.isSubmitting}>
           {formState.isSubmitting ? "Saving..." : "Save licence"}
         </FormButton>
       </div>

@@ -105,7 +105,7 @@ describe("the statistics range", () => {
   });
 
   it("refuses 367 days, a start after the end and a date that does not exist", () => {
-    expect(message(rangeSchema.safeParse({ from: "2024-01-01", to: "2025-01-01" }))).toBe("Choose at most 366 days");
+    expect(message(rangeSchema.safeParse({ from: "2024-01-01", to: "2025-01-01" }))).toBe("Choose at most 366 days.");
     expect(message(rangeSchema.safeParse({ from: "2026-03-02", to: "2026-03-01" }))).toBe(
       "The start date must not be after the end date.",
     );

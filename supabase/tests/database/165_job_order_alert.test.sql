@@ -183,7 +183,7 @@ select is(
   'AC10, FR-T1 AC2: the payload holds the requirement id, the title, the destination and the recipient''s own slug only');
 select is(
   (select payload ->> 'title' from public.notifications where user_id = :'u1' and kind = 'job_order_match'),
-  'Germany, 100 Welders and flame cutters', 'NFR-S11: the title is the generated one, not the employer''s own');
+  'Germany, 80 Welders and flame cutters, 20 Structural-metal preparers and erectors', 'NFR-S11: the title is the generated one, not the employer''s own');
 select is(
   (select string_agg(n.payload ->> 'org_slug', ',' order by n.user_id) from public.notifications n
    where n.kind = 'job_order_match' and n.payload ->> 'requirement_id' = :'r'),

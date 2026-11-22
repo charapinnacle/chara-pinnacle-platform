@@ -110,11 +110,11 @@ describe("the states of the analytics page (FR-R6 AC12)", () => {
     let html = await render({ hasFigures: false, totals: [], byCountry: null, byOccupation: null });
     expect(html).toContain("No activity yet");
     expect(html).toContain("Figures appear the day after employers or partners interact with your profile.");
-    expect(html).toMatch(/href="\/en\/org\/manila-skills\/workforce-profile"[^>]*>Complete your profile/);
+    expect(html).toMatch(/href="\/en\/org\/manila-skills\/workforce-profile"[^>]*>Update your profile/);
     expect(html).not.toContain("Totals");
 
     html = await render({ organization: { slug: "acme", type: "employer", role: "owner" }, hasFigures: false, totals: [] });
-    expect(html).toMatch(/href="\/en\/org\/acme\/profile"[^>]*>Complete your profile/);
+    expect(html).toMatch(/href="\/en\/org\/acme\/profile"[^>]*>Update your profile/);
   });
 
   it("says the plan has no analytics, with Compare plans for managers", async () => {

@@ -18,7 +18,7 @@ import { getPartnerProfile } from "@/lib/dal/partner-profile";
 import { getCountries, getOccupations } from "@/lib/dal/reference";
 import { isReleased } from "@/lib/dal/release";
 import { getCurrentUser } from "@/lib/dal/session";
-import { loginPath, partnerProfilePath, reportPath, workforceProfilePath } from "@/lib/routes";
+import { loginPath, mfaPath, partnerProfilePath, reportPath, workforceProfilePath } from "@/lib/routes";
 import { partnerProfileMetadata } from "@/lib/seo/metadata";
 import { slugSchema } from "@/lib/validation/team";
 
@@ -99,8 +99,22 @@ export default async function PartnerProfilePage({ params, searchParams }: PageP
     connection?.id && connection.access.kind === "signed_in" ? await getContactEmployer(connection.access.saveFor) : null;
   const staffing = employer?.manager && offersStaffing(profile.type, profile.serviceTypes) && (await isReleased("release_job_orders"));
   const [occupations, countries] = staffing ? await Promise.all([getOccupations(), getCountries()]) : [[], []];
+  // The database refuses an owner or admin at aal1, and the redirect would drop what they typed, so they verify first.
+  const stepUp = employer?.manager && user?.aal !== "aal2" ? mfaPath(lang, path) : null;
   const contact =
-    employer && connection?.id ? (
+    employer && connection?.id && stepUp ? (
+      <div className="grid gap-2">
+        <div className="flex flex-wrap gap-3">
+          <LinkButton href={stepUp}>Send inquiry</LinkButton>
+          {staffing ? (
+            <LinkButton variant="secondary" href={stepUp}>
+              Request workforce
+            </LinkButton>
+          ) : null}
+        </div>
+        <p className="text-small text-muted-foreground">Owners and admins write to partners after the two-step check.</p>
+      </div>
+    ) : employer && connection?.id ? (
       <div className="flex flex-wrap gap-3">
         <SendInquiry slug={employer.slug} employerName={employer.displayName} partnerId={connection.id} partnerName={profile.displayName} />
         {staffing ? (

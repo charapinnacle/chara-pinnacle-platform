@@ -189,7 +189,7 @@ test.describe("moderating a vacancy from the console", () => {
       [page, second].map((tab) =>
         Promise.race([
           tab.getByText("The vacancy is hidden", { exact: true }).waitFor().then(() => "done"),
-          tab.getByText("This vacancy is already hidden", { exact: true }).waitFor().then(() => "already"),
+          tab.getByText("This vacancy is already hidden.", { exact: true }).waitFor().then(() => "already"),
         ]),
       ),
     );

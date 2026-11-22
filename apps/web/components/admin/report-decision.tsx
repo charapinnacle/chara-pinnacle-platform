@@ -11,6 +11,7 @@ import { FormErrorSummary } from "@/components/forms/form-error-summary";
 import { TextareaField } from "@/components/forms/form-field";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { decideReport, moveReport } from "@/lib/actions/admin-reports";
+import { characterCount } from "@/lib/i18n/format";
 import { characters } from "@/lib/utils";
 import { moderationFormSchema, type ModerationForm } from "@/lib/validation/admin";
 import { decisionOfOption, type ReportDecisionOption } from "@/lib/validation/report";
@@ -21,6 +22,8 @@ export type DecisionTarget = { kind: string; title: string; organization: string
 type ReportDecisionProps = {
   id: number;
   status: "new" | "in_review";
+  // In review by another administrator: putting it in review again takes it over, to read and decide it.
+  takeOver?: boolean;
   reference: string;
   signedIn: boolean;
   target: DecisionTarget;
@@ -91,10 +94,10 @@ function dialogTitle(choice: Choice, target: DecisionTarget): string {
   return choice === "hide" ? `Hide the ${target.kind.toLowerCase()}` : words[choice].title;
 }
 
-export function ReportDecision({ id, status, reference, signedIn, target, decisions, closeWithNote, dismissWithNote }: ReportDecisionProps) {
+export function ReportDecision({ id, status, takeOver = false, reference, signedIn, target, decisions, closeWithNote, dismissWithNote }: ReportDecisionProps) {
   const [choice, setChoice] = useState<Choice | null>(null);
   const buttons: Choice[] = [
-    ...(status === "new" ? (["in_review"] as const) : []),
+    ...(status === "new" || takeOver ? (["in_review"] as const) : []),
     ...decisions,
     ...(dismissWithNote ? (["dismissed"] as const) : []),
     ...(closeWithNote ? (["actioned"] as const) : []),
@@ -183,7 +186,7 @@ function DecisionForm({
         name="reason"
         id={NOTE_ID}
         label={choice === "in_review" ? "Reason" : decision ? "Statement of reasons" : "Note"}
-        description={`Required, ${REASONS_MIN} to ${REASONS_MAX} characters. ${count} of ${REASONS_MAX} characters used. ${audience(choice, signedIn, reference)}`}
+        description={`Required, ${REASONS_MIN} to ${REASONS_MAX} characters. ${characterCount(count, REASONS_MAX)} used. ${audience(choice, signedIn, reference)}`}
       />
       <div className="grid gap-3 sm:grid-cols-2">
         <FormButton type="button" variant="secondary" onClick={onClose}>

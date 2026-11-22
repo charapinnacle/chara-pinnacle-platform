@@ -73,3 +73,74 @@ export function OnboardingSteps({ kind, current, reopened = [] }: OnboardingStep
     </div>
   );
 }
+
+const partnerHints = [
+  "Name, country and registration",
+  "The countries you work with",
+  "Occupations and how you recruit",
+  "The employer-pays commitment",
+  "Two-step verification",
+  "Submit for review",
+] as const;
+
+// Classes, not an inline style (see columns above): the progress bar of the partner journey at each of its six steps.
+const progressWidths = ["w-1/6", "w-2/6", "w-3/6", "w-4/6", "w-5/6", "w-full"] as const;
+
+// The partner journey (FR-J1) beside the form from 1024 px: each step with what it asks for. Below that a slim progress
+// bar with "Step 3 of 6: What you offer" takes its place, and the list stays for screen readers.
+export function PartnerSteps({ current, reopened = [] }: { current: number; reopened?: readonly number[] }) {
+  const steps = onboardingJourneys.partner;
+  return (
+    <div className="grid gap-4">
+      <div className="grid gap-2 lg:hidden">
+        <p aria-hidden className="text-small font-medium tabular-nums">
+          {`Step ${current + 1} of ${steps.length}: ${steps[current]}`}
+        </p>
+        <div aria-hidden className="h-1.5 overflow-hidden rounded-full bg-border">
+          <div className={cn("h-full rounded-full bg-brand", progressWidths[current])} />
+        </div>
+      </div>
+      <ol aria-label="Setting up your account" className="grid gap-1 max-lg:sr-only">
+        {steps.map((label, index) => {
+          const state =
+            index === current ? "current" : reopened.includes(index) ? "reopened" : index < current ? "done" : "upcoming";
+          return (
+            <li
+              key={label}
+              aria-current={state === "current" ? "step" : undefined}
+              className={cn(
+                "relative grid grid-cols-[1.75rem_minmax(0,1fr)] gap-x-3 rounded-lg px-3 py-2.5",
+                state === "current" && "bg-card shadow-card",
+              )}
+            >
+              <span
+                aria-hidden
+                className={cn(
+                  "row-span-2 grid size-7 place-items-center rounded-full border text-caption font-semibold tabular-nums",
+                  state === "done" && "border-brand bg-brand text-foreground",
+                  state === "current" && "border-primary bg-primary text-primary-foreground",
+                  (state === "upcoming" || state === "reopened") && "border-muted-foreground text-muted-foreground",
+                )}
+              >
+                {state === "done" ? <Check className="size-3.5" strokeWidth={2.5} /> : index + 1}
+              </span>
+              <span className={cn("text-small leading-snug", state === "current" ? "font-semibold" : "font-medium")}>
+                <span className="sr-only">{`Step ${index + 1} of ${steps.length}: `}</span>
+                {label}
+                {state === "done" ? <span className="sr-only"> (done)</span> : null}
+                {state === "reopened" ? <span className="sr-only"> (more information requested)</span> : null}
+              </span>
+              {state === "reopened" ? (
+                <span aria-hidden className="text-caption leading-snug font-medium text-warning-foreground">
+                  More information requested
+                </span>
+              ) : (
+                <span className="text-caption leading-snug text-muted-foreground">{partnerHints[index]}</span>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+    </div>
+  );
+}

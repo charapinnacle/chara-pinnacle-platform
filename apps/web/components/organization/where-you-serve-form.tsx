@@ -7,6 +7,7 @@ import { useForm, useWatch } from "react-hook-form";
 import { UpgradePrompt } from "@/components/billing/upgrade-prompt";
 import { toast, toastError } from "@/components/feedback/toast-store";
 import { ChipsField } from "@/components/forms/chips-field";
+import { StepCard } from "@/components/onboarding/step-card";
 import { FormButton } from "@/components/forms/form-button";
 import { FormErrorSummary } from "@/components/forms/form-error-summary";
 import { Notice } from "@/components/forms/notice";
@@ -101,47 +102,67 @@ export function WhereYouServeForm({
     );
   }
 
+  const basedInField = (
+    <dl className="grid gap-1">
+      <dt className="text-small font-semibold">Where are you based?</dt>
+      <dd className="text-body">{basedIn}</dd>
+      <dd className="text-small text-muted-foreground">From your company details.</dd>
+    </dl>
+  );
+  const sourcesField = (
+    <ChipsField
+      {...countryList}
+      control={control}
+      name="sourcesFrom"
+      id={ids.sourcesFrom}
+      label="Where do you source workers from?"
+      description="The countries your workers come from."
+      limit={null}
+    />
+  );
+  const marketsField = (
+    <ChipsField
+      {...countryList}
+      control={control}
+      name="servesMarket"
+      id={ids.servesMarket}
+      label={servedQuestion[partnerType]}
+      description={
+        partnerType === "staffing_company"
+          ? "The countries where you supply workers to employers."
+          : "The countries where you place workers with employers."
+      }
+      limit={marketsPrompt?.limit ?? null}
+      limitNotice={
+        marketsPrompt === null ? null : (
+          <UpgradePrompt
+            organizationId={organizationId}
+            organizationType={partnerType}
+            prompt={{ ...marketsPrompt, used: marketsPrompt.limit }}
+            billingHref={billingHref}
+            canUpgrade
+          />
+        )
+      }
+    />
+  );
+
   return (
     <form noValidate className="grid gap-8" onSubmit={handleSubmit(onSubmit)}>
       <FormErrorSummary form={form} ids={ids} />
-      <dl className="grid gap-1">
-        <dt className="text-small font-semibold">Where are you based?</dt>
-        <dd className="text-body">{basedIn}</dd>
-        <dd className="text-small text-muted-foreground">From your company details.</dd>
-      </dl>
-      <ChipsField
-        {...countryList}
-        control={control}
-        name="sourcesFrom"
-        id={ids.sourcesFrom}
-        label="Where do you source workers from?"
-        description="The countries your workers come from."
-        limit={null}
-      />
-      <ChipsField
-        {...countryList}
-        control={control}
-        name="servesMarket"
-        id={ids.servesMarket}
-        label={servedQuestion[partnerType]}
-        description={
-          partnerType === "staffing_company"
-            ? "The countries where you supply workers to employers."
-            : "The countries where you place workers with employers."
-        }
-        limit={marketsPrompt?.limit ?? null}
-        limitNotice={
-          marketsPrompt === null ? null : (
-            <UpgradePrompt
-              organizationId={organizationId}
-              organizationType={partnerType}
-              prompt={{ ...marketsPrompt, used: marketsPrompt.limit }}
-              billingHref={billingHref}
-              canUpgrade
-            />
-          )
-        }
-      />
+      {onboarding ? (
+        <StepCard title="Countries" columns>
+          <div className="sm:col-span-2">{basedInField}</div>
+          {sourcesField}
+          {marketsField}
+        </StepCard>
+      ) : (
+        <>
+          {basedInField}
+          {sourcesField}
+          {marketsField}
+        </>
+      )}
       {exceeded ? (
         <Notice tone="warning" role="status">
           <p className="font-medium">

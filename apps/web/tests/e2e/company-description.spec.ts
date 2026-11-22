@@ -25,13 +25,13 @@ test.describe("the company description", () => {
     const field = page.getByLabel(LABEL);
     await waitForHydration(field);
     await expect(field).toHaveValue("");
-    await expect(page.getByText("0/2000")).toBeVisible();
+    await expect(page.getByText("0 of 2,000 characters.")).toBeVisible();
     await evidence(page, "company-profile-description");
     await expectAccessibleAtBothWidths(page);
 
     await page.setViewportSize({ width: 1280, height: 900 });
     await field.fill(text);
-    await expect(page.getByText(`${text.length}/2000`)).toBeVisible();
+    await expect(page.getByText(`${text.length.toLocaleString("en")} of 2,000 characters`)).toBeVisible();
     await page.getByRole("button", { name: "Save profile" }).click();
     await expect(page.getByText("Company profile saved", { exact: true })).toBeVisible();
     expect(stored(team.id)).toBe(text);
@@ -65,7 +65,7 @@ test.describe("the company description", () => {
     await waitForHydration(field);
 
     await field.fill("d".repeat(2001));
-    await expect(page.getByText("2001/2000")).toBeVisible();
+    await expect(page.getByText("2,001 of 2,000 characters.")).toBeVisible();
     await page.getByRole("button", { name: "Save profile" }).click();
     await expect(page.getByText("The description can have at most 2000 characters.").first()).toBeVisible();
     expect(stored(team.id)).toBeNull();

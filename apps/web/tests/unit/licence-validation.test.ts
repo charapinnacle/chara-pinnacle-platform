@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   evidenceFileSchema,
+  evidenceFormSchema,
   licenceFormSchema,
   parseLicencePatterns,
   sortLicences,
@@ -94,6 +95,12 @@ describe("the evidence file and the settings", () => {
     expect(file("licence.docx", 1000, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")).toBe(false);
     expect(file("licence.svg", 1000, "image/svg+xml")).toBe(false);
     expect(file("licence.pdf", 0, "application/pdf")).toBe(false);
+  });
+
+  it("says why a chosen file is refused, and takes no file at all", () => {
+    expect(evidenceFormSchema.safeParse(undefined).success).toBe(true);
+    const refused = evidenceFormSchema.safeParse(new File(["not a pdf"], "notes.txt", { type: "text/plain" }));
+    expect(refused.error?.issues.map((issue) => issue.message)).toEqual(["Choose a PDF, JPG or PNG file."]);
   });
 
   it("reads the number formats from the public setting and ignores anything malformed", () => {

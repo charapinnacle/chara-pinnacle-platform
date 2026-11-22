@@ -130,7 +130,7 @@ test.describe("Conversations and messages (FR-P1)", () => {
     await expect(page.locator('input[type="file"]')).toHaveCount(0);
     await composer.fill("x".repeat(4001));
     await expect(composer).toHaveValue("x".repeat(4000));
-    await expect(page.getByText("4,000 / 4,000 characters")).toBeVisible();
+    await expect(page.getByText("4,000 of 4,000 characters")).toBeVisible();
     await composer.fill("<img src=x onerror=alert(1)>");
     await composer.press("Enter");
     await composer.pressSequentially("second line");

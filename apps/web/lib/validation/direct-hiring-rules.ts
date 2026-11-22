@@ -67,31 +67,31 @@ export function parseRuleValues(value: unknown): RuleValues | null {
 const countrySchema = z.string().regex(/^[A-Z]{2}$/, "Choose a country");
 
 const noticeSchema = z
-  .string({ error: "Enter the notice" })
+  .string({ error: "Enter the notice." })
   .trim()
   .min(NOTICE_MIN, `Write a notice of at least ${NOTICE_MIN} characters`)
   .max(NOTICE_MAX, `The notice can have at most ${NOTICE_MAX.toLocaleString("en-GB")} characters`)
-  .refine((value) => !/\p{Cc}/u.test(value), "Write the notice as one paragraph without line breaks");
+  .refine((value) => !/\p{Cc}/u.test(value), "Write the notice as one paragraph without line breaks.");
 
 const referenceSchema = z
-  .string({ error: "Enter the legal opinion reference" })
+  .string({ error: "Enter the legal opinion reference." })
   .trim()
-  .min(1, "Enter the legal opinion reference")
+  .min(1, "Enter the legal opinion reference.")
   .max(REFERENCE_MAX, `The reference can have at most ${REFERENCE_MAX} characters`)
-  .refine((value) => !/\p{Cc}/u.test(value), "Enter the reference on one line");
+  .refine((value) => !/\p{Cc}/u.test(value), "Enter the reference on one line.");
 
 export const ruleFormSchema = z
   .object({
     sourceCountry: countrySchema,
     destinationCountry: z.union([z.literal(""), countrySchema]),
-    rule: z.string().pipe(z.enum(ruleValues, { error: "Choose a rule" })),
+    rule: z.string().pipe(z.enum(ruleValues, { error: "Choose a rule." })),
     notice: noticeSchema,
     legalOpinionRef: referenceSchema,
     reason: staffReasonSchema,
   })
   .refine((values) => values.destinationCountry === "" || values.destinationCountry !== values.sourceCountry, {
     path: ["destinationCountry"],
-    message: "Choose a destination other than the source country, or all destinations",
+    message: "Choose a destination other than the source country, or all destinations.",
   });
 
 export type RuleForm = z.input<typeof ruleFormSchema>;

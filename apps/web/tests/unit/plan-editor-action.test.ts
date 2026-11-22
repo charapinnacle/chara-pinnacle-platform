@@ -81,7 +81,7 @@ describe("savePlan (FR-R2 AC2, AC10)", () => {
 
   it.each([
     [failure("CHARA_INVALID_INPUT", "is_public"), { errors: { isPublic: "Only a paid plan can be public" } }],
-    [failure("CHARA_INVALID_INPUT", "reason"), { errors: { reason: "Give a reason of 10 to 500 characters" } }],
+    [failure("CHARA_INVALID_INPUT", "reason"), { errors: { reason: "Give a reason of 10 to 500 characters." } }],
     [failure("CHARA_INVALID_INPUT", "plan_code"), { message: "This plan no longer exists." }],
     [failure("CHARA_CONFLICT", "limit:markets"), { message: "Someone changed this plan after the page was loaded. Nothing was saved. Reload the page and try again." }],
     [failure("CHARA_FORBIDDEN"), { message: "You are not allowed to do this." }],
@@ -189,7 +189,7 @@ describe("changePlanPrice (FR-R2 AC8)", () => {
   it("explains the refusals and says nothing was changed when the provider fails", async () => {
     const cases: [ReturnType<typeof refused>, object][] = [
       [refused(403), { message: "You are not allowed to do this." }],
-      [refused(400, null, "reason"), { errors: { reason: "Give a reason of 10 to 500 characters" } }],
+      [refused(400, null, "reason"), { errors: { reason: "Give a reason of 10 to 500 characters." } }],
       [refused(400, null, "price_unchanged"), { errors: { amount: "Enter a price other than the current one." } }],
       [refused(409, "plan_not_synced"), { message: "This plan is not set up at the payment provider yet. Nothing was changed." }],
       [refused(502), { message: "The payment provider could not create the new price. Nothing was changed. Try again later." }],

@@ -12,6 +12,7 @@ import { FormErrorSummary } from "@/components/forms/form-error-summary";
 import { TextareaField } from "@/components/forms/form-field";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { answerInvitation } from "@/lib/actions/invitations";
+import { characterCount } from "@/lib/i18n/format";
 import { DECLINE_REASON_MAX, declineFormSchema, type DeclineFormInput, type DeclineFormOutput } from "@/lib/validation/invitation";
 
 const REASON_ID = "decline-reason";
@@ -119,7 +120,7 @@ function DeclineForm({ slug, invitationId, employerName, onClose }: InvitationAn
         name="reason"
         id={REASON_ID}
         label="Reason (optional)"
-        description={`${employerName} reads the reason. ${length}/${DECLINE_REASON_MAX}`}
+        description={`${employerName} reads the reason. ${characterCount(length, DECLINE_REASON_MAX)}.`}
       />
       <div className="grid gap-3 sm:grid-cols-2">
         <FormButton type="button" variant="secondary" onClick={onClose}>

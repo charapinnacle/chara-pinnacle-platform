@@ -144,8 +144,8 @@ describe("how a form names a legal document (U67)", () => {
   });
 
   it("names a missing consent by the plain title", () => {
-    expect(consentMessage({ slug: "privacy-policy", title: "DRAFT: Privacy Policy" })).toBe("Confirm that you have read the Privacy Policy to continue");
-    expect(consentMessage({ slug: "terms-of-service", title: "Terms of Service" })).toBe("Accept the Terms of Service to continue");
+    expect(consentMessage({ slug: "privacy-policy", title: "DRAFT: Privacy Policy" })).toBe("Confirm that you have read the Privacy Policy to continue.");
+    expect(consentMessage({ slug: "terms-of-service", title: "Terms of Service" })).toBe("Accept the Terms of Service to continue.");
   });
 
   it("reads the age confirmation as the plain sentence for a draft or a missing wording, and as the published wording otherwise", () => {
@@ -169,7 +169,7 @@ describe("consent boxes (FR-A8, FR-A9)", () => {
     });
     expect(result.success).toBe(false);
     const errors = fieldErrors(result.error!);
-    expect(errors["accepted.terms-of-service"]).toBe("Accept the Title of terms-of-service to continue");
+    expect(errors["accepted.terms-of-service"]).toBe("Accept the Title of terms-of-service to continue.");
     expect(errors["accepted.age-18-plus"]).toBe(
       "Confirm that you are 18 or older to create an account.",
     );

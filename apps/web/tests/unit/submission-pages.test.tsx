@@ -203,7 +203,7 @@ describe("the submission components", () => {
     );
     expect(html).toContain("Candidate&#x27;s email address");
     expect(html).toContain("Note to the candidate (optional)");
-    expect(html).toContain("0/1,000");
+    expect(html).toContain("0 of 1,000 characters.");
     expect(html).toMatch(/<button[^>]*type="submit"[^>]*>Send request<\/button>/);
   });
 

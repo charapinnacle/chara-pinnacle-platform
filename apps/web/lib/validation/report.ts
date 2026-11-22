@@ -269,6 +269,12 @@ export function reportDecisionsFor({ targetType, job, item, organization }: Deci
   return decisions;
 }
 
+// The text of a message or a contact request opens only to the administrator who puts its report in review (NFR-C5), so
+// such a report is decided only by that administrator, after reading it; the database refuses otherwise (not_in_review).
+export function decidedAfterReading(targetType: Enums["report_target_type"]): boolean {
+  return targetType === "message" || targetType === "contact_request";
+}
+
 export function closesWithNote(targetType: Enums["report_target_type"]): boolean {
   return targetType === "profile" || targetType === "content";
 }

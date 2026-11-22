@@ -42,7 +42,7 @@ export function UserSearch({ lang }: { lang: string }) {
                   {user.displayName ?? user.email}
                 </TextLink>
               </td>
-              <td className={`${cell} break-all`}>{user.email}</td>
+              <td className={`${cell} wrap-break-word`}>{user.email}</td>
               <td className={cell}>{user.accountKind === "company" ? "Employer" : user.accountKind === "worker" ? "Candidate" : "Not chosen"}</td>
               <td className={cell}>
                 <AccountStatusBadge status={user.status} />

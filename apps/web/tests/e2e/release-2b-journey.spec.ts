@@ -11,6 +11,7 @@ import { signIn } from "./support/passport";
 import { newTeam, newVisitor, signInAtAal1, signInAtAal2, type Team } from "./support/team";
 import type { TestUser } from "./support/test-user";
 import { expect, test } from "./support/test";
+import { pickDate } from "./support/date-picker";
 
 // NFR-O4 (V79): the two journeys of release 2b, walked through the real pages, with the status and the next action of
 // each page on the way (NFR-U4). (a) An employer posts a workforce requirement, publishes it to the job order
@@ -103,9 +104,9 @@ test.describe("release 2b journeys (NFR-O4, NFR-U4)", () => {
     await chooseFromList(page, "Country", "Slovenia", /^Slovenia$/);
     await page.getByLabel("City or region", { exact: true }).fill("Ljubljana");
     await chooseFromList(page, "Industry", "Manufacturing", "Manufacturing");
-    await chooseFromList(page, "Occupation 1", "weld", "7212 · Welders and flame cutters");
+    await chooseFromList(page, "Occupation 1", "weld", "Welders and flame cutters");
     await page.getByLabel("Quantity of Welders and flame cutters", { exact: true }).fill("100");
-    await page.getByLabel("Start date", { exact: true }).fill(startDate(120));
+    await pickDate(page.getByLabel("Start date", { exact: true }), startDate(120));
     await page.getByLabel("Employment type").selectOption({ value: "full_time" });
     await page.getByLabel("Salary minimum").fill("2400");
     await page.getByLabel("Salary maximum").fill("2900");
@@ -176,11 +177,11 @@ test.describe("release 2b journeys (NFR-O4, NFR-U4)", () => {
     const send = pp.getByRole("button", { name: "Send response" });
     await waitForHydration(send);
     await pp.getByLabel("Workers you can supply").fill("80");
-    await pp.getByLabel("Available from").fill(startDate(90));
+    await pickDate(pp.getByLabel("Available from"), startDate(90));
     await pp.getByLabel("Relevant experience").fill("We placed welding crews in shipyards on the Adriatic coast for twelve years.");
     await pp.getByRole("radio", { name: "Fee per hire" }).check();
     await pp.getByLabel("Amount").fill("1200.00");
-    await pp.getByLabel("Currency").selectOption("EUR");
+    await expect(pp.getByRole("combobox", { name: "Currency", exact: true }), "the fee currency starts on the requirement's salary currency").toHaveValue("Euro");
     await expectAccessibleAtBothWidths(pp);
     await pp.setViewportSize({ width: 1280, height: 900 });
     await send.click();

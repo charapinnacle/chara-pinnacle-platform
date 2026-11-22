@@ -34,7 +34,7 @@ export async function changeStanding(input: Input): Promise<AdminResult> {
   if (error) {
     return adminRefusal(error, path, {
       CHARA_INVALID_STATE: { message: `This ${noun[target]} is already ${to === "suspended" ? "suspended" : "active"}` },
-      "CHARA_INVALID_INPUT:reason": { errors: { reason: "Give a reason of 10 to 2000 characters" } },
+      "CHARA_INVALID_INPUT:reason": { errors: { reason: "Give a reason of 10 to 2000 characters." } },
       "CHARA_FORBIDDEN:staff_account": {
         message: "This account holds a platform role. A Platform Administrator revokes the role first.",
       },
@@ -57,10 +57,10 @@ export async function moderateJob(input: JobInput): Promise<AdminResult> {
   const { error } = await (await adminClient()).rpc("moderate_job", { p_job: id, p_action: action, p_reason: reason });
   if (error) {
     return adminRefusal(error, path, {
-      "CHARA_INVALID_STATE:hidden": { message: "This vacancy is already hidden" },
-      "CHARA_INVALID_STATE:visible": { message: "This vacancy is not hidden" },
-      "CHARA_INVALID_STATE:org_suspended": { message: "This vacancy is hidden with the suspension of its organisation" },
-      "CHARA_INVALID_INPUT:reason": { errors: { reason: "Give a reason of 10 to 2000 characters" } },
+      "CHARA_INVALID_STATE:hidden": { message: "This vacancy is already hidden." },
+      "CHARA_INVALID_STATE:visible": { message: "This vacancy is not hidden." },
+      "CHARA_INVALID_STATE:org_suspended": { message: "This vacancy is hidden with the suspension of its organisation." },
+      "CHARA_INVALID_INPUT:reason": { errors: { reason: "Give a reason of 10 to 2000 characters." } },
     });
   }
   revalidatePath(path);

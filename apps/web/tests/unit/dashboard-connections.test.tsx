@@ -133,6 +133,9 @@ describe("partner requests (FR-R4 AC6) and the employer's requests", () => {
     expect(page).toContain("Inquiries waiting for your answer");
     expect(page).toContain("Workforce requests waiting for your answer");
     expect(page).toMatch(/href="\/en\/org\/rekrut\/messages\?context=inquiry"[^>]*>Answer the inquiries/);
+    expect(page).toMatch(/href="\/en\/org\/rekrut\/invitations"[^>]*>Respond to request/);
+    page = await html(<PartnerRequestsCard requests={{ total: 1, inquiries: 1 }} lang="en" slug="rekrut" />);
+    expect(page).not.toContain("Respond to request");
     page = await html(<PartnerRequestsCard requests={{ total: 1, inquiries: 0 }} lang="en" slug="rekrut" />);
     expect(page).toMatch(/href="\/en\/org\/rekrut\/invitations"[^>]*>Respond to request/);
     page = await html(<PartnerRequestsCard requests={{ total: 0, inquiries: 0 }} lang="en" slug="rekrut" />);

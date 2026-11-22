@@ -7,18 +7,18 @@ import { useMemo, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { UpgradePrompt } from "@/components/billing/upgrade-prompt";
 import { toast, toastError } from "@/components/feedback/toast-store";
+import { ComboboxField } from "@/components/forms/combobox-field";
 import { FormButton } from "@/components/forms/form-button";
 import { FormErrorSummary } from "@/components/forms/form-error-summary";
 import { InputField, TextareaField } from "@/components/forms/form-field";
 import { Notice } from "@/components/forms/notice";
 import { RadioGroupField } from "@/components/forms/radio-group-field";
-import { SelectField } from "@/components/forms/select-field";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { ResponseDocuments } from "@/components/responses/response-documents";
 import { respondToRequirement, updateMyResponse, type ResponseResult } from "@/lib/actions/responses";
 import type { OrganizationType, UsagePrompt } from "@/lib/billing/limits";
 import type { ResponseDocument } from "@/lib/dal/responses";
-import { formatCount } from "@/lib/i18n/format";
+import { characterCount, formatCount } from "@/lib/i18n/format";
 import { toOptions } from "@/lib/reference-options";
 import {
   feeModelDescriptions,
@@ -79,6 +79,8 @@ type ResponseFormProps = {
   workersNeeded: number;
   maxCapacity: number;
   currencies: { code: string; name: string }[];
+  // The currency of the requirement's salary, offered first for the fee.
+  defaultCurrency?: string | null;
   documents: ResponseDocument[];
   documentsMax: number;
   // For the upgrade prompt when the monthly limit is reached on submit.
@@ -102,6 +104,7 @@ export function ResponseForm({
   workersNeeded,
   maxCapacity,
   currencies,
+  defaultCurrency,
   documents,
   documentsMax,
   organization,
@@ -118,7 +121,7 @@ export function ResponseForm({
       experienceNote: "",
       feeModel: "",
       feeAmount: "",
-      feeCurrency: "",
+      feeCurrency: defaultCurrency ?? "",
       notes: "",
     },
   });
@@ -202,7 +205,7 @@ export function ResponseForm({
         name="experienceNote"
         id={ids.experienceNote}
         label="Relevant experience"
-        description={`Your experience with these occupations and this destination. ${formatCount(experience.length)}/${formatCount(EXPERIENCE_MAX)}`}
+        description={`Your experience with these occupations and this destination. ${characterCount(experience.length, EXPERIENCE_MAX)}.`}
       />
       <fieldset className="grid gap-5">
         <legend className="mb-1.5 text-h3">Your proposal</legend>
@@ -221,13 +224,14 @@ export function ResponseForm({
               description={feeModel === "percent_first_year_salary" ? "Above 0 and at most 100, for example 12.5." : "For example 1500 or 1500.50."}
             />
             {hasCurrency(feeModel) ? (
-              <SelectField
+              <ComboboxField
                 control={control}
                 name="feeCurrency"
                 id={ids.feeCurrency}
                 label="Currency"
                 placeholder="Choose a currency"
                 options={currencyOptions}
+                emptyText="No matching currency"
               />
             ) : null}
           </div>

@@ -9,6 +9,7 @@ import { newOwner, staffUser } from "./support/mfa";
 import { createCommittedPartner, setPartnerRelease } from "./support/partners";
 import { captureActionRequests } from "./support/server-action";
 import { expect, test } from "./support/test";
+import { pickDate } from "./support/date-picker";
 
 const STATISTICS = "/en/admin/statistics";
 const FUNCTION = "public.admin_network_counts(date, date, text)";
@@ -78,8 +79,8 @@ async function showRange(page: Page, from: string, to: string, period = "Month")
   const network = section(page);
   const fromField = network.getByLabel("From", { exact: true });
   await waitForHydration(fromField);
-  await fromField.fill(from);
-  await network.getByLabel("To", { exact: true }).fill(to);
+  await pickDate(fromField, from);
+  await pickDate(network.getByLabel("To", { exact: true }), to);
   await network.getByLabel("Period", { exact: true }).selectOption({ label: period });
   await network.getByRole("button", { name: "Show" }).click();
 }
@@ -161,12 +162,14 @@ test.describe("Network statistics for administrators (FR-S2, release 2a)", () =>
     const before = calls.length;
     await showRange(page, "2024-02-01", "2024-01-31");
     const from = network.getByLabel("From", { exact: true });
-    await expect(from).toHaveAttribute("aria-invalid", "true");
+    await expect(from).toHaveAttribute("data-invalid", "true");
+    await expect(from, "the error is read with the date field").toHaveAccessibleDescription(/The start date must not be after the end date\./);
     await expect(network.getByText("The start date must not be after the end date.")).toBeVisible();
     expect(calls.length).toBe(before);
     const tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
     await showRange(page, new Date().toISOString().slice(0, 10), tomorrow);
-    await expect(network.getByLabel("To", { exact: true })).toHaveAttribute("aria-invalid", "true");
+    await expect(network.getByLabel("To", { exact: true })).toHaveAttribute("data-invalid", "true");
+    await expect(network.getByLabel("To", { exact: true })).toHaveAccessibleDescription(/The end date must not be after today\./);
     await expect(network.getByText("The end date must not be after today.")).toBeVisible();
     expect(calls.length).toBe(before);
 

@@ -317,20 +317,37 @@ const networkFiguresSchema = z.array(
   }),
 );
 
+// The Data API cuts a set of rows at max_rows (100), and the counts are one row per metric and period (48 metrics, up to
+// 53 weeks), so they are read page by page in the function's own order.
+// ponytail: every page runs the whole function again (at most 26 runs for a year of weeks); return one JSON value if slow.
+const NETWORK_COUNTS_PAGE = 100;
+
+async function networkCounts(supabase: Awaited<ReturnType<typeof adminClient>>, query: NetworkStatisticsQuery) {
+  const rows: z.infer<typeof networkCountsSchema> = [];
+  for (let from = 0; ; from += NETWORK_COUNTS_PAGE) {
+    const page = await supabase
+      .rpc("admin_network_counts", { p_from: query.from, p_to: query.to, p_period: query.period })
+      .range(from, from + NETWORK_COUNTS_PAGE - 1);
+    if (page.error) throw failure("The partner network counts", page.error);
+    const parsed = networkCountsSchema.parse(page.data);
+    rows.push(...parsed);
+    if (parsed.length < NETWORK_COUNTS_PAGE) return rows;
+  }
+}
+
 // The partner network counts per period and the key figures of the range (FR-S2, release 2a parts); answered only to a
 // Platform Administrator while release 2a is on. The first figure is the threshold below which a value is hidden, the
 // second names in its label the first day of the daily partner states.
 export async function networkStatistics(query: NetworkStatisticsQuery): Promise<NetworkStatistics> {
   const supabase = await adminClient();
   const [counts, figures] = await Promise.all([
-    supabase.rpc("admin_network_counts", { p_from: query.from, p_to: query.to, p_period: query.period }),
+    networkCounts(supabase, query),
     supabase.rpc("admin_network_kpis", { p_from: query.from, p_to: query.to }),
   ]);
-  if (counts.error) throw failure("The partner network counts", counts.error);
   if (figures.error) throw failure("The partner network figures", figures.error);
   const rows = networkFiguresSchema.parse(figures.data);
   return {
-    counts: networkCountsSchema.parse(counts.data).map((row) => ({ metric: row.metric, periodStart: row.period_start, count: row.count })),
+    counts: counts.map((row) => ({ metric: row.metric, periodStart: row.period_start, count: row.count })),
     figures: rows
       .filter((row) => row.metric !== "stats_min_count" && row.metric !== "states_recorded_from")
       .map((row) => ({ metric: row.metric, label: row.label, unit: row.unit, rangeFigure: row.range_figure, value: row.value, base: row.base })),

@@ -15,6 +15,7 @@ import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { Card } from "@/components/layout/card";
 import type { PipelineRow } from "@/components/submissions/submission-pipeline";
 import { bulkChangeSubmissionStage } from "@/lib/actions/submission-pipeline";
+import { characterCount } from "@/lib/i18n/format";
 import { BULK_MOVE_SKIPPED, employerSubmissionLabels, submittedByLabel } from "@/lib/submissions/presentation";
 import {
   bulkSelectionSchema,
@@ -146,7 +147,7 @@ export function SubmissionBulkActions({ slug, shortlisting, noteMaxChars, select
             name="note"
             id={ids.note}
             label={declining ? "Other reason (visible to the candidate)" : "Note (visible to the candidate)"}
-            description={`${declining ? `At least ${SUBMISSION_REASON_MIN_CHARS} characters. ` : "Optional. "}The candidates see this text, the partners do not. ${noteLength}/${noteMaxChars}`}
+            description={`${declining ? `At least ${SUBMISSION_REASON_MIN_CHARS} characters. ` : "Optional. "}The candidates see this text, the partners do not. ${characterCount(noteLength, noteMaxChars)}.`}
           />
         ) : null}
         <FormButton type="submit" className="w-full sm:w-auto sm:justify-self-start" disabled={selected.length === 0}>
