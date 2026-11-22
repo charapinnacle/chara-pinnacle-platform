@@ -298,6 +298,18 @@ test.describe("Contact requests (FR-Q3)", () => {
       const target = staff.page.locator("#target");
       await expect(target).toContainText(acmeName);
       await expect(target).not.toContainText("300 euros");
+      // The text of a contact request is read, and decided on, only by the administrator who puts the report in review.
+      const review = staff.page.getByRole("button", { name: "Mark in review" });
+      await waitForHydration(review);
+      await review.click();
+      const reviewDialog = staff.page.getByRole("dialog", { name: "Put the report in review" });
+      await reviewDialog.getByLabel("Reason").fill("Reading the reported contact request.");
+      await reviewDialog.getByRole("button", { name: "Mark in review" }).click();
+      await expect(staff.page.getByText("The report is in review", { exact: true })).toBeVisible();
+      const show = target.getByRole("button", { name: "Show the reported contact request" });
+      await waitForHydration(show);
+      await show.click();
+      await expect(target).toContainText("Pay us 300 euros and the job is yours.");
       const hide = staff.page.getByRole("button", { name: "Hide", exact: true });
       await waitForHydration(hide);
       await hide.click();
