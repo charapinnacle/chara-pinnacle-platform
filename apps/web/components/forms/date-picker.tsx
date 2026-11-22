@@ -49,7 +49,7 @@ export function DatePicker({
   inputRef,
   min,
   max,
-  placeholder = "Choose a date",
+  placeholder = "Select a date",
   "aria-invalid": invalid,
   "aria-describedby": describedBy,
 }: DatePickerProps) {
