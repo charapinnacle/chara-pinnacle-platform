@@ -162,12 +162,14 @@ test.describe("Network statistics for administrators (FR-S2, release 2a)", () =>
     const before = calls.length;
     await showRange(page, "2024-02-01", "2024-01-31");
     const from = network.getByLabel("From", { exact: true });
-    await expect(from).toHaveAttribute("aria-invalid", "true");
+    await expect(from).toHaveAttribute("data-invalid", "true");
+    await expect(from, "the error is read with the date field").toHaveAccessibleDescription(/The start date must not be after the end date\./);
     await expect(network.getByText("The start date must not be after the end date.")).toBeVisible();
     expect(calls.length).toBe(before);
     const tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
     await showRange(page, new Date().toISOString().slice(0, 10), tomorrow);
-    await expect(network.getByLabel("To", { exact: true })).toHaveAttribute("aria-invalid", "true");
+    await expect(network.getByLabel("To", { exact: true })).toHaveAttribute("data-invalid", "true");
+    await expect(network.getByLabel("To", { exact: true })).toHaveAccessibleDescription(/The end date must not be after today\./);
     await expect(network.getByText("The end date must not be after today.")).toBeVisible();
     expect(calls.length).toBe(before);
 
