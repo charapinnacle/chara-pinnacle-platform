@@ -33,8 +33,9 @@ test.describe("U67: the sign-up form", () => {
     await page.goto("/en/signup");
     await waitForHydration(page.getByLabel("Email address"));
     await page.getByRole("radio", { name: WORKER_LABEL }).check();
-    const boxes = page.getByRole("checkbox");
+    const boxes = page.locator('input[type=checkbox]:not([name="accept-all"])');
     await expect(boxes).toHaveCount(documents.length);
+    await expect(page.getByRole("checkbox", { name: "Accept all" }), "one Accept all row under the documents").toHaveCount(1);
 
     const names = new Set<string>();
     for (const { slug, title } of documents) {

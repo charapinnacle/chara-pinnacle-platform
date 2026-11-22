@@ -3,6 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
 import { accountChoiceOptions, KIND_IS_FINAL } from "@/components/forms/account-kind-options";
+import { CheckboxRow } from "@/components/forms/checkbox-field";
 import { ConsentCheckbox } from "@/components/forms/consent-checkbox";
 import { ConsentList } from "@/components/forms/consent-list";
 import { FormButton } from "@/components/forms/form-button";
@@ -67,6 +68,15 @@ export function SignupForm({ documents, attestationWording, invitation, preselec
   const { control, formState, handleSubmit, setValue } = form;
   const kind = useWatch({ control, name: "kind" });
   const shown = (kind && documents[kind]) || [];
+  const accepted = useWatch({ control, name: "accepted" });
+  const allAccepted = shown.length > 0 && shown.every((document) => accepted?.[document.slug]);
+
+  // FR-A8 keeps every box required and unticked by default; Accept all only ticks or clears them together.
+  function acceptAll(checked: boolean) {
+    for (const document of shown) {
+      setValue(`accepted.${document.slug}`, checked, { shouldValidate: formState.isSubmitted });
+    }
+  }
   const { summaryRef, submit } = useServerFormSubmit(form, {
     failureTitle: "Could not create the account",
     clearOnFailure: "password",
@@ -141,18 +151,35 @@ export function SignupForm({ documents, attestationWording, invitation, preselec
       />
       {kind ? <PartnerDraftNotice choice={kind} documents={shown} /> : null}
       {shown.length > 0 ? (
-        <ConsentList>
-          {shown.map((document) => (
-            <ConsentCheckbox
-              key={document.slug}
-              control={control}
-              name={`accepted.${document.slug}`}
-              id={ids.accepted(document.slug)}
-              document={document}
-              attestationWording={attestationWording}
-            />
-          ))}
-        </ConsentList>
+        <fieldset className="grid rounded-lg border px-4 py-2">
+          <legend className="px-1 text-small font-medium">Agreements</legend>
+          <ConsentList>
+            {shown.map((document) => (
+              <ConsentCheckbox
+                key={document.slug}
+                control={control}
+                name={`accepted.${document.slug}`}
+                id={ids.accepted(document.slug)}
+                document={document}
+                attestationWording={attestationWording}
+              />
+            ))}
+          </ConsentList>
+          {shown.length > 1 ? (
+            <CheckboxRow
+              id="signup-accept-all"
+              name="accept-all"
+              checked={allAccepted}
+              onChange={acceptAll}
+              onBlur={() => undefined}
+              invalid={false}
+              compact
+              className="mt-1 border-t pt-3"
+            >
+              <span className="font-medium">Accept all</span>
+            </CheckboxRow>
+          ) : null}
+        </fieldset>
       ) : null}
       <FormButton type="submit" busy={formState.isSubmitting}>
         {formState.isSubmitting ? "Creating account..." : "Create account"}

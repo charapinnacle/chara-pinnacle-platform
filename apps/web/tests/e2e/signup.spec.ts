@@ -181,7 +181,7 @@ test.describe("sign-up form", () => {
     await expect(page.getByRole("checkbox")).toHaveCount(0);
 
     await page.getByRole("radio", { name: WORKER_LABEL }).check();
-    await expect(page.getByRole("checkbox")).toHaveCount(4);
+    await expect(page.getByRole("checkbox")).toHaveCount(5);
     await expectNoAxeViolations(page);
     for (const { slug, title, version } of workerDocuments) {
       if (slug === "age-18-plus") {
@@ -201,7 +201,7 @@ test.describe("sign-up form", () => {
     await documentBox(page, workerDocuments[0].title).check();
 
     await page.getByRole("radio", { name: EMPLOYER_LABEL }).check();
-    await expect(page.getByRole("checkbox")).toHaveCount(3);
+    await expect(page.getByRole("checkbox")).toHaveCount(4);
     await expectNoAxeViolations(page);
     await expect(ageBox(page)).toHaveCount(0);
     await expect(page.getByLabel(/birth|age number/i)).toHaveCount(0);
@@ -212,9 +212,21 @@ test.describe("sign-up form", () => {
 
     await documentBox(page, employerDocuments[0].title).check();
     await page.getByRole("radio", { name: WORKER_LABEL }).check();
-    await expect(page.getByRole("checkbox")).toHaveCount(4);
+    await expect(page.getByRole("checkbox")).toHaveCount(5);
     for (const box of await page.getByRole("checkbox").all()) {
       await expect(box).not.toBeChecked();
+    }
+    const acceptAll = page.getByRole("checkbox", { name: "Accept all" });
+    await acceptAll.check();
+    for (const box of await page.getByRole("checkbox").all()) {
+      await expect(box, "Accept all ticks every box").toBeChecked();
+    }
+    await documentBox(page, workerDocuments[0].title).uncheck();
+    await expect(acceptAll, "a cleared box clears Accept all").not.toBeChecked();
+    await documentBox(page, workerDocuments[0].title).check();
+    await acceptAll.uncheck();
+    for (const box of await page.getByRole("checkbox").all()) {
+      await expect(box, "clearing Accept all clears every box").not.toBeChecked();
     }
 
     await page.getByRole("button", { name: "Create account" }).click();
