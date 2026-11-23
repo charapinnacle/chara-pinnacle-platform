@@ -1,3 +1,4 @@
+import { emptySkills } from "@/lib/workforce/skills";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ListingInput } from "@/lib/validation/workforce-availability";
 
@@ -13,7 +14,7 @@ vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ rpc: rpcM
 const { confirmListing, deleteListing, saveListing } = await import("@/lib/actions/workforce-availability");
 
 const LISTING = "3f0c2a8e-7b1d-4c5e-9a2f-6d8b1e4c7a90";
-const input: ListingInput = { occupation: "7212", country: "ph", available: " 120 ", monthlyCapacity: "40", availableFrom: "2027-03-01" };
+const input: ListingInput = { occupation: "7212", country: "ph", available: " 120 ", monthlyCapacity: "40", availableFrom: "2027-03-01", ...emptySkills };
 const refusal = (message: string, details: string, code = "P0001") => ({ data: null, error: { message, details, code } });
 
 beforeEach(() => {
@@ -35,6 +36,24 @@ describe("saveListing (FR-K3)", () => {
       p_monthly_capacity: 40,
       p_available_from: "2027-03-01",
     });
+  });
+
+  it("sets the skills of the listing it saved, and keeps the listing when only the skills fail", async () => {
+    const skilled = { ...input, languageCode: "de", languageLevel: "B1", minExperienceYears: "3", certificates: "ISO 9606-1, 6G" };
+    expect(await saveListing("manila-skills", null, skilled)).toEqual({ saved: true });
+    expect(rpcMock).toHaveBeenCalledWith("set_listing_skills", {
+      p_listing: LISTING,
+      p_language_code: "de",
+      p_language_level: "B1",
+      p_min_experience_years: 3,
+      p_certificates: "ISO 9606-1, 6G",
+    });
+    rpcMock.mockImplementation(async (name: string) =>
+      name === "set_listing_skills" ? refusal("CHARA_INVALID_INPUT", "listing_skills") : { data: LISTING, error: null },
+    );
+    const result = await saveListing("manila-skills", LISTING, skilled);
+    expect(result.saved).toBe(true);
+    expect(result.message).toContain("its skills were not");
   });
 
   it("changes the numbers and date of a saved listing by its id, and leaves the date bound to the database", async () => {

@@ -1,5 +1,6 @@
 import * as z from "zod";
 import type { Database } from "@chara-pinnacle/db-types";
+import { skillsText } from "@/lib/workforce/skills";
 import { partnerTypeSchema } from "@/lib/validation/sign-up";
 
 type ProfileRow = Database["public"]["Functions"]["get_partner_profile"]["Returns"][number];
@@ -15,6 +16,10 @@ const listingSchema = z.object({
   monthly_capacity: z.union([z.number(), z.string()]),
   available_from: z.string(),
   confirmed_at: z.string(),
+  language: z.string().nullish(),
+  language_level: z.string().nullish(),
+  min_experience_years: z.number().nullish(),
+  certificates: z.string().nullish(),
 });
 
 export type Named = z.infer<typeof namedSchema>[number];
@@ -27,6 +32,8 @@ export type PartnerListing = {
   monthlyCapacity: number | string;
   availableFrom: string;
   confirmedAt: string;
+  // The workers' skills as one line ("German B1 · at least 3 years · ISO 9606-1 welders"), null without any.
+  skills: string | null;
 };
 
 // The public workforce profile of a partner (FR-K4): the fields get_partner_profile returns, nothing else.
@@ -86,6 +93,12 @@ export function partnerProfileFrom(row: SharedRow): PartnerProfile {
         monthlyCapacity: listing.monthly_capacity,
         availableFrom: listing.available_from,
         confirmedAt: listing.confirmed_at,
+        skills: skillsText({
+          language: listing.language,
+          languageLevel: listing.language_level,
+          minExperienceYears: listing.min_experience_years,
+          certificates: listing.certificates,
+        }),
       })) ?? null,
   };
 }

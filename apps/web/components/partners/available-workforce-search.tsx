@@ -60,6 +60,7 @@ function ListingLine({ listing, now }: { listing: WorkforceListing; now: Date })
       <span className="text-muted-foreground">
         <time dateTime={listing.confirmedAt}>{confirmedAgo(listing.confirmedAt, now)}</time>
       </span>
+      {listing.skills ? <span className="block break-words">{listing.skills}</span> : null}
     </li>
   );
 }

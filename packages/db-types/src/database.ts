@@ -2060,13 +2060,13 @@ isOneToOne: false
                   ]
                 },"workforce_availability": {
                   Row: {
-                    "available": number,"available_from": string,"confirmed_at": string,"created_at": string,"created_by": string | null,"id": string,"monthly_capacity": number,"occupation_id": string,"organization_id": string,"reminded_at": string | null,"source_country": string,"source_scope": Database["public"]['Enums']["geography_scope"],"updated_at": string
+                    "available": number,"available_from": string,"certificates": string | null,"confirmed_at": string,"created_at": string,"created_by": string | null,"id": string,"language_code": string | null,"language_level": string | null,"min_experience_years": number | null,"monthly_capacity": number,"occupation_id": string,"organization_id": string,"reminded_at": string | null,"source_country": string,"source_scope": Database["public"]['Enums']["geography_scope"],"updated_at": string
                   }
                   Insert: {
-                    "available": number,"available_from": string,"confirmed_at"?: string,"created_at"?: string,"created_by"?: string | null,"id"?: string,"monthly_capacity": number,"occupation_id": string,"organization_id": string,"reminded_at"?: string | null,"source_country": string,"source_scope"?: never,"updated_at"?: string
+                    "available": number,"available_from": string,"certificates"?: string | null,"confirmed_at"?: string,"created_at"?: string,"created_by"?: string | null,"id"?: string,"language_code"?: string | null,"language_level"?: string | null,"min_experience_years"?: number | null,"monthly_capacity": number,"occupation_id": string,"organization_id": string,"reminded_at"?: string | null,"source_country": string,"source_scope"?: never,"updated_at"?: string
                   }
                   Update: {
-                    "available"?: number,"available_from"?: string,"confirmed_at"?: string,"created_at"?: string,"created_by"?: string | null,"id"?: string,"monthly_capacity"?: number,"occupation_id"?: string,"organization_id"?: string,"reminded_at"?: string | null,"source_country"?: string,"source_scope"?: never,"updated_at"?: string
+                    "available"?: number,"available_from"?: string,"certificates"?: string | null,"confirmed_at"?: string,"created_at"?: string,"created_by"?: string | null,"id"?: string,"language_code"?: string | null,"language_level"?: string | null,"min_experience_years"?: number | null,"monthly_capacity"?: number,"occupation_id"?: string,"organization_id"?: string,"reminded_at"?: string | null,"source_country"?: string,"source_scope"?: never,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -2075,6 +2075,12 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "profiles"
       referencedColumns: ["id"]
+    },{
+      foreignKeyName: "workforce_availability_language_code_fkey"
+      columns: ["language_code"]
+isOneToOne: false
+      referencedRelation: "languages"
+      referencedColumns: ["code"]
     },{
       foreignKeyName: "workforce_availability_occupation_id_fkey"
       columns: ["occupation_id"]
@@ -3326,6 +3332,9 @@ isOneToOne: false
                            },
 "set_legal_entity_identifier":
 { Args: { "p_identifier": string,"p_kind": string,"p_org": string }; Returns: undefined
+                           },
+"set_listing_skills":
+{ Args: { "p_certificates"?: string,"p_language_code"?: string,"p_language_level"?: string,"p_listing": string,"p_min_experience_years"?: number }; Returns: undefined
                            },
 "set_notification_preferences":
 { Args: { "p_digest": boolean }; Returns: undefined

@@ -368,7 +368,8 @@ select is(
 );
 select is(pg_temp.row_of('k3a7-a') -> 'listings',
   jsonb_build_array(jsonb_build_object('source_country', 'PH', 'source_country_name', 'Philippines', 'available', '100–249',
-    'monthly_capacity', '25–49', 'available_from', current_date, 'confirmed_at', now() - interval '5 days')),
+    'monthly_capacity', '25–49', 'available_from', current_date, 'confirmed_at', now() - interval '5 days',
+    'language', null, 'language_level', null, 'min_experience_years', null, 'certificates', null)),
   'FR-K3 AC7: each row carries its listings with the date of last confirmation');
 select is(pg_temp.row_of('k3a7-h') ->> 'organization_type', 'recruitment_company',
   'FR-K3 AC7: a listed recruitment company with a fitting listing is a partner too');

@@ -75,6 +75,7 @@ async function Availability({
   canManage,
   occupations,
   countries,
+  languages,
   rules,
   billingHref,
 }: {
@@ -84,6 +85,7 @@ async function Availability({
   canManage: boolean;
   occupations: ReferenceItem[];
   countries: ReferenceItem[];
+  languages: ReferenceItem[];
   rules: AvailabilityRules;
   billingHref: string;
 }) {
@@ -99,6 +101,7 @@ async function Availability({
       canManage={canManage}
       listings={listings}
       occupations={occupations}
+      languages={languages}
       countries={countries}
       rules={rules}
       prompt={prompts.workforce_listings}
@@ -269,6 +272,7 @@ export default async function WorkforceProfilePage({ params, searchParams }: Pag
               name: occupations.find((item) => item.code === code)?.label ?? code,
             }))}
             countries={geographies.sourcesFrom.map((code) => ({ code, name: nameOf(code) }))}
+            languages={languages}
             rules={availabilityRules}
             billingHref={billingHref}
           />

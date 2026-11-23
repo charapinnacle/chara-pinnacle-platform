@@ -15,6 +15,8 @@ import { listingFormSchema, listingIdSchema, type ListingInput } from "@/lib/val
 
 export type ListingResult = { errors?: FieldErrors; message?: string; saved?: true };
 
+const SKILLS_NOT_SAVED = "The listing is saved, but its skills were not. Edit the listing to add them again.";
+
 const RELEASE_OFF = "Availability cannot be changed at the moment.";
 const SUSPENDED = "This organisation is suspended, so its availability cannot be changed.";
 const GONE = "This listing no longer exists.";
@@ -65,7 +67,8 @@ export async function saveListing(slug: string, listingId: string | null, input:
 
   const parsed = listingFormSchema().safeParse(input);
   if (!parsed.success) return { errors: fieldErrors(parsed.error) };
-  const { occupation, country, available, monthlyCapacity, availableFrom } = parsed.data;
+  const { occupation, country, available, monthlyCapacity, availableFrom, languageCode, languageLevel, minExperienceYears, certificates } =
+    parsed.data;
   const values = {
     p_available: Number(available),
     p_monthly_capacity: Number(monthlyCapacity),
@@ -73,15 +76,29 @@ export async function saveListing(slug: string, listingId: string | null, input:
   };
 
   const supabase = await createClient();
-  const { error } = id
-    ? await supabase.rpc("update_workforce_availability", { p_listing: id.data, ...values })
+  const saved = id
+    ? await supabase.rpc("update_workforce_availability", { p_listing: id.data, ...values }).then(({ error }) => ({ data: id.data, error }))
     : await supabase.rpc("add_workforce_availability", {
         p_org: organization.id,
         p_occupation_id: occupation,
         p_source_country: country,
         ...values,
       });
-  return error ? refusal(error, organization) : { saved: true };
+  if (saved.error) return refusal(saved.error, organization);
+  if (saved.data === null) return { saved: true };
+  // The skills sit beside the numbers (set_listing_skills); if only they fail, the listing stays saved and says so.
+  const skills = await supabase.rpc("set_listing_skills", {
+    p_listing: saved.data,
+    p_language_code: languageCode === "" ? undefined : languageCode,
+    p_language_level: languageLevel === "" ? undefined : languageLevel,
+    p_min_experience_years: minExperienceYears === "" ? undefined : Number(minExperienceYears),
+    p_certificates: certificates === "" ? undefined : certificates,
+  });
+  if (skills.error) {
+    logFault("Saving the listing skills", skills.error);
+    return { saved: true, message: SKILLS_NOT_SAVED };
+  }
+  return { saved: true };
 }
 
 // Confirms a listing unchanged, so it stays or becomes visible again (FR-K3 AC6, AC10).

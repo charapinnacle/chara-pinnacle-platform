@@ -9,6 +9,7 @@ import {
   type AvailableWorkforcePage,
 } from "@/lib/partners/available-workforce";
 import { createClient } from "@/lib/supabase/server";
+import { skillsText } from "@/lib/workforce/skills";
 import { fieldErrors, type FieldErrors } from "@/lib/validation/sign-up";
 
 // One of: field errors, a page of results, a refusal the page explains (plan, search limit), or a failure to toast.
@@ -28,6 +29,10 @@ const listingsSchema = z.array(
     monthly_capacity: z.string(),
     available_from: z.string(),
     confirmed_at: z.string(),
+    language: z.string().nullish(),
+    language_level: z.string().nullish(),
+    min_experience_years: z.number().nullish(),
+    certificates: z.string().nullish(),
   }),
 );
 
@@ -73,6 +78,12 @@ export async function searchAvailableWorkforce(input: AvailableWorkforceInput, c
           monthlyCapacity: listing.monthly_capacity,
           availableFrom: listing.available_from,
           confirmedAt: listing.confirmed_at,
+          skills: skillsText({
+            language: listing.language,
+            languageLevel: listing.language_level,
+            minExperienceYears: listing.min_experience_years,
+            certificates: listing.certificates,
+          }),
         })),
       })),
       nextCursor: data.at(-1)?.next_cursor ?? null,

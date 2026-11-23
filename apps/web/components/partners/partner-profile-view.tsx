@@ -142,6 +142,7 @@ export function PartnerProfileView({ lang, profile, actions, banner }: PartnerPr
                       {workerCount(listing.available)} available, {workerCount(listing.monthlyCapacity)} a month, from{" "}
                       <time dateTime={listing.availableFrom}>{formatDate(listing.availableFrom)}</time>
                     </p>
+                    {listing.skills ? <p className="text-body break-words">{listing.skills}</p> : null}
                     <p className="text-small text-muted-foreground">
                       Confirmed on <time dateTime={listing.confirmedAt}>{formatDate(listing.confirmedAt)}</time>
                     </p>

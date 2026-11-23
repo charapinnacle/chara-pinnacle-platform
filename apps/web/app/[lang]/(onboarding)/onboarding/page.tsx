@@ -479,12 +479,13 @@ async function readyAvailability(
       </TextLink>
     );
   }
-  const [listings, prompts, rules, countries, occupations] = await Promise.all([
+  const [listings, prompts, rules, countries, occupations, languages] = await Promise.all([
     getWorkforceListings(organization.id),
     getUsagePrompts(organization.id, organization.type, ["workforce_listings"]),
     getAvailabilityRules(),
     getCountries(),
     getOccupations(),
+    getLanguages(),
   ]);
   return (
     <AvailabilitySection
@@ -495,6 +496,7 @@ async function readyAvailability(
       listings={listings}
       occupations={offered.map((code) => ({ code, name: occupations.find((item) => item.code === code)?.label ?? code }))}
       countries={sourcesFrom.map((code) => ({ code, name: countries.find((item) => item.code === code)?.name ?? code }))}
+      languages={languages}
       rules={rules}
       prompt={prompts.workforce_listings}
       billingHref={billingPath(lang, organization.slug)}

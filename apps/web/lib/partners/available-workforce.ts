@@ -29,6 +29,7 @@ export type WorkforceListing = {
   monthlyCapacity: string;
   availableFrom: string;
   confirmedAt: string;
+  skills: string | null;
 };
 
 export type WorkforceSupplier = {

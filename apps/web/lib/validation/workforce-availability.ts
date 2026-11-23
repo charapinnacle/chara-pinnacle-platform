@@ -1,4 +1,5 @@
 import * as z from "zod";
+import { LEVEL_WITHOUT_LANGUAGE, skillFields } from "@/lib/workforce/skills";
 import { formatCount } from "@/lib/i18n/format";
 import { parseDate, todayUtc } from "@/lib/validation/passport";
 
@@ -61,9 +62,13 @@ export function listingFormSchema(rules: ListingFormRules = {}) {
       available: count("Enter how many workers are available now."),
       monthlyCapacity: count("Enter how many workers you can supply each month."),
       availableFrom: z.string({ error: "Enter the date from which the workers are available." }).trim(),
+      ...skillFields,
     })
     .check((context) => {
       const { availableFrom } = context.value;
+      if (context.value.languageLevel !== "" && context.value.languageCode === "") {
+        context.issues.push({ code: "custom", input: context.value.languageCode, path: ["languageCode"], message: LEVEL_WITHOUT_LANGUAGE });
+      }
       const message =
         availableFrom === ""
           ? "Enter the date from which the workers are available."

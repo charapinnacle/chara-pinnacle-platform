@@ -11,6 +11,10 @@ export type WorkforceListing = {
   monthlyCapacity: number;
   availableFrom: string;
   confirmedAt: string;
+  languageCode: string | null;
+  languageLevel: string | null;
+  minExperienceYears: number | null;
+  certificates: string | null;
 };
 
 // The availability listings of a partner as its members read them (FR-K3), the longest unconfirmed first.
@@ -18,7 +22,9 @@ export async function getWorkforceListings(organizationId: string): Promise<Work
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("workforce_availability")
-    .select("id, occupation_id, source_country, available, monthly_capacity, available_from, confirmed_at")
+    .select(
+      "id, occupation_id, source_country, available, monthly_capacity, available_from, confirmed_at, language_code, language_level, min_experience_years, certificates",
+    )
     .eq("organization_id", organizationId);
   if (error) throw new Error("The availability listings of the organisation could not be loaded", { cause: error });
   return sortListings(
@@ -30,6 +36,10 @@ export async function getWorkforceListings(organizationId: string): Promise<Work
       monthlyCapacity: row.monthly_capacity,
       availableFrom: row.available_from,
       confirmedAt: row.confirmed_at,
+      languageCode: row.language_code,
+      languageLevel: row.language_level,
+      minExperienceYears: row.min_experience_years,
+      certificates: row.certificates,
     })),
   );
 }
