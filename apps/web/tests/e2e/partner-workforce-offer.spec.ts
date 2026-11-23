@@ -118,7 +118,7 @@ test.describe("What you offer (FR-K2)", () => {
     await expect(staffingService).toBeChecked();
     await expect(staffingService).toBeFocused();
     const staffingTypes = page.getByRole("group", { name: STAFFING_TYPES });
-    await expect(staffingTypes.getByRole("checkbox")).toHaveCount(4);
+    await expect(staffingTypes.getByRole("checkbox")).toHaveCount(3);
     await page.getByRole("button", { name: "Continue" }).click();
     await expect(page.getByText("Choose at least one staffing type.").first()).toBeVisible();
     await staffingTypes.getByRole("checkbox", { name: "Temporary" }).check();
