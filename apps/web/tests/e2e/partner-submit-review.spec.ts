@@ -214,6 +214,8 @@ test.describe("submission for review (FR-J1 AC8 to AC11)", () => {
          confirmed_at, partner_terms_version)
        values (${literal(id)}, 'DE', 'Bundesagentur fuer Arbeit', 'AUEG-${id.slice(0, 8)}', current_date + 365, now(), 1)`,
     );
+    // A reload clears the toasts of the refusals, which cover the button at full width.
+    await page.goto("/en/onboarding?step=ready");
     await page.getByRole("button", { name: "Submit for review" }).click();
     const listingMessage = "List at least one group of workers you can supply, then submit again.";
     await expect(page.getByRole("alert").filter({ hasText: listingMessage }).first()).toBeVisible();
@@ -221,6 +223,7 @@ test.describe("submission for review (FR-J1 AC8 to AC11)", () => {
       `insert into public.workforce_availability (organization_id, occupation_id, source_country, available, monthly_capacity, available_from)
        values (${literal(id)}, '7212', 'PH', 40, 10, current_date)`,
     );
+    await page.goto("/en/onboarding?step=ready");
     await page.getByRole("button", { name: "Submit for review" }).click();
     await expect(page.getByRole("heading", { name: WAITING, level: 1 })).toBeVisible();
     expect(reviewRow(id)).toEqual({ review_status: "pending_review", submitted: true, info_step: null });
