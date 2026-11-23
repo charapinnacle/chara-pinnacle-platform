@@ -264,11 +264,11 @@ select is(
   'P0001|CHARA_FORBIDDEN|', 'a caller without a user id is refused'
 );
 select is(
-  pg_temp.call_as(:'own2', 'authenticated', $$select public.create_organization('recruitment_company', 'Rec Co', 'Rec Co', 'DE', 'F')$$, 'aal1'),
+  pg_temp.call_as(:'own2', 'authenticated', $$select public.create_organization('recruitment_company', 'Rec Co', 'Rec Co', 'DE', 'F', p_description => 'We recruit welders and electricians from the Philippines for employers in Germany.')$$, 'aal1'),
   'P0001|CHARA_FORBIDDEN|organization_type_not_available', 'a recruitment company is refused in Phase 1 (D7)'
 );
 select is(
-  pg_temp.call_as(:'own2', 'authenticated', $$select public.create_organization('staffing_company', 'Staff Co', 'Staff Co', 'DE', 'F')$$, 'aal1'),
+  pg_temp.call_as(:'own2', 'authenticated', $$select public.create_organization('staffing_company', 'Staff Co', 'Staff Co', 'DE', 'F', p_description => 'We recruit welders and electricians from the Philippines for employers in Germany.')$$, 'aal1'),
   'P0001|CHARA_FORBIDDEN|organization_type_not_available', 'a staffing company is refused in Phase 1 (D7)'
 );
 select is(

@@ -17,6 +17,9 @@ const MAX_WEBSITE_LENGTH = 2048;
 // The same limit as the check constraint of organizations.description.
 export const DESCRIPTION_MAX_CHARS = 2000;
 
+// A recruitment or staffing company describes itself in at least this many characters (the database checks it too).
+export const PARTNER_DESCRIPTION_MIN_CHARS = 50;
+
 export function normalizeIdentifier(value: string): string {
   return value.replace(/[\s.\-/]/g, "").toUpperCase();
 }
@@ -125,10 +128,19 @@ const descriptionField = z
   .max(DESCRIPTION_MAX_CHARS, { error: `The description can have at most ${DESCRIPTION_MAX_CHARS} characters.` })
   .refine((value) => !hasControlCharacter(value), { error: "Remove the control characters from the description." });
 
+// A partner's description is required: employers and staff read it to know the company.
+const partnerDescriptionField = descriptionField.refine((value) => value.length >= PARTNER_DESCRIPTION_MIN_CHARS, {
+  error: `Describe your company in at least ${PARTNER_DESCRIPTION_MIN_CHARS} characters.`,
+});
+
+// A partner has no industry of its own: the industries it serves are asked in What you offer. The field stays in the
+// values, empty, so the forms share one shape with the employer's.
+const noIndustry = { industry: z.string() };
+
 // The Company step of a recruitment or staffing company (FR-J1): the identifier is required, because staff check it before
-// the partner is listed, and the description is asked at once. The type is not a field: it is the one chosen at sign-up.
+// the partner is listed, and the description is required. The type is not a field: it is the one chosen at sign-up.
 export const partnerOrganizationFormSchema = z
-  .object({ ...companyFields, ...identifierFields, description: descriptionField })
+  .object({ ...companyFields, ...noIndustry, ...identifierFields, description: partnerDescriptionField })
   .check((context) => {
     if (context.value.identifier === "") {
       context.issues.push({
@@ -167,6 +179,16 @@ export const organizationProfileSchema = z.object({
   ...companyFields,
   description: descriptionField,
 });
+
+export const partnerProfileSchema = z.object({
+  ...companyFields,
+  ...noIndustry,
+  description: partnerDescriptionField,
+});
+
+export function profileSchema(partner: boolean) {
+  return partner ? partnerProfileSchema : organizationProfileSchema;
+}
 
 export type OrganizationProfileInput = z.input<typeof organizationProfileSchema>;
 

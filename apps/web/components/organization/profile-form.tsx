@@ -16,7 +16,8 @@ import { characterCount } from "@/lib/i18n/format";
 import { toOptions } from "@/lib/reference-options";
 import {
   DESCRIPTION_MAX_CHARS,
-  organizationProfileSchema,
+  PARTNER_DESCRIPTION_MIN_CHARS,
+  profileSchema,
   type OrganizationProfileInput,
 } from "@/lib/validation/organization";
 import { BRAND_NAME } from "@/lib/brand";
@@ -45,7 +46,7 @@ const FAILURE = "Could not save the company profile";
 // The labels are those of the registration form, so a company finds its details where it entered them.
 export function ProfileForm({ slug, defaults, legalNameLocked, countries, industries, partner = false }: ProfileFormProps) {
   const form = useForm<OrganizationProfileInput>({
-    resolver: zodResolver(organizationProfileSchema),
+    resolver: zodResolver(profileSchema(partner)),
     defaultValues: defaults,
     shouldFocusError: false,
   });
@@ -104,21 +105,23 @@ export function ProfileForm({ slug, defaults, legalNameLocked, countries, indust
         placeholder="Choose a country"
         options={toOptions(countries)}
       />
-      <ComboboxField
-        control={control}
-        name="industry"
-        id={ids.industry}
-        label="Industry"
-        placeholder="Choose an industry"
-        options={toOptions(industries)}
-      />
+      {partner ? null : (
+        <ComboboxField
+          control={control}
+          name="industry"
+          id={ids.industry}
+          label="Industry"
+          placeholder="Choose an industry"
+          options={toOptions(industries)}
+        />
+      )}
       <InputField control={control} name="website" id={ids.website} label="Website (optional)" type="url" autoComplete="url" />
       <TextareaField
         control={control}
         name="description"
         id={ids.description}
-        label="About your company (optional)"
-        description={`Plain text, shown to ${partner ? "employers on your profile" : "candidates on your vacancies"}. Line breaks are kept. ${characterCount(descriptionLength, DESCRIPTION_MAX_CHARS)}.`}
+        label={partner ? "About your company" : "About your company (optional)"}
+        description={`${partner ? `At least ${PARTNER_DESCRIPTION_MIN_CHARS} characters, shown to employers on your profile` : "Plain text, shown to candidates on your vacancies"}. Line breaks are kept. ${characterCount(descriptionLength, DESCRIPTION_MAX_CHARS)}.`}
       />
       {duplicateLegalName ? (
         <Notice tone="info" role="status">

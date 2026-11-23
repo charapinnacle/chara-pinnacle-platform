@@ -328,9 +328,9 @@ select is(
   (select count(*) from billing.customers where organization_id = :'emp'), 0::bigint, 'the refused checkouts wrote no customer'
 );
 select is(
-  pg_temp.call_as(:'own2', 'authenticated', $$select public.create_organization('recruitment_company', 'Rec Co', 'Rec Co', 'DE', 'F')$$, 'aal1')
+  pg_temp.call_as(:'own2', 'authenticated', $$select public.create_organization('recruitment_company', 'Rec Co', 'Rec Co', 'DE', 'F', p_description => 'We recruit welders and electricians from the Philippines for employers in Germany.')$$, 'aal1')
     || ',' ||
-  pg_temp.call_as(:'own2', 'authenticated', $$select public.create_organization('staffing_company', 'Staff Co', 'Staff Co', 'DE', 'F')$$, 'aal1'),
+  pg_temp.call_as(:'own2', 'authenticated', $$select public.create_organization('staffing_company', 'Staff Co', 'Staff Co', 'DE', 'F', p_description => 'We recruit welders and electricians from the Philippines for employers in Germany.')$$, 'aal1'),
   'P0001|CHARA_FORBIDDEN|organization_type_not_available,P0001|CHARA_FORBIDDEN|organization_type_not_available',
   'no partner organisation can be created yet, so no one can buy a partner plan'
 );

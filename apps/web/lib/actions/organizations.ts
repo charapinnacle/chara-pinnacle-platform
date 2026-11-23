@@ -11,7 +11,7 @@ import { createClient } from "@/lib/supabase/server";
 import {
   createdOrganizationSchema,
   organizationInputSchema,
-  organizationProfileSchema,
+  profileSchema,
   partnerOrganizationInputSchema,
   updatedOrganizationSchema,
   type OrganizationFormInput,
@@ -39,6 +39,7 @@ const fieldByConstraint: Record<string, keyof OrganizationFormInput | keyof Orga
   organizations_based_in_country_fkey: "country",
   organizations_website_check: "website",
   organizations_description_check: "description",
+  description: "description",
   legal_entity_identifier: "identifier",
   legal_entity_identifier_kind: "identifierKind",
 };
@@ -140,7 +141,7 @@ export async function updateOrganizationProfile(
     hideFromOutsiders: true,
     partner: "either",
   });
-  const parsed = organizationProfileSchema.safeParse(input);
+  const parsed = profileSchema(organization.type !== "employer").safeParse(input);
   if (!parsed.success) return { errors: fieldErrors(parsed.error) };
 
   const supabase = await createClient();
