@@ -244,7 +244,7 @@ const coverageSchema = z.array(
     code: z.string(),
     name: z.string(),
     quantity: z.number(),
-    available: z.number().nullable(),
+    available: z.string().nullable(),
     available_from: z.string().nullable(),
     confirmed_at: z.string().nullable(),
   }),

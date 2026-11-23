@@ -24,8 +24,8 @@ const UNAVAILABLE = "The available workforce cannot be searched at the moment.";
 const listingsSchema = z.array(
   z.object({
     source_country_name: z.string(),
-    available: z.number(),
-    monthly_capacity: z.number(),
+    available: z.string(),
+    monthly_capacity: z.string(),
     available_from: z.string(),
     confirmed_at: z.string(),
   }),

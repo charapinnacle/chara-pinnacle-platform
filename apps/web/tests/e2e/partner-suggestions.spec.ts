@@ -117,7 +117,7 @@ test.describe("Partner suggestions for a workforce requirement (FR-M3)", () => {
     await expect(count).toHaveAttribute("aria-live", "polite");
 
     const first = card(page, q1.displayName);
-    await expect(first).toContainText("Serves Germany, recruits Welders and flame cutters, 120 available from 1 February 2027");
+    await expect(first).toContainText("Serves Germany, recruits Welders and flame cutters, 100–249 available from 1 February 2027");
     await expect(first).toContainText("Recruitment company");
     await expect(first.getByRole("list", { name: `Criteria met by ${q1.displayName}` }).getByRole("listitem")).toHaveText([
       "Works in your industry",
@@ -172,7 +172,7 @@ test.describe("Partner suggestions for a workforce requirement (FR-M3)", () => {
     const { user: member } = await addMember(team, "member");
 
     await signInAtAal1(page, member, partnersUrl(team.slug, open));
-    await expect(card(page, q1.displayName)).toContainText("Serves Germany, recruits Welders and flame cutters, 120 available from 1 February 2027");
+    await expect(card(page, q1.displayName)).toContainText("Serves Germany, recruits Welders and flame cutters, 100–249 available from 1 February 2027");
     await expect(page.getByRole("checkbox")).toHaveCount(0);
     await expectNoAxeViolations(page);
 

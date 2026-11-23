@@ -15,7 +15,7 @@ import {
 
 const germany = { code: "DE", name: "Germany" };
 
-function welders(available: number | null, availableFrom: string | null = null, confirmedAt: string | null = null): OccupationCoverage {
+function welders(available: string | null, availableFrom: string | null = null, confirmedAt: string | null = null): OccupationCoverage {
   return { code: "7212", name: "Welders and flame cutters", quantity: 100, available, availableFrom, confirmedAt };
 }
 
@@ -38,15 +38,15 @@ function row(over: Partial<Suggestion>): Suggestion {
 const q1 = row({
   criteriaMet: ["industry", "recruitment_type", "capacity", "available_before_start"],
   criteriaNotMet: [],
-  matchingOccupations: [welders(120, "2027-02-01", "2026-10-18T09:00:00+00:00")],
+  matchingOccupations: [welders("100–249", "2027-02-01", "2026-10-18T09:00:00+00:00")],
 });
-const q2 = row({ slug: "q2", matchingOccupations: [welders(80, "2026-11-01", "2026-10-23T09:00:00+00:00")] });
+const q2 = row({ slug: "q2", matchingOccupations: [welders("50–99", "2026-11-01", "2026-10-23T09:00:00+00:00")] });
 const q3 = row({ slug: "q3", criteriaMet: ["industry"], criteriaNotMet: ["recruitment_type", "capacity", "available_before_start"] });
 const q4 = row({
   slug: "q4",
   criteriaMet: ["capacity"],
   criteriaNotMet: ["industry", "recruitment_type", "available_before_start"],
-  matchingOccupations: [welders(1200, "2027-04-01", "2026-10-25T09:00:00+00:00")],
+  matchingOccupations: [welders("250+", "2027-04-01", "2026-10-25T09:00:00+00:00")],
 });
 const noListing = row({ slug: "none" });
 
@@ -58,13 +58,13 @@ const everyText = (suggestion: Suggestion) => {
 // FR-M3 AC8: the card sentence and the criteria in words, from the facts of the row only.
 describe("the suggestion card wording (FR-M3 AC8)", () => {
   it("writes Q1's sentence with the date in words and the number of the row", () => {
-    expect(suggestionSentence(q1)).toBe("Serves Germany, recruits Welders and flame cutters, 120 available from 1 February 2027");
+    expect(suggestionSentence(q1)).toBe("Serves Germany, recruits Welders and flame cutters, 100–249 available from 1 February 2027");
   });
 
   it("writes the facts present for Q2, Q3 and Q4", () => {
-    expect(suggestionSentence(q2)).toBe("Serves Germany, recruits Welders and flame cutters, 80 available from 1 November 2026");
+    expect(suggestionSentence(q2)).toBe("Serves Germany, recruits Welders and flame cutters, 50–99 available from 1 November 2026");
     expect(suggestionSentence(q3)).toBe("Serves Germany, recruits Welders and flame cutters");
-    expect(suggestionSentence(q4)).toBe("Serves Germany, recruits Welders and flame cutters, 1,200 available from 1 April 2027");
+    expect(suggestionSentence(q4)).toBe("Serves Germany, recruits Welders and flame cutters, 250+ available from 1 April 2027");
   });
 
   it("says nothing about capacity for a row without a listing", () => {
@@ -102,15 +102,15 @@ describe("the suggestion card wording (FR-M3 AC8)", () => {
     const fitters = { code: "7214", name: "Structural-metal preparers and erectors", quantity: 50, available: null, availableFrom: null, confirmedAt: null };
     const several = row({
       servedDestinations: [germany, { code: "NL", name: "Netherlands" }],
-      matchingOccupations: [welders(120, "2027-02-01", "2026-10-18T09:00:00+00:00"), fitters],
+      matchingOccupations: [welders("100–249", "2027-02-01", "2026-10-18T09:00:00+00:00"), fitters],
     });
     expect(suggestionSentence(several)).toBe(
-      "Serves Germany and the Netherlands, recruits Welders and flame cutters and Structural-metal preparers and erectors, 120 Welders and flame cutters available from 1 February 2027; no listing for Structural-metal preparers and erectors",
+      "Serves Germany and the Netherlands, recruits Welders and flame cutters and Structural-metal preparers and erectors, 100–249 Welders and flame cutters available from 1 February 2027; no listing for Structural-metal preparers and erectors",
     );
     const both = row({
-      matchingOccupations: [welders(120, "2027-02-01", "2026-10-18T09:00:00+00:00"), { ...fitters, available: 60, availableFrom: "2027-01-10", confirmedAt: "2026-10-20T09:00:00+00:00" }],
+      matchingOccupations: [welders("100–249", "2027-02-01", "2026-10-18T09:00:00+00:00"), { ...fitters, available: "50–99", availableFrom: "2027-01-10", confirmedAt: "2026-10-20T09:00:00+00:00" }],
     });
-    expect(suggestionSentence(both)).toContain("120 Welders and flame cutters available from 1 February 2027; 60 Structural-metal preparers and erectors available from 10 January 2027");
+    expect(suggestionSentence(both)).toContain("100–249 Welders and flame cutters available from 1 February 2027; 50–99 Structural-metal preparers and erectors available from 10 January 2027");
     expect(latestConfirmation(both)).toBe("2026-10-20T09:00:00+00:00");
   });
 

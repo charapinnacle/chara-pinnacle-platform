@@ -195,8 +195,8 @@ select is(
   (select jsonb_agg(jsonb_build_object('o', l ->> 'occupation_code', 'c', l ->> 'source_country', 'a', l -> 'available',
      'm', l -> 'monthly_capacity', 'confirmed', l ? 'confirmed_at') order by l ->> 'occupation_code')
    from jsonb_array_elements(pg_temp.result()) r, jsonb_array_elements(r -> 'listings') l),
-  '[{"o": "7212", "c": "PH", "a": 40, "m": 15, "confirmed": true}, {"o": "7411", "c": "NP", "a": 25, "m": 10, "confirmed": true}]'::jsonb,
-  'AC1, AC3: the two fresh listings with their confirmation time; the stale listing is absent'
+  '[{"o": "7212", "c": "PH", "a": "25–49", "m": "10–24", "confirmed": true}, {"o": "7411", "c": "NP", "a": "25–49", "m": "10–24", "confirmed": true}]'::jsonb,
+  'AC1, AC3: the two fresh listings with their confirmation time, the numbers as ranges for a reader outside the company; the stale listing is absent'
 );
 select is(
   (select string_agg(v, ', ') from unnest(array['Legal manila-skills Holdings Ltd', 'PHSEC2012345', 'registration_number',

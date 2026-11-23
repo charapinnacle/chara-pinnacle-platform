@@ -4,7 +4,7 @@ import { Card } from "@/components/layout/card";
 import { DetailList } from "@/components/layout/detail-list";
 import { PageHeader } from "@/components/layout/page-header";
 import { ImmigrationNotice } from "@/components/public/immigration-notice";
-import { formatCount, formatDate } from "@/lib/i18n/format";
+import { formatDate, workerCount } from "@/lib/i18n/format";
 import { publicWebsite } from "@/lib/jobs/presentation";
 import type { Named, PartnerProfile } from "@/lib/partners/profile";
 import { loginPath, partnerProfilePath } from "@/lib/routes";
@@ -139,7 +139,7 @@ export function PartnerProfileView({ lang, profile, actions, banner }: PartnerPr
                       {listing.occupation} from {listing.sourceCountry}
                     </p>
                     <p className="text-body">
-                      {formatCount(listing.available)} available, {formatCount(listing.monthlyCapacity)} a month, from{" "}
+                      {workerCount(listing.available)} available, {workerCount(listing.monthlyCapacity)} a month, from{" "}
                       <time dateTime={listing.availableFrom}>{formatDate(listing.availableFrom)}</time>
                     </p>
                     <p className="text-small text-muted-foreground">

@@ -210,7 +210,7 @@ test.describe("Find staffing partners and available workforce (FR-L2, FR-K3)", (
       }
       await expect(viewerPage.getByRole("region", { name: "Available workforce" }), label).toHaveCount(label === "employer admin" ? 1 : 0);
       await expect(viewerCard, `FR-K3 AC4: ${label} reads the capacity`).toContainText(
-        `Welders and flame cutters: 120 available, confirmed ${longDate(daysAgo(12))}`,
+        `Welders and flame cutters: 100–249 available, confirmed ${longDate(daysAgo(12))}`,
       );
       await context.close();
     }
@@ -326,8 +326,8 @@ test.describe("Find staffing partners and available workforce (FR-L2, FR-K3)", (
     const supplier = results.getByRole("listitem").filter({ has: page.getByRole("heading", { name: batch.staffing }) });
     await expect(supplier).toHaveCount(1);
     await expect(supplier.getByRole("link", { name: batch.staffing })).toHaveAttribute("href", `/en/partners/staff-${batch.token}-1`);
-    await expect(supplier).toContainText("120 available now, 200 within the timeframe");
-    await expect(supplier).toContainText("Philippines: 120 available, 40 per month, available now.");
+    await expect(supplier, "an employer reads ranges, not exact counts").toContainText("100–249 available now, 100–249 within the timeframe");
+    await expect(supplier).toContainText("Philippines: 100–249 available, 25–49 per month, available now.");
     await expect(supplier).toContainText(`Confirmed 12 days ago, on ${longDate(daysAgo(12))}.`);
     await expect(section.getByRole("status").filter({ hasText: "supply this" })).toHaveAttribute("aria-live", "polite");
     expect(await results.innerText()).not.toMatch(FORBIDDEN_WORDS);
