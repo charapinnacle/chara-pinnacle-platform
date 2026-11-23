@@ -7,14 +7,15 @@ import { CommitmentGate } from "@/components/organization/commitment-gate";
 import { ResponseForm } from "@/components/responses/response-form";
 import { organizationCrumb } from "@/lib/app/navigation";
 import { getCommitmentBlock } from "@/lib/dal/commitment";
-import { getCurrencies } from "@/lib/dal/reference";
+import { getCurrencies, getLanguages } from "@/lib/dal/reference";
 import { getItemModeration } from "@/lib/dal/item-moderation";
 import { isReleased } from "@/lib/dal/release";
-import { getResponse, getResponseDocumentsMax, listResponseDocuments } from "@/lib/dal/responses";
+import { getResponse, getResponseDocumentsMax, getResponseTerms, listResponseDocuments } from "@/lib/dal/responses";
 import { requireOrgRole } from "@/lib/dal/session";
 import { isLive } from "@/lib/responses/presentation";
 import { billingPath, responsePath, responsesPath } from "@/lib/routes";
 import { requirementIdSchema } from "@/lib/validation/requirement";
+import { feeInclusions, type FeeInclusion } from "@/lib/validation/response";
 
 export const metadata: Metadata = { title: "Change response", robots: { index: false } };
 
@@ -37,12 +38,16 @@ export default async function EditResponsePage({ params }: PageProps<"/[lang]/or
   if (hidden || !isLive(response.status) || response.requirementStatus === "closed" || response.requirementStatus === "filled") {
     redirect(responsePath(lang, slug, response.id));
   }
-  const [currencies, documents, documentsMax, commitment] = await Promise.all([
+  const [currencies, languages, termsById, documents, documentsMax, commitment] = await Promise.all([
     getCurrencies(),
+    getLanguages(),
+    getResponseTerms([response.id]),
     listResponseDocuments({ organizationId: organization.id, requirementId: response.requirementId }),
     getResponseDocumentsMax(),
     getCommitmentBlock(organization.id),
   ]);
+
+  const terms = termsById.get(response.id);
 
   return (
     <div className="grid w-full max-w-3xl gap-section">
@@ -83,11 +88,19 @@ export default async function EditResponsePage({ params }: PageProps<"/[lang]/or
             feeAmount: response.feeAmount === null ? "" : String(response.feeAmount),
             feeCurrency: response.feeCurrency ?? "",
             notes: response.notes ?? "",
+            languageCode: terms?.languageCode ?? "",
+            languageLevel: terms?.languageLevel ?? "",
+            minExperienceYears: terms?.minExperienceYears === null || terms === undefined ? "" : String(terms.minExperienceYears),
+            certificates: terms?.certificates ?? "",
+            feeIncludes: (terms?.feeIncludes ?? []).filter((item): item is FeeInclusion => (feeInclusions as readonly string[]).includes(item)),
+            guaranteeDays: terms?.guaranteeDays === null || terms === undefined ? "" : String(terms.guaranteeDays),
+            leadTimeWeeks: terms?.leadTimeWeeks === null || terms === undefined ? "" : String(terms.leadTimeWeeks),
           },
         }}
         workersNeeded={response.workersNeeded}
         maxCapacity={response.maxCapacity}
         currencies={currencies}
+        languages={languages}
         documents={documents}
         documentsMax={documentsMax}
         organization={{ id: organization.id, type: organization.type, canManage: organization.role !== "member" }}

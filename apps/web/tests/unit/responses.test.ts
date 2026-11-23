@@ -78,6 +78,13 @@ const valid: ResponseFormInput = {
   feeAmount: "1500.00",
   feeCurrency: "EUR",
   notes: "n".repeat(200),
+  languageCode: "de",
+  languageLevel: "B1",
+  minExperienceYears: "3",
+  certificates: "ISO 9606-1 welders, 3G and 6G",
+  feeIncludes: ["trade_test", "flights"],
+  guaranteeDays: "90",
+  leadTimeWeeks: "16",
 };
 
 function errorsFor(values: Partial<Record<keyof ResponseFormInput, unknown>>, options = schema): Record<string, string> {
@@ -298,7 +305,9 @@ const stored = {
 
 // The answer of each function by name, the current response for get_response.
 function answers(byName: Record<string, unknown>) {
-  rpcMock.mockImplementation(async (name: string) => (name === "get_response" ? { data: [stored], error: null } : byName[name]));
+  rpcMock.mockImplementation(async (name: string) =>
+    name === "get_response" ? { data: [stored], error: null } : (byName[name] ?? (name === "set_response_terms" ? { data: null, error: null } : undefined)),
+  );
 }
 
 describe("the response actions", () => {
@@ -357,6 +366,28 @@ describe("the response actions", () => {
     answers({ update_response: refusal("CHARA_CONFLICT", "stale") });
     expect(await updateMyResponse("p1", { responseId: RESPONSE, expectedVersion: 1 }, valid)).toEqual({ message: RESPONSE_MESSAGES.stale });
     expect(rpcMock).toHaveBeenCalledWith("update_response", expect.objectContaining({ p_response: RESPONSE, p_expected_version: 1 }));
+  });
+
+  it("saves the skills and fee terms beside the response, and says so when only they fail", async () => {
+    rpcMock.mockResolvedValue({ data: RESPONSE, error: null });
+    expect(await respondToRequirement("p1", REQUIREMENT, valid)).toEqual({ responseId: RESPONSE });
+    expect(rpcMock).toHaveBeenCalledWith("set_response_terms", {
+      p_org: PARTNER.id,
+      p_response: RESPONSE,
+      p_language_code: "de",
+      p_language_level: "B1",
+      p_min_experience_years: 3,
+      p_certificates: "ISO 9606-1 welders, 3G and 6G",
+      p_fee_includes: ["trade_test", "flights"],
+      p_guarantee_days: 90,
+      p_lead_time_weeks: 16,
+    });
+    rpcMock.mockImplementation(async (name: string) =>
+      name === "set_response_terms" ? { data: null, error: { message: "CHARA_INVALID_INPUT", details: "response_terms", code: "P0001" } } : { data: RESPONSE, error: null },
+    );
+    const result = await respondToRequirement("p1", REQUIREMENT, valid);
+    expect(result.responseId, "the response itself is saved").toBe(RESPONSE);
+    expect(result.termsMessage).toContain("the skills and fee terms were not");
   });
 
   it("keeps the stored date that is now in the past when only the notes change", async () => {

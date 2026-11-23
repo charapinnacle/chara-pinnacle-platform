@@ -1566,6 +1566,31 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"response_terms": {
+                  Row: {
+                    "certificates": string | null,"fee_includes": (string)[],"guarantee_days": number | null,"language_code": string | null,"language_level": string | null,"lead_time_weeks": number | null,"min_experience_years": number | null,"response_id": string,"updated_at": string
+                  }
+                  Insert: {
+                    "certificates"?: string | null,"fee_includes"?: (string)[],"guarantee_days"?: number | null,"language_code"?: string | null,"language_level"?: string | null,"lead_time_weeks"?: number | null,"min_experience_years"?: number | null,"response_id": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "certificates"?: string | null,"fee_includes"?: (string)[],"guarantee_days"?: number | null,"language_code"?: string | null,"language_level"?: string | null,"lead_time_weeks"?: number | null,"min_experience_years"?: number | null,"response_id"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "response_terms_language_code_fkey"
+      columns: ["language_code"]
+isOneToOne: false
+      referencedRelation: "languages"
+      referencedColumns: ["code"]
+    },{
+      foreignKeyName: "response_terms_response_id_fkey"
+      columns: ["response_id"]
+isOneToOne: true
+      referencedRelation: "partner_responses"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"saved_items": {
                   Row: {
                     "created_at": string,"kind": string,"organization_id": string,"saved_by": string | null,"target_organization_id": string
@@ -3305,6 +3330,9 @@ isOneToOne: false
                            },
 "set_requirement_status":
 { Args: { "p_close_reason"?: Database["public"]['Enums']["requirement_close_reason"],"p_expected_updated_at": string,"p_org": string,"p_requirement": string,"p_status": Database["public"]['Enums']["requirement_status"] }; Returns: Json
+                           },
+"set_response_terms":
+{ Args: { "p_certificates"?: string,"p_fee_includes"?: (string)[],"p_guarantee_days"?: number,"p_language_code"?: string,"p_language_level"?: string,"p_lead_time_weeks"?: number,"p_min_experience_years"?: number,"p_org": string,"p_response": string }; Returns: undefined
                            },
 "set_submission_status":
 { Args: { "p_note"?: string,"p_status": Database["public"]['Enums']["submission_status"],"p_submission": string }; Returns: undefined

@@ -9,10 +9,10 @@ import { PageHeader } from "@/components/layout/page-header";
 import { SuspendedOrganization } from "@/components/layout/suspended-organization";
 import { ResponseComparison } from "@/components/responses/response-comparison";
 import { organizationCrumb } from "@/lib/app/navigation";
-import { getCountries } from "@/lib/dal/reference";
+import { getCountries, getLanguages } from "@/lib/dal/reference";
 import { isReleased } from "@/lib/dal/release";
 import { getRequirement } from "@/lib/dal/requirements";
-import { compareResponses, listResponseDocuments } from "@/lib/dal/responses";
+import { compareResponses, getResponseTerms, listResponseDocuments } from "@/lib/dal/responses";
 import { requireOrgRole } from "@/lib/dal/session";
 import { formatDate } from "@/lib/i18n/format";
 import { NOT_A_PARTY_EMPLOYER } from "@/lib/responses/presentation";
@@ -42,11 +42,16 @@ export default async function ResponseComparisonPage({ params }: PageProps<"/[la
   if (!parsedId.success) notFound();
   const requirement = await getRequirement(organization.id, parsedId.data);
   if (!requirement) notFound();
-  const [responses, countries] = await Promise.all([compareResponses(organization.id, requirement.id), getCountries()]);
+  const [responses, countries, languages] = await Promise.all([
+    compareResponses(organization.id, requirement.id),
+    getCountries(),
+    getLanguages(),
+  ]);
   const live = responses.filter((response) => response.status !== "withdrawn");
   const withdrawn = responses.filter((response) => response.status === "withdrawn");
   const documents =
     live.length > 0 ? await listResponseDocuments({ responseIds: live.map((response) => response.id) }).catch(() => null) : [];
+  const terms = await getResponseTerms(live.map((response) => response.id));
   const decidable = requirement.status === "open" || requirement.status === "paused";
   const canDecide = organization.role !== "member" && decidable;
 
@@ -106,6 +111,8 @@ export default async function ResponseComparisonPage({ params }: PageProps<"/[la
             documents={documents}
             countryNames={new Map(countries.map(({ code, name }) => [code, name]))}
             canDecide={canDecide}
+            terms={terms}
+            languageNames={new Map(languages.map(({ code, name }) => [code, name]))}
           />
           <Notice tone="info" role="note">
             {NOT_A_PARTY_EMPLOYER}.

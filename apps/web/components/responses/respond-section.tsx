@@ -3,7 +3,7 @@ import { EligibilityPanel } from "@/components/responses/eligibility-panel";
 import { ResponseForm } from "@/components/responses/response-form";
 import type { OrganizationType, UsagePrompt } from "@/lib/billing/limits";
 import { getCommitmentBlock } from "@/lib/dal/commitment";
-import { getCountries, getCurrencies } from "@/lib/dal/reference";
+import { getCountries, getCurrencies, getLanguages } from "@/lib/dal/reference";
 import { getResponseDocumentsMax, listResponseDocuments, type ResponseEligibility } from "@/lib/dal/responses";
 import { getUsagePrompts } from "@/lib/dal/usage";
 import { RESPONSE_LIMIT_KEY } from "@/lib/responses/refusal";
@@ -64,8 +64,9 @@ export async function RespondSection({ lang, slug, organization, requirement, el
       />
     );
   }
-  const [currencies, documents, documentsMax] = await Promise.all([
+  const [currencies, languages, documents, documentsMax] = await Promise.all([
     getCurrencies(),
+    getLanguages(),
     listResponseDocuments({ organizationId: organization.id, requirementId: requirement.id }),
     getResponseDocumentsMax(),
   ]);
@@ -77,6 +78,7 @@ export async function RespondSection({ lang, slug, organization, requirement, el
       workersNeeded={requirement.workersNeeded}
       maxCapacity={eligibility.maxCapacity}
       currencies={currencies}
+      languages={languages}
       defaultCurrency={requirement.salaryCurrency}
       documents={documents}
       documentsMax={documentsMax}

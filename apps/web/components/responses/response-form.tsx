@@ -7,12 +7,14 @@ import { useMemo, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { UpgradePrompt } from "@/components/billing/upgrade-prompt";
 import { toast, toastError } from "@/components/feedback/toast-store";
+import { CheckboxGroupField } from "@/components/forms/checkbox-group-field";
 import { ComboboxField } from "@/components/forms/combobox-field";
 import { FormButton } from "@/components/forms/form-button";
 import { FormErrorSummary } from "@/components/forms/form-error-summary";
 import { InputField, TextareaField } from "@/components/forms/form-field";
 import { Notice } from "@/components/forms/notice";
 import { RadioGroupField } from "@/components/forms/radio-group-field";
+import { SelectField } from "@/components/forms/select-field";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { ResponseDocuments } from "@/components/responses/response-documents";
 import { respondToRequirement, updateMyResponse, type ResponseResult } from "@/lib/actions/responses";
@@ -32,7 +34,11 @@ import {
 import { RESPONSE_MESSAGES } from "@/lib/responses/refusal";
 import { responsePath } from "@/lib/routes";
 import {
+  CERTIFICATES_MAX,
   EXPERIENCE_MAX,
+  feeInclusionLabels,
+  feeInclusions,
+  languageLevels,
   NOTES_MAX,
   responseFormSchema,
   TIMELINE_MAX,
@@ -50,7 +56,17 @@ const ids = {
   feeAmount: "response-fee-amount",
   feeCurrency: "response-fee-currency",
   notes: "response-notes",
+  languageCode: "response-language",
+  languageLevel: "response-language-level",
+  minExperienceYears: "response-min-experience",
+  certificates: "response-certificates",
+  feeIncludes: "response-fee-includes",
+  guaranteeDays: "response-guarantee",
+  leadTimeWeeks: "response-lead-time",
 } as const;
+
+const levelOptions = languageLevels.map((level) => ({ value: level, label: level }));
+const inclusionOptions = feeInclusions.map((value) => ({ value, label: feeInclusionLabels[value] }));
 
 const sendingId = "response-document-sending";
 
@@ -79,6 +95,8 @@ type ResponseFormProps = {
   workersNeeded: number;
   maxCapacity: number;
   currencies: { code: string; name: string }[];
+  // The languages a partner can name for its workers' level.
+  languages: { code: string; name: string }[];
   // The currency of the requirement's salary, offered first for the fee.
   defaultCurrency?: string | null;
   documents: ResponseDocument[];
@@ -104,6 +122,7 @@ export function ResponseForm({
   workersNeeded,
   maxCapacity,
   currencies,
+  languages,
   defaultCurrency,
   documents,
   documentsMax,
@@ -138,6 +157,7 @@ export function ResponseForm({
   const feeModel = useWatch({ control, name: "feeModel" }) as FeeModel | "";
   const experience = useWatch({ control, name: "experienceNote" });
   const currencyOptions = useMemo(() => toOptions(currencies), [currencies]);
+  const languageOptions = useMemo(() => languages.map(({ code, name }) => ({ value: code, label: name })), [languages]);
 
   function onSubmit(values: ResponseFormValues) {
     if (sendingFile) return;
@@ -163,7 +183,8 @@ export function ResponseForm({
           return;
         }
         if (result.responseId) {
-          toast({ title: edit ? "Changes saved" : "Response sent" });
+          if (result.termsMessage) toastError(edit ? "Changes saved, terms missing" : "Response sent, terms missing", result.termsMessage);
+          else toast({ title: edit ? "Changes saved" : "Response sent" });
           router.push(responsePath(lang, slug, result.responseId));
         }
       },
@@ -208,6 +229,43 @@ export function ResponseForm({
         description={`Your experience with these occupations and this destination. ${characterCount(experience.length, EXPERIENCE_MAX)}.`}
       />
       <fieldset className="grid gap-5">
+        <legend className="mb-1.5 text-h3">The workers&apos; skills (optional)</legend>
+        <div className="grid gap-5 sm:grid-cols-2 sm:items-start">
+          <ComboboxField
+            control={control}
+            name="languageCode"
+            id={ids.languageCode}
+            label="Language"
+            placeholder="Choose a language"
+            options={languageOptions}
+            emptyText="No matching language"
+            description="Usually the language of the destination country."
+          />
+          <SelectField
+            control={control}
+            name="languageLevel"
+            id={ids.languageLevel}
+            label="Level, at least"
+            placeholder="Choose a level"
+            options={levelOptions}
+          />
+          <InputField
+            control={control}
+            name="minExperienceYears"
+            id={ids.minExperienceYears}
+            label="Experience, at least (years)"
+            inputMode="numeric"
+          />
+        </div>
+        <TextareaField
+          control={control}
+          name="certificates"
+          id={ids.certificates}
+          label="Certificates and tests"
+          description={`For example "ISO 9606-1 welders, 3G and 6G, trade-tested". Up to ${formatCount(CERTIFICATES_MAX)} characters.`}
+        />
+      </fieldset>
+      <fieldset className="grid gap-5">
         <legend className="mb-1.5 text-h3">Your proposal</legend>
         <Notice tone="info" role="note">
           {NOT_A_PARTY}. The employer and your company agree the contract and any payment outside the platform.
@@ -236,6 +294,31 @@ export function ResponseForm({
             ) : null}
           </div>
         ) : null}
+        <CheckboxGroupField
+          control={control}
+          name="feeIncludes"
+          id={ids.feeIncludes}
+          legend="The fee includes (optional)"
+          options={inclusionOptions}
+        />
+        <div className="grid gap-5 sm:grid-cols-2 sm:items-start">
+          <InputField
+            control={control}
+            name="guaranteeDays"
+            id={ids.guaranteeDays}
+            label="Guarantee period (days, optional)"
+            inputMode="numeric"
+            description="A free replacement if a worker leaves within it."
+          />
+          <InputField
+            control={control}
+            name="leadTimeWeeks"
+            id={ids.leadTimeWeeks}
+            label="Lead time (weeks, optional)"
+            inputMode="numeric"
+            description="From the employer's selection to the workers' arrival."
+          />
+        </div>
         <TextareaField
           control={control}
           name="notes"

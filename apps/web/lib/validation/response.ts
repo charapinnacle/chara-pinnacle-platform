@@ -1,7 +1,9 @@
 import type { Database } from "@chara-pinnacle/db-types";
 import * as z from "zod";
 import { formatCount } from "@/lib/i18n/format";
-import { documentsLimitText, feeModels, hasAmount, hasCurrency } from "@/lib/responses/presentation";
+import { documentsLimitText, feeInclusions, feeModels, hasAmount, hasCurrency, type FeeInclusion } from "@/lib/responses/presentation";
+
+export { feeInclusionLabels, feeInclusions, type FeeInclusion } from "@/lib/responses/presentation";
 import { characters } from "@/lib/utils";
 import { CONTROL_CHARACTER, LINE_BREAKS_AND_TABS, NO_CONTROL_CHARACTERS } from "@/lib/validation/job";
 import { dateWithin, parseDate, todayUtc } from "@/lib/validation/passport";
@@ -53,6 +55,31 @@ function optionalText(max: number, label: string) {
     .refine(noControlCharacters, { error: NO_CONTROL_CHARACTERS });
 }
 
+// The terms a partner adds beside its response (public.response_terms): the skills of the workers and what the fee
+// covers, so employers compare quotes on the same footing. Every one is optional.
+export const languageLevels = ["A1", "A2", "B1", "B2", "C1", "C2"] as const;
+export const CERTIFICATES_MAX = 300;
+export const LEVEL_NEEDS_LANGUAGE = "Choose the language of this level.";
+
+function optionalWhole(max: number, message: string, min = 0) {
+  return z
+    .string()
+    .trim()
+    .refine((value) => value === "" || (/^\d+$/.test(value) && Number(value) >= min && Number(value) <= max), { error: message });
+}
+
+const termsFields = {
+  languageCode: z.string().trim().toLowerCase(),
+  languageLevel: z.string().trim().refine((value) => value === "" || (languageLevels as readonly string[]).includes(value), {
+    error: "Choose a level from A1 to C2.",
+  }),
+  minExperienceYears: optionalWhole(50, "Enter a number of years from 0 to 50."),
+  certificates: optionalText(CERTIFICATES_MAX, "certificates and tests"),
+  feeIncludes: z.array(z.enum(feeInclusions)),
+  guaranteeDays: optionalWhole(365, "Enter a number of days from 0 to 365."),
+  leadTimeWeeks: optionalWhole(104, "Enter a number of weeks from 1 to 104.", 1),
+};
+
 // The values the form keeps of the response it edits: update_response keeps an unchanged capacity above today's maximum
 // and an unchanged date in the past, so the form does too.
 export type KeptValues = { capacity: number; availableFrom: string };
@@ -99,10 +126,12 @@ export function responseFormSchema({ maxCapacity, today = todayUtc(), kept }: Sc
       feeAmount: z.string().trim(),
       feeCurrency: z.string().trim().toUpperCase(),
       notes: optionalText(NOTES_MAX, "notes"),
+      ...termsFields,
     })
     .check((context) => {
       const value = context.value;
       const issue = (path: string, message: string) => context.issues.push({ code: "custom", input: value, path: [path], message });
+      if (value.languageLevel !== "" && value.languageCode === "") issue("languageCode", LEVEL_NEEDS_LANGUAGE);
       if (hasAmount(value.feeModel)) {
         const amount = value.feeAmount;
         const percent = value.feeModel === "percent_first_year_salary";
@@ -127,7 +156,38 @@ export const emptyResponseForm: ResponseFormInput = {
   feeAmount: "",
   feeCurrency: "",
   notes: "",
+  languageCode: "",
+  languageLevel: "",
+  minExperienceYears: "",
+  certificates: "",
+  feeIncludes: [],
+  guaranteeDays: "",
+  leadTimeWeeks: "",
 };
+
+export type ResponseTermsArgs = {
+  p_language_code?: string;
+  p_language_level?: string;
+  p_min_experience_years?: number;
+  p_certificates?: string;
+  p_fee_includes: FeeInclusion[];
+  p_guarantee_days?: number;
+  p_lead_time_weeks?: number;
+};
+
+// The terms for set_response_terms; an empty field is left out, which the function stores as none.
+export function toResponseTermsArgs(values: ResponseFormValues): ResponseTermsArgs {
+  const whole = (value: string) => (value === "" ? undefined : Number(value));
+  return {
+    p_language_code: values.languageCode === "" ? undefined : values.languageCode,
+    p_language_level: values.languageLevel === "" ? undefined : values.languageLevel,
+    p_min_experience_years: whole(values.minExperienceYears),
+    p_certificates: values.certificates === "" ? undefined : values.certificates,
+    p_fee_includes: values.feeIncludes,
+    p_guarantee_days: whole(values.guaranteeDays),
+    p_lead_time_weeks: whole(values.leadTimeWeeks),
+  };
+}
 
 // The amount only for a fee model that has one, the currency only for one priced in a currency: a value left in a
 // field the form hid is not sent. An empty optional text is left out, which the functions store as null.

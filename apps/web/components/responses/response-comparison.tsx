@@ -2,9 +2,9 @@ import { TextLink } from "@/components/forms/text-link";
 import { DecisionControls } from "@/components/responses/decision-controls";
 import { ResponseDocumentList } from "@/components/responses/response-document-list";
 import { ResponseStatusBadge } from "@/components/responses/response-status";
-import type { ComparedResponse, ResponseDocument } from "@/lib/dal/responses";
+import type { ComparedResponse, ResponseDocument, ResponseTerms } from "@/lib/dal/responses";
 import { formatDate } from "@/lib/i18n/format";
-import { employerStatusLabels, feeModelLabels, feeText, workersOfferedText } from "@/lib/responses/presentation";
+import { employerStatusLabels, feeModelLabels, feeText, termsLines, workersOfferedText } from "@/lib/responses/presentation";
 import { partnerProfileForPath, requirementResponsePath } from "@/lib/routes";
 
 type ResponseComparisonProps = {
@@ -15,6 +15,9 @@ type ResponseComparisonProps = {
   documents: ResponseDocument[] | null;
   countryNames: Map<string, string>;
   canDecide: boolean;
+  // The skills and fee terms beside each response, by response id, and the language names they may name.
+  terms: ReadonlyMap<string, ResponseTerms>;
+  languageNames: ReadonlyMap<string, string>;
 };
 
 const columnId = (id: string) => `response-column-${id}`;
@@ -28,13 +31,29 @@ type Row = { label: string; cell: (response: ComparedResponse) => React.ReactNod
 // terms. The table scrolls inside its own container with the row headers held at the left, so a small screen never
 // scrolls the page sideways; the container is positioned so the visually hidden text in the cells is clipped by it too
 // instead of stretching the page. Owners and admins decide in the last row; members only compare. No licence detail.
-export function ResponseComparison({ lang, slug, requirementId, responses, documents, countryNames, canDecide }: ResponseComparisonProps) {
+export function ResponseComparison({
+  lang,
+  slug,
+  requirementId,
+  responses,
+  documents,
+  countryNames,
+  canDecide,
+  terms,
+  languageNames,
+}: ResponseComparisonProps) {
+  // Every partner on the same rows, "Not stated" where it added nothing.
+  const termsRows: Row[] = termsLines(undefined, (code) => code, true).map(([label], index) => ({
+    label,
+    cell: (response) => termsLines(terms.get(response.id), (code) => languageNames.get(code) ?? code, true)[index][1],
+  }));
   const rows: Row[] = [
     { label: "Status", cell: (response) => <ResponseStatusBadge status={response.status} view="employer" updatedUnseen={response.updatedUnseen} /> },
     { label: "Workers offered", cell: (response) => workersOfferedText(response.capacity) },
     { label: "Earliest start", cell: (response) => <time dateTime={response.availableFrom}>{formatDate(response.availableFrom)}</time> },
     { label: "Fee model", cell: (response) => feeModelLabels[response.feeModel] },
     { label: "Fee", cell: (response) => feeText(response.feeModel, response.feeAmount, response.feeCurrency) },
+    ...termsRows,
     {
       label: "Relevant experience",
       cell: (response) => <p className="max-w-[40ch] break-words whitespace-pre-line">{response.experienceNote}</p>,

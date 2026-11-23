@@ -17,9 +17,9 @@ import { ItemModerationNotice } from "@/components/organization/item-moderation-
 import { organizationCrumb } from "@/lib/app/navigation";
 import { listMyAppeals } from "@/lib/dal/appeals";
 import { getItemModeration } from "@/lib/dal/item-moderation";
-import { getCountries, getIndustries } from "@/lib/dal/reference";
+import { getCountries, getIndustries, getLanguages } from "@/lib/dal/reference";
 import { isReleased } from "@/lib/dal/release";
-import { getResponse, listResponseChanges, listResponseDocuments, listResponseVersions } from "@/lib/dal/responses";
+import { getResponse, getResponseTerms, listResponseChanges, listResponseDocuments, listResponseVersions } from "@/lib/dal/responses";
 import { requireOrgRole } from "@/lib/dal/session";
 import { formatDate } from "@/lib/i18n/format";
 import { employerLabel } from "@/lib/job-orders/presentation";
@@ -54,7 +54,7 @@ export default async function ResponsePage({ params }: PageProps<"/[lang]/org/[s
   if (!parsedId.success) notFound();
   const response = await getResponse(organization.id, parsedId.data);
   if (!response) notFound();
-  const [versions, documents, changes, countries, industries, submissions, moderation, messaging] = await Promise.all([
+  const [versions, documents, changes, countries, industries, submissions, moderation, messaging, termsById, languages] = await Promise.all([
     listResponseVersions(organization.id, response.id).catch(() => null),
     listResponseDocuments({ responseId: response.id }).catch(() => null),
     listResponseChanges(organization.id, response.id).catch(() => null),
@@ -63,6 +63,8 @@ export default async function ResponsePage({ params }: PageProps<"/[lang]/org/[s
     isReleased("release_candidate_submissions"),
     getItemModeration(organization.id, "partner_response", response.id),
     isReleased("release_messaging"),
+    getResponseTerms([response.id]),
+    getLanguages(),
   ]);
   const appeal = moderation?.decision ? await listMyAppeals(moderation.decision.id).catch(() => null) : null;
   // A response hidden by moderation is neither changed nor withdrawn until a decision restores it (V57).
@@ -150,7 +152,12 @@ export default async function ResponsePage({ params }: PageProps<"/[lang]/org/[s
         ) : null}
       </section>
 
-      <ResponseView response={response} view="partner" />
+      <ResponseView
+        response={response}
+        view="partner"
+        terms={termsById.get(response.id)}
+        languageNames={new Map(languages.map(({ code, name }) => [code, name]))}
+      />
 
       <section aria-labelledby="response-documents-heading" className="grid gap-3">
         <h2 id="response-documents-heading" className="text-h2">
