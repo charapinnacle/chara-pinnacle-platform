@@ -35,6 +35,7 @@ import { RESPONSE_MESSAGES } from "@/lib/responses/refusal";
 import { responsePath } from "@/lib/routes";
 import {
   CERTIFICATES_MAX,
+  emptyResponseForm,
   EXPERIENCE_MAX,
   feeInclusionLabels,
   feeInclusions,
@@ -133,16 +134,7 @@ export function ResponseForm({
   const schema = useMemo(() => responseFormSchema({ maxCapacity, kept: edit?.kept }), [maxCapacity, edit?.kept]);
   const form = useForm<ResponseFormInput, unknown, ResponseFormValues>({
     resolver: zodResolver(schema),
-    defaultValues: edit?.values ?? {
-      capacity: "",
-      availableFrom: "",
-      timelineNote: "",
-      experienceNote: "",
-      feeModel: "",
-      feeAmount: "",
-      feeCurrency: defaultCurrency ?? "",
-      notes: "",
-    },
+    defaultValues: edit?.values ?? { ...emptyResponseForm, feeCurrency: defaultCurrency ?? "" },
   });
   const { control, formState, handleSubmit } = form;
   const failureTitle = edit ? "Your changes were not saved" : "Your response was not sent";
