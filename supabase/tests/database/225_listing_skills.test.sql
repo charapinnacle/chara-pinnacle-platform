@@ -1,7 +1,7 @@
 -- The skills of an availability listing (FR-K3): optional columns, set by set_listing_skills with the checks of the other
 -- listing functions, and returned with the listing on the partner profile and in the available workforce search.
 begin;
-select plan(8);
+select plan(9);
 
 select columns_are('public', 'workforce_availability', array[
   'id', 'organization_id', 'occupation_id', 'source_country', 'source_scope', 'available', 'monthly_capacity',
@@ -13,6 +13,11 @@ select ok(
    where attrelid = 'public.workforce_availability'::regclass
      and attname in ('language_code', 'language_level', 'min_experience_years', 'certificates')),
   'every skill is optional'
+);
+select ok(
+  (select bool_and(has_column_privilege('authenticated', 'public.workforce_availability', c, 'select'))
+   from unnest(array['language_code', 'language_level', 'min_experience_years', 'certificates']) c),
+  'members read the skills of their own listings like the other columns'
 );
 select ok(
   exists (select 1 from pg_constraint where conrelid = 'public.workforce_availability'::regclass

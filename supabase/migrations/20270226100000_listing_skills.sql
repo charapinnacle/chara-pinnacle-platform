@@ -12,6 +12,9 @@ alter table public.workforce_availability
 create index workforce_availability_language_idx on public.workforce_availability (language_code)
   where language_code is not null;
 
+-- The members read the skills of their own listings like the other columns (the policy of the table decides which rows).
+grant select (language_code, language_level, min_experience_years, certificates) on public.workforce_availability to authenticated;
+
 -- Sets the skills of a listing of the caller's organisation, with the checks of update_workforce_availability (release
 -- 2a, an owner or admin at aal2 of a partner). Empty values clear a skill.
 create function public.set_listing_skills(
