@@ -125,12 +125,12 @@ describe("the heading and the actions (FR-R3 AC1, FR-R4 AC1, AC6 release gating)
   it("asks the question of each partner type and offers the capacity action of its type to managers only", async () => {
     let html = await render();
     expect(html).toContain(">Which employers need workers I can recruit?</h1>");
-    expect(html).toMatch(/<a[^>]*href="\/en\/org\/manila-skills\/workforce-profile#availability-heading"[^>]*>Update workforce capacity/);
+    expect(html).toMatch(/<a[^>]*href="\/en\/org\/manila-skills\/workforce-profile#availability-heading"[^>]*>Update recruiting capacity/);
     html = await render({ type: "staffing_company" });
     expect(html).toContain(">Which employers need the workforce I can provide?</h1>");
     expect(html).toMatch(/href="\/en\/org\/manila-skills\/workforce-profile#availability-heading"[^>]*>Add workforce/);
     html = await render({ role: "member" });
-    expect(html).not.toContain("Update workforce capacity");
+    expect(html).not.toContain("Update recruiting capacity");
   });
 
   it("shows no block or action of a feature that is not released: job orders, invitations, submissions, messages", async () => {
@@ -151,7 +151,7 @@ describe("the heading and the actions (FR-R3 AC1, FR-R4 AC1, AC6 release gating)
       }
       releasedMock.mockImplementation(async () => true);
       const html = await render();
-      const order = ["Find job orders", "Find employers", "Submit candidates", "Update workforce capacity"].map((name) => html.indexOf(`>${name}<`));
+      const order = ["Find job orders", "Find employers", "Submit candidates", "Update recruiting capacity"].map((name) => html.indexOf(`>${name}<`));
       expect(order.every((index, n) => index > 0 && (n === 0 || index > order[n - 1]))).toBe(true);
       expect(html).toMatch(/<a[^>]*href="\/en\/org\/manila-skills\/responses"[^>]*>Submit candidates<\/a>/);
     } finally {

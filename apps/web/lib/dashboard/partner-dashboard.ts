@@ -110,6 +110,8 @@ export const missingPartLabels: Readonly<Record<string, string>> = {
   recruitment_type: "your recruitment type",
   staffing_types: "your staffing types",
   employer_pays_commitment: "the employer-pays commitment",
+  agency_licence: "a current agency licence",
+  workforce_listing: "the workers you can supply",
 };
 
 export type NextActionTarget = "profile" | "availability" | "licences" | "onboarding" | "company" | "commitment";
@@ -122,6 +124,8 @@ function missingTarget(part: string): NextActionTarget {
   if (part === "legal_entity_identifier") return "company";
   // The commitment is accepted in the dashboard's own dialog (V52): onboarding sends a submitted company back here.
   if (part === "employer_pays_commitment") return "commitment";
+  if (part === "agency_licence") return "licences";
+  if (part === "workforce_listing") return "availability";
   return "profile";
 }
 

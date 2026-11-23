@@ -181,7 +181,7 @@ test.describe("Partner review, licence and availability notifications (FR-T1)", 
     await waitForHydration(listingItem);
     await listingItem.click();
     await expect(page).toHaveURL(`/en/org/${company.slug}/workforce-profile#availability-heading`);
-    await expect(page.getByRole("heading", { name: "Availability", level: 2 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Recruiting capacity", level: 2 })).toBeVisible();
     await expect(bell(page)).toHaveAccessibleName("Notifications");
 
     // FR-T1 AC11: the partner kinds on the preferences page, the optional ones with a switch.

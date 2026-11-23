@@ -133,12 +133,12 @@ test.describe("Partner dashboards, release 2b (V55)", () => {
     await expect(owner.page.getByRole("region", { name: "Responses and decisions" })).toContainText("Shortlisted");
     await expect(owner.page.getByRole("link", { name: "Submit candidates" })).toHaveCount(0);
     await expect(owner.page.getByRole("region", { name: "Candidate submissions" })).toHaveCount(0);
-    await expectInOrder(owner.page, ["Find job orders", "Find employers", "Update workforce capacity"]);
+    await expectInOrder(owner.page, ["Find job orders", "Find employers", "Update recruiting capacity"]);
 
     setRelease("release_candidate_submissions", true);
     for (const status of ["awaiting_candidate", "submitted", "hired", "rejected"]) seedSubmission(fitting, acme, r, status);
     await owner.page.reload();
-    await expectInOrder(owner.page, ["Find job orders", "Find employers", "Submit candidates", "Update workforce capacity"]);
+    await expectInOrder(owner.page, ["Find job orders", "Find employers", "Submit candidates", "Update recruiting capacity"]);
     const submissions = owner.page.getByRole("region", { name: "Candidate submissions" });
     const count = (label: string) => submissions.getByRole("term").filter({ hasText: label }).locator("xpath=following-sibling::dd[1]");
     await expect(count("Waiting for the worker's agreement")).toHaveText("1");

@@ -646,6 +646,19 @@ describe("the partner journey of onboarding (FR-J1)", () => {
     expect(html).toMatch(/<a[^>]*href="\/en\/org\/acme-bau\/workforce-profile#licences-heading"[^>]*>Add your licences<\/a>/);
   });
 
+  it("Ready asks a staffing company for an agency licence and a listing before it submits", async () => {
+    requireUserMock.mockResolvedValue(partner("staffing_company"));
+    organizationMock.mockResolvedValue({ ...owner, type: "staffing_company" });
+    geographiesMock.mockResolvedValue({ sourcesFrom: ["AT"], servesMarket: ["DE"] });
+    offerMock.mockResolvedValue({ ...savedOffer, serviceTypes: ["temporary"] });
+    commitmentMock.mockResolvedValue({ ...openCommitment, accepted: true, acceptedVersion: 0 });
+    twoStepMock.mockResolvedValue(true);
+    const html = await render(OnboardingPage);
+    expect(currentStep(html)).toBe("Ready");
+    expect(html).toContain("A staffing company needs at least one current agency licence before it submits");
+    expect(html).not.toContain("Licences are optional before you submit.");
+  });
+
   it("reopens the company details for the owner at aal2, and asks for the code first at aal1", async () => {
     requireUserMock.mockResolvedValue(partner("recruitment_company"));
     organizationMock.mockResolvedValue({ ...owner, displayName: "Manila Skills", type: "recruitment_company" });
