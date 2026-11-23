@@ -63,7 +63,7 @@ select pg_temp.org('v71-pending', 'Pending', :'upe', 'recruitment_company', 'rec
 select pg_temp.org('v71-free', 'Free', :'ufe', 'employer', null) as fre \gset
 select pg_temp.org('v71-lapsed', 'Lapsed', :'ula', 'employer', null) as lap \gset
 insert into billing.subscriptions (organization_id, plan_code, status, provider) values (:'lap', 'employer_starter', 'canceled', 'null');
-insert into public.organization_service_types (organization_id, service) values (:'rek', 'staffing'), (:'pla', 'permanent');
+insert into public.organization_service_types (organization_id, service) values (:'rek', 'staffing'), (:'pla', 'project');
 select pg_temp.new_user(:'ra1'), pg_temp.new_user(:'ra2'), pg_temp.new_user(:'rm1'), pg_temp.new_user(:'rm2') \gset
 update public.profiles set account_kind = intended_account_kind where id in (:'ra1', :'ra2', :'rm1', :'rm2');
 insert into public.organization_members (organization_id, user_id, role, accepted_at) values

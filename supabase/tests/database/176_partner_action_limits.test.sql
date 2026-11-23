@@ -109,7 +109,8 @@ $$;
 create function pg_temp.respond_sql(p_org uuid, p_req uuid) returns text
 language sql as $$
   select format($f$select (public.respond_to_invitation(%L, %L, 5, current_date + 30, 'Twenty welders placed in Hamburg last year.',
-    'fee_per_hire', 1500, 'EUR') is not null)::text$f$, p_org, p_req)
+    %L, 1500, 'EUR') is not null)::text$f$, p_org, p_req,
+    case private.org_type(p_org) when 'staffing_company' then 'monthly_rate' else 'fee_per_hire' end)
 $$;
 
 create function pg_temp.submit_sql(p_org uuid, p_req uuid, p_email text) returns text
@@ -319,7 +320,8 @@ create function pg_temp.resp(p_user uuid, p_org uuid, p_req uuid) returns text
 language sql as $$
   select pg_temp.call_as(p_user, case when p_user is null then 'anon' else 'authenticated' end, format(
     $f$select public.respond_to_invitation(%L, %L, 5, current_date + 30, 'Twenty welders placed in Hamburg last year.',
-      'fee_per_hire', 1500, 'EUR')$f$, p_org, p_req), 'aal1')
+      %L, 1500, 'EUR')$f$, p_org, p_req,
+      case private.org_type(p_org) when 'staffing_company' then 'monthly_rate' else 'fee_per_hire' end), 'aal1')
 $$;
 
 create function pg_temp.sub(p_user uuid, p_org uuid, p_req uuid, p_email text) returns text
