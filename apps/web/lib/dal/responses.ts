@@ -180,6 +180,7 @@ export type ResponseTerms = {
   feeIncludes: string[];
   guaranteeDays: number | null;
   leadTimeWeeks: number | null;
+  assignmentWeeks: number | null;
 };
 
 export async function getResponseTerms(responseIds: readonly string[]): Promise<Map<string, ResponseTerms>> {
@@ -187,7 +188,7 @@ export async function getResponseTerms(responseIds: readonly string[]): Promise<
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("response_terms")
-    .select("response_id, language_code, language_level, min_experience_years, certificates, fee_includes, guarantee_days, lead_time_weeks")
+    .select("response_id, language_code, language_level, min_experience_years, certificates, fee_includes, guarantee_days, lead_time_weeks, assignment_weeks")
     .in("response_id", [...responseIds]);
   if (error) throw new Error("The response terms could not be loaded", { cause: error });
   return new Map(
@@ -201,6 +202,7 @@ export async function getResponseTerms(responseIds: readonly string[]): Promise<
         feeIncludes: row.fee_includes,
         guaranteeDays: row.guarantee_days,
         leadTimeWeeks: row.lead_time_weeks,
+        assignmentWeeks: row.assignment_weeks,
       },
     ]),
   );

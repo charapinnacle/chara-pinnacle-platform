@@ -70,15 +70,15 @@ describe("What you offer (FR-K2)", () => {
       "temporary",
       "contract",
     ]);
-    expect(toServiceTypes("recruitment_company", { staffingService: true, staffingTypes: ["temporary", "permanent"] })).toEqual([
+    expect(toServiceTypes("recruitment_company", { staffingService: true, staffingTypes: ["temporary", "project"] })).toEqual([
       "staffing",
       "temporary",
-      "permanent",
+      "project",
     ]);
     expect(toServiceTypes("recruitment_company", { staffingService: false, staffingTypes: ["temporary"] })).toEqual([]);
-    expect(fromServiceTypes(["permanent", "staffing", "temporary"])).toEqual({
+    expect(fromServiceTypes(["project", "staffing", "temporary"])).toEqual({
       staffingService: true,
-      staffingTypes: ["temporary", "permanent"],
+      staffingTypes: ["temporary", "project"],
     });
   });
 

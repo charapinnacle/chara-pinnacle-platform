@@ -46,7 +46,7 @@ async function staffingBatch(): Promise<Batch> {
      ), services as (
        insert into public.organization_service_types (organization_id, service)
        select id, s::public.partner_service_type from created
-       cross join unnest(case when type = 'staffing_company' then array['temporary', 'contract'] else array['staffing', 'permanent'] end) s
+       cross join unnest(case when type = 'staffing_company' then array['temporary', 'contract'] else array['staffing', 'project'] end) s
      )
      insert into public.organization_occupations (organization_id, occupation_id) select id, '7212' from created;
      update public.organizations set review_status = 'listed', listed_at = now() - interval '2 days',
@@ -157,7 +157,7 @@ test.describe("Find staffing partners and available workforce (FR-L2, FR-K3)", (
     );
     const recruiter = cards(page).filter({ hasText: batch.recruitment });
     await expect(recruiter).toContainText("Recruitment company, also offers staffing");
-    await expect(recruiter).toContainText("Staffing types: Permanent");
+    await expect(recruiter).toContainText("Staffing types: Project");
     await expect(recruiter).toContainText("Matches: destination");
     expect(await page.getByRole("main").getByRole("list").first().innerText()).not.toMatch(FORBIDDEN_WORDS);
     const html = await page.content();

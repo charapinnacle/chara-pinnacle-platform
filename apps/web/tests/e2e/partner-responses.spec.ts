@@ -152,6 +152,8 @@ async function fillResponse(page: Page, { capacity = "80", amount = "1500.00" } 
   await page.getByLabel("Amount").focus();
   await page.keyboard.type(amount);
   await choose(page, "Currency", "Euro");
+  await page.getByLabel("Guarantee period (days)").focus();
+  await page.keyboard.type("90");
   await page.getByLabel("Notes (optional)").focus();
   await page.keyboard.type("Travel and visa handling included. ".repeat(5).trim());
 }

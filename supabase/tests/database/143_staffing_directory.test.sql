@@ -195,16 +195,16 @@ select pg_temp.hide('l2a1');
 -- FR-L2 AC2: the staffing type filter ranks and is named ---------------------------------------------------------------------
 select pg_temp.partner(:'own', 'staffing_company', 'l2a2-t1', '{DE}', '{temporary}', '2026-10-01 08:00+00') as t1 \gset
 select pg_temp.partner(:'own', 'staffing_company', 'l2a2-t2', '{DE}', '{contract,project}', '2026-10-02 08:00+00') as t2 \gset
-select pg_temp.partner(:'own', 'staffing_company', 'l2a2-t3', '{DE}', '{permanent}', '2026-10-03 08:00+00') as t3 \gset
-select pg_temp.partner(:'own', 'staffing_company', 'l2a2-t4', '{DE}', '{temporary,contract,project,permanent}', '2026-09-01 08:00+00') as t4 \gset
+select pg_temp.partner(:'own', 'staffing_company', 'l2a2-t3', '{DE}', '{contract}', '2026-10-03 08:00+00') as t3 \gset
+select pg_temp.partner(:'own', 'staffing_company', 'l2a2-t4', '{DE}', '{temporary,contract,project}', '2026-09-01 08:00+00') as t4 \gset
 select is(pg_temp.search(null, '''staffing'', p_staffing_types => ''{temporary}'''), 'ok', 'staffing type temporary');
 select is(pg_temp.slugs(), 'l2a2-t1,l2a2-t4,l2a2-t3,l2a2-t2', 'FR-L2 AC2: temporary ranks T1 and T4 first');
 select is(pg_temp.matched('l2a2-t1') || '|' || pg_temp.matched('l2a2-t4') || '|' || coalesce(pg_temp.matched('l2a2-t2'), ''),
   'staffing_type|staffing_type|', 'FR-L2 AC2: and names staffing_type for them only');
 select is(pg_temp.search(null, '''staffing'', p_staffing_types => ''{project}'''), 'ok', 'staffing type project');
 select is(pg_temp.slugs(), 'l2a2-t2,l2a2-t4,l2a2-t3,l2a2-t1', 'FR-L2 AC2: project ranks T2 and T4 first');
-select is(pg_temp.search(null, '''staffing'', p_staffing_types => ''{Permanent}'''), 'ok', 'staffing type permanent, any case');
-select is(pg_temp.slugs(), 'l2a2-t3,l2a2-t4,l2a2-t2,l2a2-t1', 'FR-L2 AC2: permanent ranks T3 and T4 first');
+select is(pg_temp.search(null, '''staffing'', p_staffing_types => ''{Contract}'''), 'ok', 'staffing type contract, any case');
+select is(pg_temp.slugs(), 'l2a2-t3,l2a2-t2,l2a2-t4,l2a2-t1', 'FR-L2 AC2: contract ranks T3, T2 and T4 first');
 select is(pg_temp.search(null, '''staffing'', p_staffing_types => ''{temporary,project}'''), 'ok', 'two staffing types');
 select is(pg_temp.slugs(), 'l2a2-t2,l2a2-t1,l2a2-t4,l2a2-t3', 'FR-L2 AC2: either type matches');
 select is(pg_temp.search(null, '''staffing'', p_staffing_types => ''{gig}''') || '/' || pg_temp.result()::text,

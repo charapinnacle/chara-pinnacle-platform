@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { termsLines } from "@/lib/responses/presentation";
-import { emptyResponseForm, LEVEL_NEEDS_LANGUAGE, responseFormSchema, toResponseTermsArgs } from "@/lib/validation/response";
+import { feeModelsByKind, termNeeded, termsLines } from "@/lib/responses/presentation";
+import {
+  emptyResponseForm,
+  FEE_MODEL_FOR_KIND,
+  LEVEL_NEEDS_LANGUAGE,
+  responseFormSchema,
+  TERM_REQUIRED,
+  toResponseTermsArgs,
+} from "@/lib/validation/response";
 import { fieldErrors } from "@/lib/validation/sign-up";
 
 const names = (code: string) => ({ de: "German", en: "English" })[code] ?? code;
@@ -15,6 +22,7 @@ describe("the skills and fee terms of a response", () => {
       feeIncludes: ["medical_check"],
       guaranteeDays: 0,
       leadTimeWeeks: 1,
+      assignmentWeeks: null,
     };
     expect(termsLines(terms, names)).toEqual([
       ["The fee includes", "Medical check"],
@@ -24,11 +32,11 @@ describe("the skills and fee terms of a response", () => {
       ["Experience, at least", "1 year"],
     ]);
     expect(termsLines(undefined, names)).toEqual([]);
-    expect(termsLines(undefined, names, true).map(([, text]) => text)).toEqual(Array(6).fill("Not stated"));
+    expect(termsLines(undefined, names, true).map(([, text]) => text)).toEqual(Array(7).fill("Not stated"));
   });
 
   it("checks the terms in the form and sends only the stated ones", () => {
-    const schema = responseFormSchema({ maxCapacity: 100, today: "2026-11-23" });
+    const schema = responseFormSchema({ maxCapacity: 100, kind: "both", today: "2026-11-23" });
     const base = {
       ...emptyResponseForm,
       capacity: "10",
@@ -50,5 +58,24 @@ describe("the skills and fee terms of a response", () => {
       p_guarantee_days: 60,
       p_lead_time_weeks: undefined,
     });
+  });
+
+  it("offers each kind of partner its own fee models and asks for the term its fee needs", () => {
+    expect(feeModelsByKind.recruitment).toEqual(["fee_per_hire", "percent_first_year_salary", "on_request"]);
+    expect(feeModelsByKind.staffing).toEqual(["hourly_rate", "monthly_rate", "on_request"]);
+    expect(termNeeded("both", "on_request")).toBeNull();
+    const base = { ...emptyResponseForm, capacity: "10", availableFrom: "2027-01-10", experienceNote: "x".repeat(40) };
+    const errors = (kind: "recruitment" | "staffing", values: object) => {
+      const result = responseFormSchema({ maxCapacity: 100, kind, today: "2026-11-23" }).safeParse({ ...base, ...values });
+      return result.success ? {} : fieldErrors(result.error);
+    };
+    const hourly = { feeModel: "hourly_rate", feeAmount: "18", feeCurrency: "EUR" };
+    const perHire = { feeModel: "fee_per_hire", feeAmount: "1500", feeCurrency: "EUR" };
+    expect(errors("recruitment", { ...hourly, assignmentWeeks: "26" })).toEqual({ feeModel: FEE_MODEL_FOR_KIND });
+    expect(errors("staffing", { ...perHire, guaranteeDays: "90" })).toEqual({ feeModel: FEE_MODEL_FOR_KIND });
+    expect(errors("recruitment", perHire)).toEqual({ guaranteeDays: TERM_REQUIRED.guaranteeDays });
+    expect(errors("staffing", hourly)).toEqual({ assignmentWeeks: TERM_REQUIRED.assignmentWeeks });
+    expect(errors("recruitment", { ...perHire, guaranteeDays: "0" })).toEqual({});
+    expect(errors("staffing", { feeModel: "on_request", assignmentWeeks: "12" })).toEqual({});
   });
 });

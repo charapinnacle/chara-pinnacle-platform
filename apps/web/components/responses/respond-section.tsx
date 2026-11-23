@@ -6,6 +6,7 @@ import { getCommitmentBlock } from "@/lib/dal/commitment";
 import { getCountries, getCurrencies, getLanguages } from "@/lib/dal/reference";
 import { getResponseDocumentsMax, listResponseDocuments, type ResponseEligibility } from "@/lib/dal/responses";
 import { getUsagePrompts } from "@/lib/dal/usage";
+import { getPartnerKind } from "@/lib/dal/workforce-offer";
 import { RESPONSE_LIMIT_KEY } from "@/lib/responses/refusal";
 import { billingPath, responsePath } from "@/lib/routes";
 import type { CommitmentBlock } from "@/lib/validation/commitment";
@@ -64,11 +65,12 @@ export async function RespondSection({ lang, slug, organization, requirement, el
       />
     );
   }
-  const [currencies, languages, documents, documentsMax] = await Promise.all([
+  const [currencies, languages, documents, documentsMax, kind] = await Promise.all([
     getCurrencies(),
     getLanguages(),
     listResponseDocuments({ organizationId: organization.id, requirementId: requirement.id }),
     getResponseDocumentsMax(),
+    getPartnerKind(organization),
   ]);
   return (
     <ResponseForm
@@ -83,6 +85,7 @@ export async function RespondSection({ lang, slug, organization, requirement, el
       documents={documents}
       documentsMax={documentsMax}
       organization={{ id: organization.id, type: organization.type, canManage }}
+      kind={kind}
       billingHref={billingPath(lang, slug)}
     />
   );

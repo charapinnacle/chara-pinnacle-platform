@@ -55,6 +55,7 @@ describe("the comparison of responses", () => {
               feeIncludes: ["trade_test", "flights"],
               guaranteeDays: 90,
               leadTimeWeeks: 16,
+              assignmentWeeks: null,
             },
           ],
         ])
@@ -74,7 +75,7 @@ describe("the comparison of responses", () => {
     expect(html).toContain("16 weeks from selection to arrival");
     expect(html).toContain("German, at least B1");
     expect(html).toContain("ISO 9606-1 welders, 3G and 6G");
-    expect(html.match(/Not stated/g)).toHaveLength(6);
+    expect(html.match(/Not stated/g)).toHaveLength(8);
   });
 
   it("names its scrolling region", () => {

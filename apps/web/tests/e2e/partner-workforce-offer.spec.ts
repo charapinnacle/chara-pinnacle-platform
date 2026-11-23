@@ -214,7 +214,7 @@ test.describe("What you offer (FR-K2)", () => {
     await expect(page.getByRole("checkbox", { name: STAFFING_SERVICE })).toHaveCount(0);
     const staffingTypes = page.getByRole("group", { name: STAFFING_TYPES });
     await expect(staffingTypes.getByRole("checkbox", { name: "Temporary" })).toBeChecked();
-    for (const name of ["Contract", "Project", "Permanent"]) {
+    for (const name of ["Contract", "Project"]) {
       await expect(staffingTypes.getByRole("checkbox", { name })).not.toBeChecked();
     }
     await expect(page.getByRole("radio", { name: "Local", exact: true })).toBeChecked();

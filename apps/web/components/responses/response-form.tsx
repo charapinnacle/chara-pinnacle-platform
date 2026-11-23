@@ -25,11 +25,13 @@ import { toOptions } from "@/lib/reference-options";
 import {
   feeModelDescriptions,
   feeModelLabels,
-  feeModels,
+  feeModelsByKind,
   hasAmount,
   hasCurrency,
   NOT_A_PARTY,
+  termNeeded,
   type FeeModel,
+  type PartnerKind,
 } from "@/lib/responses/presentation";
 import { RESPONSE_MESSAGES } from "@/lib/responses/refusal";
 import { responsePath } from "@/lib/routes";
@@ -64,6 +66,7 @@ const ids = {
   feeIncludes: "response-fee-includes",
   guaranteeDays: "response-guarantee",
   leadTimeWeeks: "response-lead-time",
+  assignmentWeeks: "response-assignment",
 } as const;
 
 const levelOptions = languageLevels.map((level) => ({ value: level, label: level }));
@@ -79,7 +82,7 @@ const feeIcons = {
   on_request: MessageSquare,
 } as const;
 
-const feeOptions = feeModels.map((value) => ({
+const feeOptions = (kind: PartnerKind) => feeModelsByKind[kind].map((value) => ({
   value,
   label: feeModelLabels[value],
   description: feeModelDescriptions[value],
@@ -104,6 +107,8 @@ type ResponseFormProps = {
   documentsMax: number;
   // For the upgrade prompt when the monthly limit is reached on submit.
   organization: { id: string; type: OrganizationType; canManage: boolean };
+  // A recruitment company quotes a placement fee, a staffing company a rate (getPartnerKind).
+  kind: PartnerKind;
   billingHref: string;
   // The id of the reason the response cannot be saved now (an outdated commitment): the button is disabled and described
   // by it.
@@ -128,10 +133,11 @@ export function ResponseForm({
   documents,
   documentsMax,
   organization,
+  kind,
   billingHref,
   blockedBy,
 }: ResponseFormProps) {
-  const schema = useMemo(() => responseFormSchema({ maxCapacity, kept: edit?.kept }), [maxCapacity, edit?.kept]);
+  const schema = useMemo(() => responseFormSchema({ maxCapacity, kind, kept: edit?.kept }), [maxCapacity, kind, edit?.kept]);
   const form = useForm<ResponseFormInput, unknown, ResponseFormValues>({
     resolver: zodResolver(schema),
     defaultValues: edit?.values ?? { ...emptyResponseForm, feeCurrency: defaultCurrency ?? "" },
@@ -147,6 +153,7 @@ export function ResponseForm({
   // The summary takes the focus after a refusal of the server; after a check of the form the first invalid field does.
   const [refused, setRefused] = useState(false);
   const feeModel = useWatch({ control, name: "feeModel" }) as FeeModel | "";
+  const needed = termNeeded(kind, feeModel);
   const experience = useWatch({ control, name: "experienceNote" });
   const currencyOptions = useMemo(() => toOptions(currencies), [currencies]);
   const languageOptions = useMemo(() => languages.map(({ code, name }) => ({ value: code, label: name })), [languages]);
@@ -262,7 +269,7 @@ export function ResponseForm({
         <Notice tone="info" role="note">
           {NOT_A_PARTY}. The employer and your company agree the contract and any payment outside the platform.
         </Notice>
-        <RadioGroupField control={control} name="feeModel" id={ids.feeModel} legend="Fee model" options={feeOptions} />
+        <RadioGroupField control={control} name="feeModel" id={ids.feeModel} legend="Fee model" options={feeOptions(kind)} />
         {hasAmount(feeModel) ? (
           <div className="grid gap-5 sm:grid-cols-2">
             <InputField
@@ -294,14 +301,26 @@ export function ResponseForm({
           options={inclusionOptions}
         />
         <div className="grid gap-5 sm:grid-cols-2 sm:items-start">
-          <InputField
-            control={control}
-            name="guaranteeDays"
-            id={ids.guaranteeDays}
-            label="Guarantee period (days, optional)"
-            inputMode="numeric"
-            description="A free replacement if a worker leaves within it."
-          />
+          {kind !== "staffing" ? (
+            <InputField
+              control={control}
+              name="guaranteeDays"
+              id={ids.guaranteeDays}
+              label={needed === "guaranteeDays" ? "Guarantee period (days)" : "Guarantee period (days, optional)"}
+              inputMode="numeric"
+              description="A free replacement if a hire leaves within it; 0 for none."
+            />
+          ) : null}
+          {kind !== "recruitment" ? (
+            <InputField
+              control={control}
+              name="assignmentWeeks"
+              id={ids.assignmentWeeks}
+              label={needed === "assignmentWeeks" ? "Assignment length (weeks)" : "Assignment length (weeks, optional)"}
+              inputMode="numeric"
+              description="How long the workers stay on your payroll at the employer."
+            />
+          ) : null}
           <InputField
             control={control}
             name="leadTimeWeeks"

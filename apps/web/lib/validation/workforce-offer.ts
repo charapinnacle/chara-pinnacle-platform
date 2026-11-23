@@ -8,7 +8,8 @@ type RecruitmentType = Database["public"]["Enums"]["recruitment_preference"];
 type SizeBand = Database["public"]["Enums"]["workforce_size_band"];
 
 export const recruitmentTypes = ["local", "international", "both"] as const satisfies readonly RecruitmentType[];
-export const staffingTypes = ["temporary", "contract", "project", "permanent"] as const satisfies readonly ServiceType[];
+// A permanent hire is recruitment (recruitmentType), not a staffing type; the database refuses it.
+export const staffingTypes = ["temporary", "contract", "project"] as const satisfies readonly ServiceType[];
 export const sizeBands = ["1_49", "50_249", "250_999", "1000_plus"] as const satisfies readonly SizeBand[];
 
 export const recruitmentTypeLabels: Record<RecruitmentType, string> = {
@@ -17,7 +18,7 @@ export const recruitmentTypeLabels: Record<RecruitmentType, string> = {
   both: "Local and international",
 };
 
-export const staffingTypeLabels: Record<(typeof staffingTypes)[number], string> = {
+export const staffingTypeLabels: Record<Exclude<ServiceType, "staffing">, string> = {
   temporary: "Temporary",
   contract: "Contract",
   project: "Project",

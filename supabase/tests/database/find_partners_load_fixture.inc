@@ -23,7 +23,7 @@ declare
   v_all text[] := (select array_agg(code order by code) from public.occupations);
   v_languages text[] := '{en,en,en,ar,tl,hi,ne,vi,id,bn,si,ur,sw,uk,pl,ro,es,de,fr,ru,zh,ja}';
   v_industries text[] := (select array_agg(code order by code) from public.industries);
-  v_staffing text[] := '{temporary,contract,project,permanent}';
+  v_staffing text[] := '{temporary,contract,project}';
 begin
   perform setseed(0.78);
   insert into auth.users (id, email, email_confirmed_at, raw_user_meta_data)

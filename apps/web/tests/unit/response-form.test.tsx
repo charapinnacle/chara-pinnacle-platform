@@ -21,6 +21,7 @@ describe("the response form", () => {
         documents={[]}
         documentsMax={5}
         organization={{ id: "o", type: "recruitment_company", canManage: true }}
+        kind="recruitment"
         billingHref="/en/x"
       />,
     );

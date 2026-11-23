@@ -183,8 +183,8 @@ describe("the staffing directory parameters", () => {
   });
 
   it("shows the staffing filters of an address in the form", () => {
-    expect(partnerFormDefaults("staffing_type=permanent&workforce_size=1_49&language=tl", "staffing")).toMatchObject({
-      staffing_type: ["permanent"],
+    expect(partnerFormDefaults("staffing_type=project&workforce_size=1_49&language=tl", "staffing")).toMatchObject({
+      staffing_type: ["project"],
       workforce_size: "1_49",
       language: "",
     });

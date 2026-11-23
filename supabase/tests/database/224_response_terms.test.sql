@@ -29,17 +29,17 @@ select ok(
 );
 select ok(
   (select prosecdef and proconfig @> array['search_path=""'] from pg_proc
-   where oid = 'public.set_response_terms(uuid, uuid, text, text, integer, text, text[], integer, integer)'::regprocedure),
+   where oid = 'public.set_response_terms(uuid, uuid, text, text, integer, text, text[], integer, integer, integer)'::regprocedure),
   'set_response_terms is security definer with an empty search_path'
 );
 select ok(
-  has_function_privilege('authenticated', 'public.set_response_terms(uuid, uuid, text, text, integer, text, text[], integer, integer)', 'execute')
-  and not has_function_privilege('anon', 'public.set_response_terms(uuid, uuid, text, text, integer, text, text[], integer, integer)', 'execute'),
+  has_function_privilege('authenticated', 'public.set_response_terms(uuid, uuid, text, text, integer, text, text[], integer, integer, integer)', 'execute')
+  and not has_function_privilege('anon', 'public.set_response_terms(uuid, uuid, text, text, integer, text, text[], integer, integer, integer)', 'execute'),
   'only signed-in users may call set_response_terms'
 );
 select ok(
   (select prosrc ~ 'assert_responding_partner' and prosrc ~ 'requirement_closed' and prosrc ~ 'hidden' from pg_proc
-   where oid = 'public.set_response_terms(uuid, uuid, text, text, integer, text, text[], integer, integer)'::regprocedure),
+   where oid = 'public.set_response_terms(uuid, uuid, text, text, integer, text, text[], integer, integer, integer)'::regprocedure),
   'it checks the responding partner, a hidden response and a closed requirement, as update_response does'
 );
 select ok(
