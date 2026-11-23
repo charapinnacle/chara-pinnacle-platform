@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { SuspendedOrganization } from "@/components/layout/suspended-organization";
 import { RequirementForm } from "@/components/requirements/requirement-form";
 import { organizationCrumb } from "@/lib/app/navigation";
-import { getCountries, getCurrencies, getIndustries, getOccupations } from "@/lib/dal/reference";
+import { getAgencyWorkRules, getCountries, getCurrencies, getIndustries, getOccupations } from "@/lib/dal/reference";
 import { getItemModeration } from "@/lib/dal/item-moderation";
 import { isReleased } from "@/lib/dal/release";
 import { getMultiCountryPlan, getRequirement, toRequirementFormInput } from "@/lib/dal/requirements";
@@ -28,12 +28,13 @@ export default async function EditRequirementPage({ params }: PageProps<"/[lang]
   if (organization.suspended) return <SuspendedOrganization title="Edit workforce requirement" subject="workforce requirements" />;
   const parsedId = requirementIdSchema.safeParse(id);
   if (!parsedId.success) notFound();
-  const [requirement, occupations, industries, countries, currencies, multiCountry] = await Promise.all([
+  const [requirement, occupations, industries, countries, currencies, agencyWorkRules, multiCountry] = await Promise.all([
     getRequirement(organization.id, parsedId.data),
     getOccupations(),
     getIndustries(),
     getCountries(),
     getCurrencies(),
+    getAgencyWorkRules(),
     getMultiCountryPlan(organization.id),
   ]);
   if (!requirement) notFound();
@@ -73,6 +74,7 @@ export default async function EditRequirementPage({ params }: PageProps<"/[lang]
           currencies={currencies}
           multiCountry={multiCountry}
           billingHref={billingPath(lang, slug)}
+        agencyWorkRules={agencyWorkRules}
           edit={{ requirementId: requirement.id, values: toRequirementFormInput(requirement), expectedUpdatedAt: requirement.updatedAt, status: requirement.status }}
         />
       ) : (
