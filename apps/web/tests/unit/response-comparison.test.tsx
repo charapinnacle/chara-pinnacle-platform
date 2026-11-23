@@ -43,12 +43,38 @@ describe("the comparison of responses", () => {
       documents={[]}
       countryNames={new Map()}
       canDecide
+      terms={
+        new Map([
+          [
+            response.id,
+            {
+              languageCode: "de",
+              languageLevel: "B1",
+              minExperienceYears: 3,
+              certificates: "ISO 9606-1 welders, 3G and 6G",
+              feeIncludes: ["trade_test", "flights"],
+              guaranteeDays: 90,
+              leadTimeWeeks: 16,
+            },
+          ],
+        ])
+      }
+      languageNames={new Map([["de", "German"]])}
     />,
   );
 
   it("positions its scrolling container, so the visually hidden text of a far column cannot widen the page at 375 px", () => {
     expect(html).toMatch(/^<div class="relative overflow-x-auto[^"]*" role="region"/);
     expect(html).toContain('<span class="sr-only"> of Nordic Staff</span>');
+  });
+
+  it("lines the skills and fee terms up on the same rows, Not stated where a partner added none", () => {
+    expect(html).toContain("Trade test, Flights");
+    expect(html).toContain("Free replacement within 90 days");
+    expect(html).toContain("16 weeks from selection to arrival");
+    expect(html).toContain("German, at least B1");
+    expect(html).toContain("ISO 9606-1 welders, 3G and 6G");
+    expect(html.match(/Not stated/g)).toHaveLength(6);
   });
 
   it("names its scrolling region", () => {
@@ -68,6 +94,8 @@ describe("the comparison of responses", () => {
         documents={[]}
         countryNames={new Map()}
         canDecide
+        terms={new Map()}
+        languageNames={new Map()}
       />,
     );
     const decisionRow = decided.slice(decided.indexOf(">Decision</th>"));

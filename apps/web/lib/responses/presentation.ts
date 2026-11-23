@@ -262,3 +262,65 @@ export function versionChangeLines(version: ResponseVersion, previous: ResponseV
   }
   return lines;
 }
+
+export const feeInclusions = [
+  "trade_test",
+  "medical_check",
+  "visa_and_permit_fees",
+  "flights",
+  "first_month_accommodation",
+  "pre_departure_training",
+  "insurance",
+] as const;
+export type FeeInclusion = (typeof feeInclusions)[number];
+export const feeInclusionLabels: Record<FeeInclusion, string> = {
+  trade_test: "Trade test",
+  medical_check: "Medical check",
+  visa_and_permit_fees: "Visa and permit fees",
+  flights: "Flights",
+  first_month_accommodation: "First month's accommodation",
+  pre_departure_training: "Pre-departure training",
+  insurance: "Insurance",
+};
+// The skills and fee terms a partner added beside its response (public.response_terms), as label and text. With
+// every=false only the stated ones are returned (the response page); with every=true each label comes back, "Not stated"
+// when the partner left it out, so a comparison lines every partner up on the same rows.
+export type TermsLike = {
+  languageCode: string | null;
+  languageLevel: string | null;
+  minExperienceYears: number | null;
+  certificates: string | null;
+  feeIncludes: readonly string[];
+  guaranteeDays: number | null;
+  leadTimeWeeks: number | null;
+};
+
+const NOT_STATED = "Not stated";
+
+export function termsLines(
+  terms: TermsLike | undefined,
+  languageName: (code: string) => string,
+  every = false,
+): (readonly [string, string])[] {
+  const plural = (n: number, one: string, many: string) => `${formatCount(n)} ${n === 1 ? one : many}`;
+  const lines: (readonly [string, string | null])[] = [
+    [
+      "The fee includes",
+      terms && terms.feeIncludes.length > 0
+        ? terms.feeIncludes.map((item) => feeInclusionLabels[item as FeeInclusion] ?? item).join(", ")
+        : null,
+    ],
+    [
+      "Guarantee",
+      terms?.guaranteeDays == null ? null : terms.guaranteeDays === 0 ? "No guarantee" : `Free replacement within ${plural(terms.guaranteeDays, "day", "days")}`,
+    ],
+    ["Lead time", terms?.leadTimeWeeks == null ? null : `${plural(terms.leadTimeWeeks, "week", "weeks")} from selection to arrival`],
+    [
+      "Language",
+      terms?.languageCode ? `${languageName(terms.languageCode)}${terms.languageLevel ? `, at least ${terms.languageLevel}` : ""}` : null,
+    ],
+    ["Experience, at least", terms?.minExperienceYears == null ? null : plural(terms.minExperienceYears, "year", "years")],
+    ["Certificates and tests", terms?.certificates ?? null],
+  ];
+  return lines.flatMap(([label, text]) => (text !== null ? [[label, text] as const] : every ? [[label, NOT_STATED] as const] : []));
+}

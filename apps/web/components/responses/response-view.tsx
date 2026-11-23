@@ -1,17 +1,26 @@
 import { Notice } from "@/components/forms/notice";
-import type { ResponseDetail } from "@/lib/dal/responses";
+import type { ResponseDetail, ResponseTerms } from "@/lib/dal/responses";
 import { formatDate } from "@/lib/i18n/format";
-import { feeModelLabels, feeText, NOT_A_PARTY, NOT_A_PARTY_EMPLOYER, workersOfferedText } from "@/lib/responses/presentation";
+import { feeModelLabels, feeText, NOT_A_PARTY, NOT_A_PARTY_EMPLOYER, termsLines, workersOfferedText } from "@/lib/responses/presentation";
 
 // The proposal of a response as get_response returns it, and nothing more (NFR-S11, FR-O2 AC1 read view, AC10): the
 // workers offered, from when, the timeline, the experience, the fee and the notes, with the statement that the platform
 // is not a party next to the fee.
-export function ResponseView({ response, view }: { response: ResponseDetail; view: "partner" | "employer" }) {
+type ResponseViewProps = {
+  response: ResponseDetail;
+  view: "partner" | "employer";
+  // The skills and fee terms beside the response, and the names of the languages they may name.
+  terms?: ResponseTerms;
+  languageNames?: ReadonlyMap<string, string>;
+};
+
+export function ResponseView({ response, view, terms, languageNames }: ResponseViewProps) {
   const details: (readonly [string, React.ReactNode])[] = [
     ["Workers offered", `${workersOfferedText(response.capacity)} of ${workersOfferedText(response.workersNeeded)} needed`],
     ["Available from", <time key="from" dateTime={response.availableFrom}>{formatDate(response.availableFrom)}</time>],
     ["Fee model", feeModelLabels[response.feeModel]],
     ["Fee", feeText(response.feeModel, response.feeAmount, response.feeCurrency)],
+    ...termsLines(terms, (code) => languageNames?.get(code) ?? code),
   ];
   const texts: (readonly [string, string | null])[] = [
     ["Timeline", response.timelineNote],

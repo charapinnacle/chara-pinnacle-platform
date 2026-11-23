@@ -48,11 +48,13 @@ import {
   responseFormSchema,
   toleranceFormSchema,
   toResponseArgs,
+  toResponseTermsArgs,
   withdrawFormSchema,
   type DecisionFormInput,
   type DocumentFile,
   type KeptValues,
   type ResponseFormInput,
+  type ResponseFormValues,
   type ToleranceFormInput,
   type WithdrawFormInput,
 } from "@/lib/validation/response";
@@ -76,6 +78,8 @@ export type ResponseResult = {
   message?: string;
   responseId?: string;
   limitReached?: UsagePrompt;
+  // The response is saved but its skills and fee terms are not.
+  termsMessage?: string;
 };
 
 // The recruitment or staffing company of the address, for any accepted member (no aal2, FR-N2 and FR-O2 roles) while
@@ -125,6 +129,23 @@ async function refusalResult(
   }
 }
 
+const TERMS_NOT_SAVED =
+  "Your response is saved, but the skills and fee terms were not. Open the response and change it to add them again.";
+
+// The terms beside the response (public.response_terms), saved once the response itself is: a failure here keeps the
+// response and says the terms are missing, with a reference in the log.
+async function saveTerms(organizationId: string, responseId: string, values: ResponseFormValues): Promise<{ termsMessage?: string }> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("set_response_terms", {
+    p_org: organizationId,
+    p_response: responseId,
+    ...toResponseTermsArgs(values),
+  });
+  if (!error) return {};
+  logFault("Saving the response terms", error);
+  return { termsMessage: TERMS_NOT_SAVED };
+}
+
 // Sends the partner's response to a job order or an invitation (FR-N2 step Respond, FR-O2 step Submit, AC1, AC3 to
 // AC5): respond_to_invitation checks the eligibility, the proposal and the staged documents again, writes version 1 and
 // tells the employer. A second submission is refused by the database (already_responded), so it writes nothing.
@@ -146,8 +167,9 @@ export async function respondToRequirement(slug: string, requirementId: string, 
   // A refusal writes nothing, and revalidating would re-render the page into its limit panel in place of the form
   // whose entries the refusal keeps (FR-R1 AC11).
   if (error) return refusalResult(organization, responseRefusal(error), error, "Sending the response");
+  const terms = await saveTerms(organization.id, data, parsed.data);
   revalidateResponse(organization.slug, id.data, data);
-  return { responseId: data };
+  return { responseId: data, ...terms };
 }
 
 // Saves an edit of a live response (FR-O2 step Edit, AC8): update_response writes the next version, or nothing when
@@ -178,8 +200,9 @@ export async function updateMyResponse(
   // A refusal writes nothing, and the form keeps what was entered and the files (a document still being checked or
   // sent above all).
   if (error) return refusalResult(organization, responseRefusal(error), error, "Changing the response");
+  const terms = await saveTerms(organization.id, responseId, parsed.data);
   revalidateResponse(organization.slug, null, responseId);
-  return { responseId };
+  return { responseId, ...terms };
 }
 
 export type WithdrawResult = { errors?: FieldErrors; message?: string; done?: boolean };

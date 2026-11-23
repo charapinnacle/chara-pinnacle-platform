@@ -170,6 +170,42 @@ export type ResponseDetail = {
   partnerSlug: string | null;
 };
 
+// The terms a partner added beside its responses (public.response_terms), read under the policy of the responses: the
+// partner reads its own, the employer those it receives. A response without terms is absent from the map.
+export type ResponseTerms = {
+  languageCode: string | null;
+  languageLevel: string | null;
+  minExperienceYears: number | null;
+  certificates: string | null;
+  feeIncludes: string[];
+  guaranteeDays: number | null;
+  leadTimeWeeks: number | null;
+};
+
+export async function getResponseTerms(responseIds: readonly string[]): Promise<Map<string, ResponseTerms>> {
+  if (responseIds.length === 0) return new Map();
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("response_terms")
+    .select("response_id, language_code, language_level, min_experience_years, certificates, fee_includes, guarantee_days, lead_time_weeks")
+    .in("response_id", [...responseIds]);
+  if (error) throw new Error("The response terms could not be loaded", { cause: error });
+  return new Map(
+    data.map((row) => [
+      row.response_id,
+      {
+        languageCode: row.language_code,
+        languageLevel: row.language_level,
+        minExperienceYears: row.min_experience_years,
+        certificates: row.certificates,
+        feeIncludes: row.fee_includes,
+        guaranteeDays: row.guarantee_days,
+        leadTimeWeeks: row.lead_time_weeks,
+      },
+    ]),
+  );
+}
+
 // null for another organisation's response and an unknown id (CHARA_NOT_FOUND): the page answers with the neutral 404.
 export async function getResponse(organizationId: string, id: string): Promise<ResponseDetail | null> {
   const supabase = await createClient();

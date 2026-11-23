@@ -13,7 +13,8 @@ import { ResponseVersions } from "@/components/responses/response-versions";
 import { ResponseView } from "@/components/responses/response-view";
 import { organizationCrumb } from "@/lib/app/navigation";
 import { isReleased } from "@/lib/dal/release";
-import { getResponse, listRequirementResponses, listResponseDocuments, listResponseVersions } from "@/lib/dal/responses";
+import { getLanguages } from "@/lib/dal/reference";
+import { getResponse, getResponseTerms, listRequirementResponses, listResponseDocuments, listResponseVersions } from "@/lib/dal/responses";
 import { requireOrgRole } from "@/lib/dal/session";
 import { formatDate } from "@/lib/i18n/format";
 import { employerNextSteps, employerStatusLabels, submissionsOpen } from "@/lib/responses/presentation";
@@ -46,11 +47,13 @@ export default async function RequirementResponsePage({ params }: PageProps<"/[l
   if (!parsedRequirement.success || !parsedResponse.success) notFound();
   const response = await getResponse(organization.id, parsedResponse.data);
   if (!response || response.requirementId !== parsedRequirement.data) notFound();
-  const [versions, documents, responses, messaging] = await Promise.all([
+  const [versions, documents, responses, messaging, termsById, languages] = await Promise.all([
     listResponseVersions(organization.id, response.id).catch(() => null),
     listResponseDocuments({ responseId: response.id }).catch(() => null),
     listRequirementResponses(organization.id, response.requirementId).catch(() => null),
     isReleased("release_messaging"),
+    getResponseTerms([response.id]),
+    getLanguages(),
   ]);
   // The comparison needs another response that is not withdrawn; when the list could not be read the link stays.
   const comparable = responses === null || responses.some((other) => other.id !== response.id && other.status !== "withdrawn");
@@ -145,7 +148,12 @@ export default async function RequirementResponsePage({ params }: PageProps<"/[l
         ) : null}
       </section>
 
-      <ResponseView response={response} view="employer" />
+      <ResponseView
+        response={response}
+        view="employer"
+        terms={termsById.get(response.id)}
+        languageNames={new Map(languages.map(({ code, name }) => [code, name]))}
+      />
 
       <section aria-labelledby="response-documents-heading" className="grid gap-3">
         <h2 id="response-documents-heading" className="text-h2">
