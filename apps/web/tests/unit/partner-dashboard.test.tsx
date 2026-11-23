@@ -78,6 +78,10 @@ const listing = (id: string, daysAgo: number): WorkforceListing => ({
   monthlyCapacity: 5,
   availableFrom: "2026-11-01",
   confirmedAt: new Date(Date.now() - daysAgo * DAY).toISOString(),
+  languageCode: null,
+  languageLevel: null,
+  minExperienceYears: null,
+  certificates: null,
 });
 
 type Options = { role?: MemberRole; aal?: string; type?: "recruitment_company" | "staffing_company" };

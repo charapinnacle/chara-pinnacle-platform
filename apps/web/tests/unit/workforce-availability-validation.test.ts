@@ -1,3 +1,4 @@
+import { emptySkills } from "@/lib/workforce/skills";
 import { describe, expect, it } from "vitest";
 import {
   freshnessLabel,
@@ -19,7 +20,7 @@ const form = listingFormSchema({
   maxDays: 730,
   today: "2026-10-26",
 });
-const input: ListingInput = { occupation: "7212", country: "ph", available: "120", monthlyCapacity: "40", availableFrom: "2027-03-01" };
+const input: ListingInput = { occupation: "7212", country: "ph", available: "120", monthlyCapacity: "40", availableFrom: "2027-03-01", ...emptySkills };
 const errorsOf = (value: ListingInput) => {
   const result = form.safeParse(value);
   return result.success ? {} : Object.fromEntries(result.error.issues.map((issue) => [issue.path.join("."), issue.message]));

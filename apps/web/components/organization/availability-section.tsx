@@ -13,7 +13,8 @@ import { useActionCall } from "@/components/feedback/use-action-call";
 import { ComboboxField } from "@/components/forms/combobox-field";
 import { FormButton } from "@/components/forms/form-button";
 import { FormErrorSummary } from "@/components/forms/form-error-summary";
-import { InputField } from "@/components/forms/form-field";
+import { InputField, TextareaField } from "@/components/forms/form-field";
+import { SelectField } from "@/components/forms/select-field";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { ConfirmListing } from "@/components/organization/confirm-listing";
 import { deleteListing, saveListing } from "@/lib/actions/workforce-availability";
@@ -23,6 +24,7 @@ import type { WorkforceListing } from "@/lib/dal/workforce-availability";
 import { formatCount, formatDate } from "@/lib/i18n/format";
 import { toOptions } from "@/lib/reference-options";
 import { todayUtc } from "@/lib/validation/passport";
+import { cefrLevels, SKILL_CERTIFICATES_MAX, skillsText } from "@/lib/workforce/skills";
 import type { PartnerType } from "@/lib/validation/sign-up";
 import {
   freshnessLabel,
@@ -40,6 +42,10 @@ const ids = {
   available: "listing-available",
   monthlyCapacity: "listing-capacity",
   availableFrom: "listing-from",
+  languageCode: "listing-language",
+  languageLevel: "listing-language-level",
+  minExperienceYears: "listing-min-experience",
+  certificates: "listing-certificates",
 } as const;
 
 type AvailabilitySectionProps = {
@@ -51,6 +57,8 @@ type AvailabilitySectionProps = {
   // The occupations and source countries of the partner's own profile: a listing names one of each.
   occupations: ReferenceItem[];
   countries: ReferenceItem[];
+  // The languages a listing may name for its workers' level.
+  languages: ReferenceItem[];
   rules: AvailabilityRules;
   // The listings limit when it applies.
   prompt: UsagePrompt | null;
@@ -70,6 +78,7 @@ export function AvailabilitySection({
   listings,
   occupations,
   countries,
+  languages,
   rules,
   prompt,
   billingHref,
@@ -80,6 +89,13 @@ export function AvailabilitySection({
   const [deleting, setDeleting] = useState<WorkforceListing | null>(null);
   const occupationOf = (code: string) => occupations.find((item) => item.code === code)?.name ?? code;
   const countryOf = (code: string) => countries.find((item) => item.code === code)?.name ?? code;
+  const skillsOf = (listing: WorkforceListing) =>
+    skillsText({
+      language: listing.languageCode ? (languages.find((item) => item.code === listing.languageCode)?.name ?? listing.languageCode) : null,
+      languageLevel: listing.languageLevel,
+      minExperienceYears: listing.minExperienceYears,
+      certificates: listing.certificates,
+    });
   const nameOf = (listing: WorkforceListing) => `${occupationOf(listing.occupation)} from ${countryOf(listing.country)}`;
   const close = () => setEditing(null);
   const profileReady = occupations.length > 0 && countries.length > 0;
@@ -148,6 +164,7 @@ export function AvailabilitySection({
                     {formatCount(listing.available)} available, {formatCount(listing.monthlyCapacity)} per month, from{" "}
                     {formatDate(listing.availableFrom)}
                   </p>
+                  {skillsOf(listing) ? <p className="text-body break-words">{skillsOf(listing)}</p> : null}
                   <p className="text-small text-muted-foreground">{text}</p>
                   {canManage ? (
                     <div className="flex flex-wrap gap-2">
@@ -173,6 +190,7 @@ export function AvailabilitySection({
             listing={editing === "new" ? null : editing}
             occupations={occupations}
             countries={countries}
+            languages={languages}
             maxDays={rules.maxDays}
             name={editing === "new" ? null : nameOf(editing)}
             onClose={close}
@@ -201,6 +219,7 @@ type ListingFormProps = {
   listing: WorkforceListing | null;
   occupations: ReferenceItem[];
   countries: ReferenceItem[];
+  languages: ReferenceItem[];
   maxDays: number;
   name: string | null;
   onClose: () => void;
@@ -209,7 +228,7 @@ type ListingFormProps = {
 
 // A new listing chooses its occupation and source country from the profile; a saved one keeps them and changes its
 // numbers and date. A failed save keeps the dialog open with every value.
-function ListingForm({ slug, listing, occupations, countries, maxDays, name, onClose, onSaved }: ListingFormProps) {
+function ListingForm({ slug, listing, occupations, countries, languages, maxDays, name, onClose, onSaved }: ListingFormProps) {
   const form = useForm<ListingInput>({
     resolver: zodResolver(listingFormSchema({ occupations, countries, maxDays })),
     defaultValues: {
@@ -218,6 +237,10 @@ function ListingForm({ slug, listing, occupations, countries, maxDays, name, onC
       available: listing ? String(listing.available) : "",
       monthlyCapacity: listing ? String(listing.monthlyCapacity) : "",
       availableFrom: listing?.availableFrom ?? todayUtc(),
+      languageCode: listing?.languageCode ?? "",
+      languageLevel: listing?.languageLevel ?? "",
+      minExperienceYears: listing?.minExperienceYears == null ? "" : String(listing.minExperienceYears),
+      certificates: listing?.certificates ?? "",
     },
     shouldFocusError: false,
   });
@@ -292,6 +315,43 @@ function ListingForm({ slug, listing, occupations, countries, maxDays, name, onC
         description="An earlier date is saved as today."
         type="date"
       />
+      <fieldset className="grid gap-4">
+        <legend className="mb-1 text-small font-semibold">The workers&apos; skills (optional)</legend>
+        <div className="grid gap-4 sm:grid-cols-2 sm:items-start">
+          <ComboboxField
+            control={control}
+            name="languageCode"
+            id={ids.languageCode}
+            label="Language"
+            placeholder="Choose a language"
+            options={toOptions(languages)}
+            emptyText="No matching language"
+          />
+          <SelectField
+            control={control}
+            name="languageLevel"
+            id={ids.languageLevel}
+            label="Level, at least"
+            placeholder="Choose a level"
+            options={cefrLevels.map((level) => ({ value: level, label: level }))}
+          />
+        </div>
+        <InputField
+          control={control}
+          name="minExperienceYears"
+          id={ids.minExperienceYears}
+          label="Experience, at least (years)"
+          inputMode="numeric"
+          autoComplete="off"
+        />
+        <TextareaField
+          control={control}
+          name="certificates"
+          id={ids.certificates}
+          label="Certificates and tests"
+          description={`For example "ISO 9606-1 welders, 3G and 6G, trade-tested". Up to ${formatCount(SKILL_CERTIFICATES_MAX)} characters.`}
+        />
+      </fieldset>
       <div className="grid gap-3 sm:grid-cols-2">
         <FormButton type="button" variant="secondary" disabled={formState.isSubmitting} onClick={onClose}>
           Cancel
