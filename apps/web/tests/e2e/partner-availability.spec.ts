@@ -60,7 +60,7 @@ test.describe("Workforce availability (FR-K3)", () => {
     const secret = await enrollTotp(user);
     await signInAtAal2(page, user, secret, `/en/org/${slug}/workforce-profile`);
 
-    const section = page.getByRole("region", { name: "Availability" });
+    const section = page.getByRole("region", { name: "Available workforce" });
     await expect(section.getByRole("heading", { name: "No availability listed yet" })).toBeVisible();
     await expectAccessibleAtBothWidths(page);
 
@@ -127,7 +127,7 @@ test.describe("Workforce availability (FR-K3)", () => {
     const secret = await enrollTotp(user);
     await signInAtAal2(page, user, secret, `/en/org/${slug}/workforce-profile`);
 
-    const section = page.getByRole("region", { name: "Availability" });
+    const section = page.getByRole("region", { name: "Recruiting capacity" });
     const items = section.getByRole("listitem");
     await expect(items).toHaveCount(2);
     const stale = items.filter({ hasText: "Plumbers and pipe fitters, Nepal" });
@@ -159,8 +159,8 @@ test.describe("Workforce availability (FR-K3)", () => {
     await due.getByRole("button", { name: "Edit the listing for Welders and flame cutters from Philippines" }).click();
     const edit = page.getByRole("dialog", { name: "Edit the listing" });
     await expect(edit).toContainText("Welders and flame cutters from Philippines");
-    await expect(edit.getByLabel("Workers available now")).toHaveValue("60");
-    await edit.getByLabel("Workers available now").fill("75");
+    await expect(edit.getByLabel("Candidates ready to present")).toHaveValue("60");
+    await edit.getByLabel("Candidates ready to present").fill("75");
     await pickDate(edit.getByLabel("Available from"), inDays(800));
     await edit.getByRole("button", { name: "Save listing" }).click();
     await expect(edit.getByText("Choose a date up to 730 days ahead.").first()).toBeVisible();
@@ -173,10 +173,10 @@ test.describe("Workforce availability (FR-K3)", () => {
       execute(`grant execute on function public.update_workforce_availability(uuid, integer, integer, date) to authenticated`);
     }
     await expect(edit).toBeVisible();
-    await expect(edit.getByLabel("Workers available now")).toHaveValue("75");
+    await expect(edit.getByLabel("Candidates ready to present")).toHaveValue("75");
     await edit.getByRole("button", { name: "Save listing" }).click();
     await expect(page.getByText("Listing saved", { exact: true })).toBeVisible();
-    await expect(due).toContainText("75 available, 30 per month");
+    await expect(due).toContainText("75 candidates ready, 30 per month");
     await expect(due).toContainText("Confirmed today.");
     expect(listings(id).find((row) => row.source_country === "PH")).toMatchObject({ available: 75, available_from: inDays(30) });
 
@@ -204,7 +204,7 @@ test.describe("Workforce availability (FR-K3)", () => {
     const path = `/en/org/${slug}/workforce-profile`;
     await signInAtAal1(page, member, path);
 
-    const section = page.getByRole("region", { name: "Availability" });
+    const section = page.getByRole("region", { name: "Available workforce" });
     await expect(section.getByRole("listitem")).toContainText("Confirmed 3 days ago");
     await expect(section.getByRole("button")).toHaveCount(0);
     await expectAccessibleAtBothWidths(page);
@@ -262,7 +262,7 @@ test.describe("Workforce availability (FR-K3)", () => {
     const { user, id, slug } = await partnerWithCompany("recruitment_company");
     const secret = await enrollTotp(user);
     await signInAtAal2(page, user, secret, `/en/org/${slug}/workforce-profile`);
-    const section = page.getByRole("region", { name: "Availability" });
+    const section = page.getByRole("region", { name: "Recruiting capacity" });
     await expect(section).toContainText("Add them above first.");
     await expect(section.getByRole("button", { name: "Add a listing" })).toHaveCount(0);
 

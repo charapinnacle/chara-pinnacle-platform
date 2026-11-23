@@ -254,11 +254,14 @@ export default async function WorkforceProfilePage({ params, searchParams }: Pag
       <section aria-labelledby="availability-heading" className="grid gap-6">
         <div className="grid gap-2">
           <h2 id="availability-heading" className="text-h2">
-            Availability
+            {partnerType === "recruitment_company" ? "Recruiting capacity" : "Available workforce"}
           </h2>
           <p className="text-body text-muted-foreground">
-            The workers you can supply per occupation and source country. Once your company is listed, signed-in users see
-            each listing confirmed within the last {formatCount(availabilityRules.staleDays)} days.
+            {partnerType === "recruitment_company"
+              ? "The candidates you can put forward and recruit per occupation and source country."
+              : "The workers on your payroll you can supply per occupation and source country."}{" "}
+            Once your company is listed, signed-in users see each listing confirmed within the last{" "}
+            {formatCount(availabilityRules.staleDays)} days.
           </p>
         </div>
         <Suspense fallback={<LoadingSkeleton rows={2} />}>

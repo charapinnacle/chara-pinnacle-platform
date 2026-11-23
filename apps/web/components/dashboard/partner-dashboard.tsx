@@ -68,7 +68,7 @@ type PartnerDashboardProps = {
 // The way each partner type adds to its capacity (spec §30): Update Workforce Capacity for a recruitment company, Add
 // Workforce for a staffing company. Both open the availability of the workforce profile, where listings are added.
 const capacityAction = {
-  recruitment_company: "Update workforce capacity",
+  recruitment_company: "Update recruiting capacity",
   staffing_company: "Add workforce",
 } as const satisfies Record<PartnerType, string>;
 

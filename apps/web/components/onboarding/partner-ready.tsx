@@ -49,6 +49,8 @@ type PartnerReadyStepProps = {
   message: string | null;
   // A staffing company's available workforce (FR-K3), listed before it submits: occupations, numbers and source countries.
   availability?: React.ReactNode;
+  // A staffing company needs a current agency licence and a listing before it submits (private.partner_profile_missing).
+  staffing: boolean;
 };
 
 // Ready, the last step of partner onboarding (FR-J1 AC10, AC11): what staff check, how long it takes, and the submission
@@ -62,6 +64,7 @@ export function PartnerReadyStep({
   infoStep,
   message,
   availability,
+  staffing,
 }: PartnerReadyStepProps) {
   const reopen = infoStep ? reopenLinks[infoStep](lang, organization.slug) : null;
   return (
@@ -98,6 +101,7 @@ export function PartnerReadyStep({
             <p className="text-body text-muted-foreground">
               The workers you can supply now, per occupation and source country, for example 40 welders from the Philippines.
               Employers find you by them. You can change them any time on your workforce profile.
+              {staffing ? " List at least one group before you submit." : null}
             </p>
           </div>
           {availability}
@@ -106,8 +110,9 @@ export function PartnerReadyStep({
       <Card padding="lg" elevated className="gap-5">
         <ReviewChecks id="review-checks" />
         <p className="text-body">
-          Licences are optional before you submit. Add the licence or registration you hold for each country where you work
-          on your workforce profile, so our team can check it in the review.{" "}
+          {staffing
+            ? "A staffing company needs at least one current agency licence before it submits: the permit that lets you lease workers to employers, such as a German temporary agency work permit. Add it on your workforce profile."
+            : "Licences are optional before you submit. Add the licence or registration you hold for each country where you work on your workforce profile, so our team can check it in the review."}{" "}
           <TextLink href={licencesPath(lang, organization.slug)}>Add your licences</TextLink>
         </p>
         {manager ? (

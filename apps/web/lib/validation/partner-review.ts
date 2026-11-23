@@ -74,6 +74,8 @@ export const missingFieldMessages: Readonly<Record<string, string>> = {
   recruitment_type: "Choose your recruitment type, then submit again.",
   staffing_types: "Choose at least one staffing type, then submit again.",
   employer_pays_commitment: "The owner needs to accept the current employer-pays commitment, then submit again.",
+  agency_licence: "Add a current agency licence, such as a temporary agency work permit, then submit again.",
+  workforce_listing: "List at least one group of workers you can supply, then submit again.",
 };
 
 // The staff decisions on a partner in the queue (FR-J4 AC3), as admin_decide_partner names them.

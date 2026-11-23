@@ -1,5 +1,5 @@
 begin;
-select plan(41);
+select plan(44);
 
 \ir organizations_fixture.inc
 
@@ -203,8 +203,21 @@ select pg_temp.complete(:'by_admin');
 select is(pg_temp.submit(:'ad', :'by_admin') || ',' || pg_temp.state(:'by_admin') || ',' || pg_temp.audits(:'by_admin'),
   'ok,pending_review|true|-,' || :'ad' || ':onboarding>pending_review',
   'AC10: an admin at aal2 may submit');
+select is(pg_temp.submit(:'ow3', :'staffing'), 'P0001|CHARA_PROFILE_INCOMPLETE|agency_licence',
+  'a staffing company names a current agency licence before review');
+insert into public.partner_licences (organization_id, country_code, issuing_authority, licence_number, valid_until,
+  confirmed_at, partner_terms_version)
+values (:'staffing', 'DE', 'Agentur fuer Arbeit', 'AUEG-OLD', current_date - 1, now(), 1);
+select is(pg_temp.submit(:'ow3', :'staffing'), 'P0001|CHARA_PROFILE_INCOMPLETE|agency_licence', 'an expired licence does not count');
+insert into public.partner_licences (organization_id, country_code, issuing_authority, licence_number, valid_until,
+  confirmed_at, partner_terms_version)
+values (:'staffing', 'DE', 'Agentur fuer Arbeit', 'AUEG-2027', current_date + 365, now(), 1);
+select is(pg_temp.submit(:'ow3', :'staffing'), 'P0001|CHARA_PROFILE_INCOMPLETE|workforce_listing',
+  'and lists at least one group of available workers');
+insert into public.workforce_availability (organization_id, occupation_id, source_country, available, monthly_capacity, available_from)
+values (:'staffing', '7212', 'PH', 40, 10, current_date);
 select is(pg_temp.submit(:'ow3', :'staffing') || ',' || pg_temp.state(:'staffing'), 'ok,pending_review|true|-',
-  'a staffing company with a staffing type submits');
+  'a staffing company with a staffing type, a current licence and a listing submits');
 
 -- NFR-S8: a submission of one partner leaves the other untouched
 select is(pg_temp.state(:'rival') || '/' || pg_temp.audits(:'rival'), 'onboarding|null|-/', 'NFR-S8: the rival is still in onboarding');

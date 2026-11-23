@@ -41,6 +41,7 @@ describe("the review state of a partner (FR-J1, FR-J4)", () => {
 
   it("has a message for every field submit_partner_for_review may name", () => {
     expect(Object.keys(missingFieldMessages).sort()).toEqual([
+      "agency_licence",
       "employer_pays_commitment",
       "legal_entity_identifier",
       "occupations",
@@ -48,6 +49,7 @@ describe("the review state of a partner (FR-J1, FR-J4)", () => {
       "serves_market",
       "sources_from",
       "staffing_types",
+      "workforce_listing",
     ]);
   });
 });

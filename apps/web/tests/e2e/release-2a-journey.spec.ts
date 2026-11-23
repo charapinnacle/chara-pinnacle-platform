@@ -111,12 +111,12 @@ test.describe("release 2a journey (NFR-O4)", () => {
     await expect(page.getByText("Licence saved", { exact: true })).toBeVisible();
     await expect(licences.getByRole("listitem").filter({ hasText: "Philippines" })).toContainText(`DMW-${token}`);
 
-    const availability = page.getByRole("region", { name: "Availability" });
+    const availability = page.getByRole("region", { name: "Recruiting capacity" });
     await availability.getByRole("button", { name: "Add a listing" }).click();
     const listing = page.getByRole("dialog", { name: "Add a listing" });
     await pickWithKeys(page, "Occupation", "Electric", "Building and related electricians");
     await pickWithKeys(page, "Source country", "Phil", "Philippines");
-    await listing.getByLabel("Workers available now").fill("60");
+    await listing.getByLabel("Candidates ready to present").fill("60");
     await listing.getByLabel("Monthly capacity").fill("15");
     await pickDate(listing.getByLabel("Available from"), new Date(Date.now() + 14 * 86_400_000).toISOString().slice(0, 10));
     await listing.getByRole("button", { name: "Save listing" }).click();

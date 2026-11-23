@@ -348,7 +348,7 @@ const listing = (id: string, occupation: string, country: string, confirmedAt: s
 describe("the availability of the workforce profile page (FR-K3)", () => {
   it("AC1: shows the owner the empty state with the button that adds the first listing, and the staleness period", async () => {
     const html = await render();
-    expect(html).toContain(">Availability</h2>");
+    expect(html).toContain(">Available workforce</h2>");
     expect(html).toContain("signed-in users see each listing confirmed within the last 60 days");
     expect(html).toContain("No availability listed yet");
     expect(html).toMatch(/<button[^>]*>Add a listing<\/button>/);
@@ -366,7 +366,7 @@ describe("the availability of the workforce profile page (FR-K3)", () => {
     ]);
     const html = await render();
     expect(html).toMatch(/>Welders and flame cutters, Nepal<\/h3><span[^>]*>Hidden from search<\/span>/);
-    expect(html).toContain(">120 available, 40 per month, from 1 March 2027</p>");
+    expect(html).toContain(">120 candidates ready, 40 per month, from 1 March 2027</p>");
     expect(html).toMatch(/Confirmed 65 days ago, on [^<]+\. Confirm to show it again\.<\/p>/);
     expect(html).toMatch(/Confirmed 50 days ago, on [^<]+\. Confirm within 10 days to stay visible\.<\/p>/);
     expect(html).toContain(">Confirmed today.</p>");

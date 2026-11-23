@@ -133,7 +133,7 @@ export function AvailabilitySection({
             !canManage
               ? "Your owner or an administrator lists the workers your company can supply."
               : profileReady
-                ? "List how many workers you can supply now and each month, per occupation and source country."
+                ? words[partnerType].empty
                 : "A listing names one of the occupations you offer and one of the countries you source workers from. Add them above first."
           }
         >
@@ -161,7 +161,7 @@ export function AvailabilitySection({
                     {badge ? <StatusBadge status="warning">{badge}</StatusBadge> : null}
                   </div>
                   <p className="text-body">
-                    {formatCount(listing.available)} available, {formatCount(listing.monthlyCapacity)} per month, from{" "}
+                    {formatCount(listing.available)} {words[partnerType].line}, {formatCount(listing.monthlyCapacity)} per month, from{" "}
                     {formatDate(listing.availableFrom)}
                   </p>
                   {skillsOf(listing) ? <p className="text-body break-words">{skillsOf(listing)}</p> : null}
@@ -186,6 +186,7 @@ export function AvailabilitySection({
       <ModalDialog open={editing !== null} onClose={close} title={editing === "new" ? "Add a listing" : "Edit the listing"}>
         {editing ? (
           <ListingForm
+            partnerType={partnerType}
             slug={slug}
             listing={editing === "new" ? null : editing}
             occupations={occupations}
@@ -214,7 +215,27 @@ export function AvailabilitySection({
   );
 }
 
+// A recruitment company lists the candidates it can put forward and recruit per month; a staffing company the workers on its
+// own payroll it can supply. The listing is the same row either way.
+const words = {
+  recruitment_company: {
+    available: "Candidates ready to present",
+    availableHint: "Screened candidates you can put forward now.",
+    monthlyHint: "How many more candidates you can recruit each month.",
+    line: "candidates ready",
+    empty: "List how many candidates you can put forward now and recruit each month, per occupation and source country.",
+  },
+  staffing_company: {
+    available: "Workers available now",
+    availableHint: undefined,
+    monthlyHint: "How many more workers you can supply each month.",
+    line: "available",
+    empty: "List how many workers you can supply now and each month, per occupation and source country.",
+  },
+} as const satisfies Record<PartnerType, Record<string, string | undefined>>;
+
 type ListingFormProps = {
+  partnerType: PartnerType;
   slug: string;
   listing: WorkforceListing | null;
   occupations: ReferenceItem[];
@@ -228,7 +249,7 @@ type ListingFormProps = {
 
 // A new listing chooses its occupation and source country from the profile; a saved one keeps them and changes its
 // numbers and date. A failed save keeps the dialog open with every value.
-function ListingForm({ slug, listing, occupations, countries, languages, maxDays, name, onClose, onSaved }: ListingFormProps) {
+function ListingForm({ partnerType, slug, listing, occupations, countries, languages, maxDays, name, onClose, onSaved }: ListingFormProps) {
   const form = useForm<ListingInput>({
     resolver: zodResolver(listingFormSchema({ occupations, countries, maxDays })),
     defaultValues: {
@@ -294,7 +315,8 @@ function ListingForm({ slug, listing, occupations, countries, languages, maxDays
         control={control}
         name="available"
         id={ids.available}
-        label="Workers available now"
+        label={words[partnerType].available}
+        description={words[partnerType].availableHint}
         inputMode="numeric"
         autoComplete="off"
       />
@@ -303,7 +325,7 @@ function ListingForm({ slug, listing, occupations, countries, languages, maxDays
         name="monthlyCapacity"
         id={ids.monthlyCapacity}
         label="Monthly capacity"
-        description="How many more workers you can supply each month."
+        description={words[partnerType].monthlyHint}
         inputMode="numeric"
         autoComplete="off"
       />

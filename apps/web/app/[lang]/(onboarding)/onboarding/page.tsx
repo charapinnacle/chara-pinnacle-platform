@@ -459,6 +459,7 @@ async function PartnerNextStep({ lang, aal, organization, countries, industries,
       infoStep={reopened === undefined ? null : review.infoStep}
       message={outcome?.decision === "request_info" ? outcome.reason : null}
       availability={availability}
+      staffing={organization.type === "staffing_company"}
     />
   );
 }
