@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { SuspendedOrganization } from "@/components/layout/suspended-organization";
 import { RequirementForm } from "@/components/requirements/requirement-form";
 import { organizationCrumb } from "@/lib/app/navigation";
-import { getCountries, getCurrencies, getIndustries, getOccupations } from "@/lib/dal/reference";
+import { getAgencyWorkRules, getCountries, getCurrencies, getIndustries, getOccupations } from "@/lib/dal/reference";
 import { isReleased } from "@/lib/dal/release";
 import { requireOrgRole } from "@/lib/dal/session";
 import { getMultiCountryPlan } from "@/lib/dal/requirements";
@@ -21,11 +21,12 @@ export default async function NewRequirementPage({ params }: PageProps<"/[lang]/
   const { user, organization } = await requireOrgRole(lang, slug, "admin", { hideFromOutsiders: true, partner: "either" });
   if (organization.type !== "employer") notFound();
   if (organization.suspended) return <SuspendedOrganization title="Post workforce requirement" subject="workforce requirements" />;
-  const [occupations, industries, countries, currencies, multiCountry] = await Promise.all([
+  const [occupations, industries, countries, currencies, agencyWorkRules, multiCountry] = await Promise.all([
     getOccupations(),
     getIndustries(),
     getCountries(),
     getCurrencies(),
+    getAgencyWorkRules(),
     getMultiCountryPlan(organization.id),
   ]);
 
@@ -53,6 +54,7 @@ export default async function NewRequirementPage({ params }: PageProps<"/[lang]/
         currencies={currencies}
         multiCountry={multiCountry}
         billingHref={billingPath(lang, slug)}
+        agencyWorkRules={agencyWorkRules}
       />
     </div>
   );

@@ -5,7 +5,20 @@ export type Database = {
   
   "public": {
           Tables: {
-            "appeals": {
+            "agency_work_rules": {
+                  Row: {
+                    "created_at": string,"destination_country": string,"id": number,"non_eu_workers_only": boolean,"notice": string,"reviewed_on": string,"source_url": string,"title": string
+                  }
+                  Insert: {
+                    "created_at"?: string,"destination_country": string,"id"?: never,"non_eu_workers_only"?: boolean,"notice": string,"reviewed_on": string,"source_url": string,"title": string
+                  }
+                  Update: {
+                    "created_at"?: string,"destination_country"?: string,"id"?: never,"non_eu_workers_only"?: boolean,"notice"?: string,"reviewed_on"?: string,"source_url"?: string,"title"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"appeals": {
                   Row: {
                     "appellant_user_id": string | null,"decided_at": string | null,"decided_by": string | null,"due_at": string,"grounds": string,"id": number,"lodged_at": string,"moderation_action_id": number,"organization_id": string | null,"reasons": string | null,"reversal_action_id": number | null,"status": Database["public"]['Enums']["appeal_status"]
                   }
@@ -3262,7 +3275,7 @@ isOneToOne: false
                            },
 "search_available_workforce":
 { Args: { "p_cursor"?: string,"p_destination": string,"p_limit"?: number,"p_occupation": string,"p_within_days": number,"p_workers_needed": number }; Returns: {
-              "available_now": number,"confirmed_at": string,"display_name": string,"id": string,"listings": Json,"next_cursor": string,"organization_type": Database["public"]['Enums']["organization_type"],"slug": string,"supply": number
+              "available_now": string,"confirmed_at": string,"display_name": string,"id": string,"listings": Json,"next_cursor": string,"organization_type": Database["public"]['Enums']["organization_type"],"slug": string,"supply": string
             }[]
                            },
 "search_employers":

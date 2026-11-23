@@ -17,7 +17,7 @@ type Row = Database["public"]["Functions"]["search_partners"]["Returns"][number]
 const namedSchema = z.array(z.object({ code: z.string(), name: z.string() }));
 const matchedSchema = z.array(z.enum(matchedFilterNames));
 const workforceSchema = z.array(
-  z.object({ code: z.string(), name: z.string(), available: z.number(), confirmed_at: z.string() }),
+  z.object({ code: z.string(), name: z.string(), available: z.string(), confirmed_at: z.string() }),
 );
 
 export type PartnerResult = {
@@ -31,7 +31,7 @@ export type PartnerResult = {
   mainOccupations: Named[];
   staffingTypes: Row["staffing_types"];
   // Null for a visitor: the capacity is for signed-in readers only (FR-K3 AC4).
-  availableWorkforce: { occupation: string; available: number; confirmedAt: string }[] | null;
+  availableWorkforce: { occupation: string; available: string; confirmedAt: string }[] | null;
   capacityConfirmedAt: string | null;
   matchedFilters: MatchedFilter[];
 };

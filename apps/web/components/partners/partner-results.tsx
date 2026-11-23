@@ -8,7 +8,7 @@ import { getConnectionStates } from "@/lib/dal/connections";
 import { searchPartners, type PartnerResult } from "@/lib/dal/partner-search";
 import { getCountries } from "@/lib/dal/reference";
 import { getCurrentUser } from "@/lib/dal/session";
-import { formatCount, formatDate } from "@/lib/i18n/format";
+import { formatDate } from "@/lib/i18n/format";
 import { viewerOf, type Viewer } from "@/lib/jobs/viewer";
 import type { Named } from "@/lib/partners/profile";
 import {
@@ -80,7 +80,7 @@ function PartnerCard({ lang, kind, partner, basedIn, viewer, connection }: CardP
           <ul aria-label={`Available workforce of ${partner.displayName}`} className="grid gap-0.5 text-body">
             {partner.availableWorkforce.map((item) => (
               <li key={item.occupation} className="break-words">
-                {item.occupation}: {formatCount(item.available)} available, confirmed{" "}
+                {item.occupation}: {item.available} available, confirmed{" "}
                 <time dateTime={item.confirmedAt}>{formatDate(item.confirmedAt)}</time>
               </li>
             ))}

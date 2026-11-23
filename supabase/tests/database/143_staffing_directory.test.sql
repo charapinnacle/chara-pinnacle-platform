@@ -286,10 +286,10 @@ select is(
 );
 select is(pg_temp.search(:'wrk', '''staffing'''), 'ok', 'a signed-in reader, a staffing company with a stale listing');
 select is(
-  (select jsonb_agg(jsonb_build_object('code', w ->> 'code', 'name', w ->> 'name', 'available', (w ->> 'available')::integer))
+  (select jsonb_agg(jsonb_build_object('code', w ->> 'code', 'name', w ->> 'name', 'available', w ->> 'available'))
    from jsonb_array_elements(pg_temp.result() -> 0 -> 'available_workforce') w),
-  '[{"code": "7212", "name": "Welders and flame cutters", "available": 150}]'::jsonb,
-  'FR-L2 AC7: only the fresh 7212 listings (both source countries summed), never the stale 7214 one'
+  '[{"code": "7212", "name": "Welders and flame cutters", "available": "100–249"}]'::jsonb,
+  'FR-L2 AC7: only the fresh 7212 listings (both source countries summed, 150 as a range), never the stale 7214 one'
 );
 select is((pg_temp.result() -> 0 -> 'available_workforce' -> 0 ->> 'confirmed_at')::timestamptz, now() - interval '10 days',
   'FR-L2 AC6: the occupation carries its latest confirmation');
@@ -363,12 +363,12 @@ select is(pg_temp.slugs(), 'k3a7-m,k3a7-a,k3a7-h,k3a7-b',
 select is(
   (select string_agg(format('%s=%s/%s', e ->> 'slug', e ->> 'supply', e ->> 'available_now'), ',' order by n)
    from jsonb_array_elements(pg_temp.result()) with ordinality r (e, n)),
-  'k3a7-m=114/110,k3a7-a=200/120,k3a7-h=152/150,k3a7-b=120/60',
-  'FR-K3 AC7: supply is the workers available plus the monthly capacity pro rata, summed over the source countries'
+  'k3a7-m=100–249/100–249,k3a7-a=100–249/100–249,k3a7-h=100–249/100–249,k3a7-b=100–249/50–99',
+  'FR-K3 AC7: the supply (114, 200, 152, 120) and the workers available now (110, 120, 150, 60) come back as ranges'
 );
 select is(pg_temp.row_of('k3a7-a') -> 'listings',
-  jsonb_build_array(jsonb_build_object('source_country', 'PH', 'source_country_name', 'Philippines', 'available', 120,
-    'monthly_capacity', 40, 'available_from', current_date, 'confirmed_at', now() - interval '5 days')),
+  jsonb_build_array(jsonb_build_object('source_country', 'PH', 'source_country_name', 'Philippines', 'available', '100–249',
+    'monthly_capacity', '25–49', 'available_from', current_date, 'confirmed_at', now() - interval '5 days')),
   'FR-K3 AC7: each row carries its listings with the date of last confirmation');
 select is(pg_temp.row_of('k3a7-h') ->> 'organization_type', 'recruitment_company',
   'FR-K3 AC7: a listed recruitment company with a fitting listing is a partner too');

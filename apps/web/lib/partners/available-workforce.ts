@@ -25,8 +25,8 @@ export type AvailableWorkforceInput = z.input<typeof availableWorkforceSchema>;
 
 export type WorkforceListing = {
   sourceCountry: string;
-  available: number;
-  monthlyCapacity: number;
+  available: string;
+  monthlyCapacity: string;
   availableFrom: string;
   confirmedAt: string;
 };
@@ -36,8 +36,8 @@ export type WorkforceSupplier = {
   slug: string;
   displayName: string;
   recruitmentCompany: boolean;
-  supply: number;
-  availableNow: number;
+  supply: string;
+  availableNow: string;
   listings: WorkforceListing[];
 };
 

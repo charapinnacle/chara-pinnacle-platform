@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { AgencyWorkNotice } from "@/components/compliance/agency-work-notice";
 import { LoadingSkeleton } from "@/components/feedback/loading-skeleton";
 import { Notice } from "@/components/forms/notice";
 import { TextLink } from "@/components/forms/text-link";
@@ -9,8 +10,9 @@ import { PageHeader } from "@/components/layout/page-header";
 import { AvailableWorkforceSearch } from "@/components/partners/available-workforce-search";
 import { PartnerResults } from "@/components/partners/partner-results";
 import { PartnerSearchForm } from "@/components/partners/partner-search-form";
+import { agencyWorkRulesFor } from "@/lib/compliance/agency-work";
 import { isEmployerMember } from "@/lib/dal/organizations";
-import { getCountries, getIndustries, getLanguages, getOccupations } from "@/lib/dal/reference";
+import { getAgencyWorkRules, getCountries, getIndustries, getLanguages, getOccupations } from "@/lib/dal/reference";
 import { isReleased } from "@/lib/dal/release";
 import { parsePartnerSearchParams, partnerSearchQuery, usesAdvancedFilters } from "@/lib/partners/search-params";
 import { RANKING_PATH } from "@/lib/public/navigation";
@@ -27,12 +29,13 @@ export async function generateMetadata({ params }: PageProps<"/[lang]/partners/s
 export default async function StaffingPartnersPage({ params, searchParams }: PageProps<"/[lang]/partners/staffing">) {
   const [{ lang }, rawParams] = await Promise.all([params, searchParams]);
   if (!(await isReleased("release_partner_directories"))) notFound();
-  const [occupations, industries, countries, languages, employer] = await Promise.all([
+  const [occupations, industries, countries, languages, employer, agencyRules] = await Promise.all([
     getOccupations(),
     getIndustries(),
     getCountries(),
     getLanguages(),
     isEmployerMember(),
+    getAgencyWorkRules(),
   ]);
   const { filters, errors } = parsePartnerSearchParams(rawParams, "staffing");
   const ignored = Object.values(errors);
@@ -71,6 +74,7 @@ export default async function StaffingPartnersPage({ params, searchParams }: Pag
         languages={languages}
         advancedOpen={usesAdvancedFilters(filters)}
       />
+      <AgencyWorkNotice rules={agencyWorkRulesFor(agencyRules, filters.destination)} />
       <Suspense key={partnerSearchQuery(filters)} fallback={<LoadingSkeleton rows={5} />}>
         <PartnerResults lang={lang} kind="staffing" filters={filters} />
       </Suspense>

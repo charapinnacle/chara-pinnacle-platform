@@ -15,7 +15,8 @@ import { getContactEmployer } from "@/lib/dal/connection-actions";
 import { getProfileConnection } from "@/lib/dal/connections";
 import { getInviteChoices } from "@/lib/dal/invitations";
 import { getPartnerProfile } from "@/lib/dal/partner-profile";
-import { getCountries, getOccupations } from "@/lib/dal/reference";
+import { getAgencyWorkRules, getCountries, getOccupations } from "@/lib/dal/reference";
+import { outsideFreeMovement } from "@/lib/compliance/agency-work";
 import { isReleased } from "@/lib/dal/release";
 import { getCurrentUser } from "@/lib/dal/session";
 import { loginPath, mfaPath, partnerProfilePath, reportPath, workforceProfilePath } from "@/lib/routes";
@@ -98,7 +99,12 @@ export default async function PartnerProfilePage({ params, searchParams }: PageP
   const employer =
     connection?.id && connection.access.kind === "signed_in" ? await getContactEmployer(connection.access.saveFor) : null;
   const staffing = employer?.manager && offersStaffing(profile.type, profile.serviceTypes) && (await isReleased("release_job_orders"));
-  const [occupations, countries] = staffing ? await Promise.all([getOccupations(), getCountries()]) : [[], []];
+  const [occupations, countries, agencyRules] = staffing
+    ? await Promise.all([getOccupations(), getCountries(), getAgencyWorkRules()])
+    : [[], [], []];
+  // A rule about non-EU workers matters unless every country this partner sources from is inside free movement.
+  const nonEuWorkers = profile.sourceCountries.length === 0 || profile.sourceCountries.some(({ code }) => outsideFreeMovement(code));
+  const agencyWorkRules = agencyRules.filter((rule) => nonEuWorkers || !rule.nonEuWorkersOnly);
   // The database refuses an owner or admin at aal1, and the redirect would drop what they typed, so they verify first.
   const stepUp = employer?.manager && user?.aal !== "aal2" ? mfaPath(lang, path) : null;
   const contact =
@@ -125,6 +131,7 @@ export default async function PartnerProfilePage({ params, searchParams }: PageP
             occupations={occupations.map(({ code, label }) => ({ value: code, label }))}
             countries={countries.map(({ code, name }) => ({ value: code, label: name }))}
             defaultDestination={employer.basedInCountry}
+            agencyWorkRules={agencyWorkRules}
           />
         ) : null}
       </div>

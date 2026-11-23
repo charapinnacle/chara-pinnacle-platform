@@ -6,6 +6,7 @@ import { Plus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm, useWatch, type FieldErrors, type FieldPath, type FieldValues } from "react-hook-form";
+import { AgencyWorkNotice } from "@/components/compliance/agency-work-notice";
 import { toast, toastError } from "@/components/feedback/toast-store";
 import { CheckboxField } from "@/components/forms/checkbox-field";
 import { ComboboxField } from "@/components/forms/combobox-field";
@@ -17,6 +18,7 @@ import { SelectField } from "@/components/forms/select-field";
 import { summaryItems } from "@/components/forms/summary-items";
 import { LegalLink, TextLink, textLinkVariants } from "@/components/forms/text-link";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
+import { agencyWorkRulesFor, type AgencyWorkRule } from "@/lib/compliance/agency-work";
 import { saveRequirement } from "@/lib/actions/requirements";
 import type { OccupationItem, ReferenceItem } from "@/lib/dal/reference";
 import type { MultiCountryPlan } from "@/lib/dal/requirements";
@@ -48,6 +50,8 @@ type RequirementFormProps = {
   // plan, for an owner or admin.
   multiCountry: MultiCountryPlan;
   billingHref: string;
+  // The agency-work rules of the destination countries, shown once the employer asks for staffing companies.
+  agencyWorkRules: readonly AgencyWorkRule[];
   // expectedUpdatedAt is the version the page was loaded with; a save from an older one is refused.
   // status names the next step in the plan notice: a draft is published, a paused requirement reopened.
   edit?: { requirementId: string; values: RequirementFormInput; expectedUpdatedAt: string; status: Database["public"]["Enums"]["requirement_status"] };
@@ -98,6 +102,7 @@ export function RequirementForm({
   currencies,
   multiCountry,
   billingHref,
+  agencyWorkRules,
   edit,
 }: RequirementFormProps) {
   const form = useForm<RequirementFormInput, unknown, RequirementFormValues>({
@@ -121,6 +126,14 @@ export function RequirementForm({
   const countryOptions = useMemo(() => toOptions(countries), [countries]);
   const countryName = useMemo(() => new Map(countries.map(({ code, name }) => [code, name])), [countries]);
   const destinations = useWatch({ control, name: "destinations" });
+  const mainCountry = useWatch({ control, name: "country" });
+  const partnerNeed = useWatch({ control, name: "partnerNeed" });
+  const staffingRules =
+    partnerNeed === "staffing" || partnerNeed === "both"
+      ? [mainCountry, ...destinations.map((row) => row.country)].flatMap((country, index, all) =>
+          all.indexOf(country) === index ? agencyWorkRulesFor(agencyWorkRules, country) : [],
+        )
+      : [];
   const destinationName = (index: number) =>
     countryName.get(destinations[index]?.country ?? "") ?? `destination country ${index + 1}`;
   const [occupationKeys, setOccupationKeys] = useState(() => rowKeys(rows.length));
@@ -513,6 +526,7 @@ export function RequirementForm({
           placeholder="Choose an answer"
           options={partnerNeedOptions}
         />
+        <AgencyWorkNotice rules={staffingRules} />
       </fieldset>
 
       <div className="grid gap-3">

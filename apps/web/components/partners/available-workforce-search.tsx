@@ -56,7 +56,7 @@ function ListingLine({ listing, now }: { listing: WorkforceListing; now: Date })
   const from = new Date(`${listing.availableFrom}T00:00:00Z`) > now ? `, from ${formatDate(listing.availableFrom)}` : ", available now";
   return (
     <li>
-      {listing.sourceCountry}: {formatCount(listing.available)} available, {formatCount(listing.monthlyCapacity)} per month{from}.{" "}
+      {listing.sourceCountry}: {listing.available} available, {listing.monthlyCapacity} per month{from}.{" "}
       <span className="text-muted-foreground">
         <time dateTime={listing.confirmedAt}>{confirmedAgo(listing.confirmedAt, now)}</time>
       </span>
@@ -76,7 +76,7 @@ function SupplierCard({ lang, supplier, now }: { lang: string; supplier: Workfor
       </h3>
       {supplier.recruitmentCompany ? <p className="text-small text-muted-foreground">Recruitment company</p> : null}
       <p className="text-body">
-        {formatCount(supplier.availableNow)} available now, {formatCount(supplier.supply)} within the timeframe
+        {supplier.availableNow} available now, {supplier.supply} within the timeframe
       </p>
       <ul className="grid gap-1 text-body">
         {supplier.listings.map((listing) => (

@@ -13,7 +13,7 @@ type Named = { code: string; name: string };
 // workers summed over its source countries, the latest available-from and confirmation among them; null without one.
 export type OccupationCoverage = Named & {
   quantity: number;
-  available: number | null;
+  available: string | null;
   availableFrom: string | null;
   confirmedAt: string | null;
 };
@@ -81,7 +81,7 @@ function coverageText(occupations: readonly OccupationCoverage[]): string | null
   if (listed.length === 0) return null;
   const several = occupations.length > 1;
   const counted = listed.map(
-    (item) => `${formatCount(item.available)}${several ? ` ${item.name}` : ""} available from ${formatDate(item.availableFrom)}`,
+    (item) => `${item.available}${several ? ` ${item.name}` : ""} available from ${formatDate(item.availableFrom)}`,
   );
   const missing = occupations.filter(({ available }) => available === null).map(({ name }) => name);
   return [...counted, ...(missing.length > 0 ? [`no listing for ${listFormat.format(missing)}`] : [])].join("; ");
