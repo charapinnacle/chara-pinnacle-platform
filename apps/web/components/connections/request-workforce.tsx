@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
+import { AgencyWorkNotice } from "@/components/compliance/agency-work-notice";
 import { ModalDialog } from "@/components/feedback/modal-dialog";
 import { toast } from "@/components/feedback/toast-store";
 import { ComboboxField } from "@/components/forms/combobox-field";
@@ -12,6 +13,7 @@ import { FormErrorSummary } from "@/components/forms/form-error-summary";
 import { InputField, TextareaField } from "@/components/forms/form-field";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { requestWorkforce } from "@/lib/actions/connection-actions";
+import { agencyWorkRulesFor, type AgencyWorkRule } from "@/lib/compliance/agency-work";
 import { characterCount } from "@/lib/i18n/format";
 import { characters } from "@/lib/utils";
 import {
@@ -39,6 +41,8 @@ type RequestWorkforceProps = {
   occupations: readonly Option[];
   countries: readonly Option[];
   defaultDestination: string;
+  // The agency-work rules that may concern this partner's workers; the dialog shows those of the country of work chosen.
+  agencyWorkRules: readonly AgencyWorkRule[];
 };
 
 // "Request workforce" on the public profile of a staffing partner, for an employer's owners and admins (FR-P2 AC3, AC9;
@@ -65,6 +69,7 @@ function RequestForm({
   occupations,
   countries,
   defaultDestination,
+  agencyWorkRules,
   onClose,
 }: RequestWorkforceProps & { onClose: () => void }) {
   const router = useRouter();
@@ -77,6 +82,7 @@ function RequestForm({
   const { control, formState, handleSubmit } = form;
   const { summaryRef, submit } = useServerFormSubmit(form, { failureTitle: "The workforce request was not sent" });
   const length = characters(useWatch({ control, name: "body" }));
+  const destination = useWatch({ control, name: "destination" });
 
   function onSubmit(values: WorkforceRequestFormOutput) {
     return submit(
@@ -119,6 +125,7 @@ function RequestForm({
         options={countries}
         emptyText="No matching country"
       />
+      <AgencyWorkNotice rules={agencyWorkRulesFor(agencyWorkRules, destination)} />
       <InputField control={control} name="cityRegion" id={IDS.cityRegion} label="City or region" maxLength={100} />
       <InputField control={control} name="startDate" id={IDS.startDate} label="Start date" type="date" />
       <TextareaField
