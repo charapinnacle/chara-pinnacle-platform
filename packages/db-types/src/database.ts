@@ -16,13 +16,7 @@ export type Database = {
                     "created_at"?: string,"destination_country"?: string,"id"?: never,"non_eu_workers_only"?: boolean,"notice"?: string,"reviewed_on"?: string,"source_url"?: string,"title"?: string
                   }
                   Relationships: [
-                    {
-      foreignKeyName: "agency_work_rules_destination_country_fkey"
-      columns: ["destination_country"]
-isOneToOne: false
-      referencedRelation: "countries"
-      referencedColumns: ["code"]
-    }
+                    
                   ]
                 },"appeals": {
                   Row: {

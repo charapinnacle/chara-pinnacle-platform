@@ -7,7 +7,9 @@
 -- They are general information, never legal advice: the page says so.
 create table public.agency_work_rules (
   id bigint generated always as identity primary key,
-  destination_country text not null references public.countries (code),
+  -- An ISO country code, not a foreign key: the countries are seeded after the migrations on a fresh database, and the
+  -- rules below are seeded here.
+  destination_country text not null check (destination_country ~ '^[A-Z]{2}$'),
   -- True when the rule concerns workers from outside the EU and the EEA only; the page then shows it only when such
   -- workers may be involved.
   non_eu_workers_only boolean not null default false,

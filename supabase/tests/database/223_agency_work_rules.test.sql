@@ -40,9 +40,9 @@ select throws_ok(
 );
 select throws_ok(
   $$insert into public.agency_work_rules (destination_country, title, notice, source_url, reviewed_on)
-    values ('ZZ', 'A rule', 'A notice of enough characters.', 'https://example.com', current_date)$$,
-  '23503', null,
-  'the destination is a country of the reference list'
+    values ('Germany', 'A rule', 'A notice of enough characters.', 'https://example.com', current_date)$$,
+  '23514', null,
+  'the destination is a two-letter country code'
 );
 
 select * from finish();
