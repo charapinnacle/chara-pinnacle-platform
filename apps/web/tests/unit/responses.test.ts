@@ -55,6 +55,7 @@ vi.mock("@/lib/dal/session", () => ({ requireOrgRole: requireOrgRoleMock, getCur
 vi.mock("@/lib/dal/release", () => ({ isReleased: releasedMock }));
 vi.mock("@/lib/dal/usage", () => ({ getUsagePrompts: promptsMock }));
 vi.mock("@/lib/dal/reference", () => ({ getCountries: countriesMock }));
+vi.mock("@/lib/dal/workforce-offer", () => ({ getPartnerKind: async () => "both" }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ rpc: rpcMock }) }));
 
 const { decideResponse, respondToRequirement, setCapacityTolerance, setResponseSubmissions, updateMyResponse, withdrawMyResponse } = await import(
@@ -62,7 +63,7 @@ const { decideResponse, respondToRequirement, setCapacityTolerance, setResponseS
 );
 
 const TODAY = "2026-10-17";
-const schema = responseFormSchema({ maxCapacity: 100, today: TODAY });
+const schema = responseFormSchema({ maxCapacity: 100, kind: "both", today: TODAY });
 const REQUIREMENT = "3f0c2a8e-7b1d-4c5e-9a2f-6d8b1e4c7a90";
 const RESPONSE = "5d6e7f80-9a1b-4c2d-8e3f-4a5b6c7d8e9f";
 const PARTNER = { id: "8a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d", slug: "p1", type: "recruitment_company", role: "member", suspended: false };
@@ -85,6 +86,7 @@ const valid: ResponseFormInput = {
   feeIncludes: ["trade_test", "flights"],
   guaranteeDays: "90",
   leadTimeWeeks: "16",
+  assignmentWeeks: "",
 };
 
 function errorsFor(values: Partial<Record<keyof ResponseFormInput, unknown>>, options = schema): Record<string, string> {
@@ -107,10 +109,10 @@ describe("the response form schema (FR-O2 AC2)", () => {
   it("keeps the capacity within the employer's tolerance (AC4), but keeps an unchanged one on edit", () => {
     expect(errorsFor({ capacity: "100" }).capacity).toBeUndefined();
     expect(errorsFor({ capacity: "101" }).capacity).toBe("You can offer at most 100 workers.");
-    const tolerant = responseFormSchema({ maxCapacity: 110, today: TODAY });
+    const tolerant = responseFormSchema({ maxCapacity: 110, kind: "both", today: TODAY });
     expect(errorsFor({ capacity: "110" }, tolerant).capacity).toBeUndefined();
     expect(errorsFor({ capacity: "111" }, tolerant).capacity).toBe("You can offer at most 110 workers.");
-    const kept = responseFormSchema({ maxCapacity: 90, today: TODAY, kept: { capacity: 95, availableFrom: "2026-10-01" } });
+    const kept = responseFormSchema({ maxCapacity: 90, kind: "both", today: TODAY, kept: { capacity: 95, availableFrom: "2026-10-01" } });
     expect(errorsFor({ capacity: "95", availableFrom: "2026-10-01" }, kept)).toEqual({});
     expect(errorsFor({ capacity: "96" }, kept).capacity).toBe("You can offer at most 90 workers.");
   });
@@ -148,7 +150,7 @@ describe("the response form schema (FR-O2 AC2)", () => {
     expect(errorsFor({ feeAmount: "-1" }).feeAmount).toBeDefined();
     expect(errorsFor({ feeAmount: "10000000" }).feeAmount).toBe("The amount cannot be more than 9,999,999.99.");
     expect(errorsFor({ feeAmount: "15.555" }).feeAmount).toBeDefined();
-    expect(errorsFor({ feeModel: "hourly_rate", feeAmount: "18.50", feeCurrency: "usd" })).toEqual({});
+    expect(errorsFor({ feeModel: "hourly_rate", feeAmount: "18.50", feeCurrency: "usd", assignmentWeeks: "26" })).toEqual({});
     const percent = { feeModel: "percent_first_year_salary", feeCurrency: "" };
     expect(errorsFor({ ...percent, feeAmount: "12.5" })).toEqual({});
     expect(errorsFor({ ...percent, feeAmount: "0" }).feeAmount).toBe(PERCENT_RANGE);

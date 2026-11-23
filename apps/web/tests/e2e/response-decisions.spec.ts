@@ -29,6 +29,7 @@ const ROWS = [
   "Fee",
   "The fee includes",
   "Guarantee",
+  "Assignment",
   "Lead time",
   "Language",
   "Experience, at least",

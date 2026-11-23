@@ -23,7 +23,25 @@ export const feeModels = [
   "on_request",
 ] as const satisfies readonly FeeModel[];
 
-// Decision 3.3: every fee model is offered to both partner types (FR-O2 open point).
+// A recruitment company quotes a placement fee, a staffing company a rate; one that does both quotes either. Mirrors
+// private.partner_fee_models, which refuses the others.
+export type PartnerKind = "recruitment" | "staffing" | "both";
+
+export const feeModelsByKind: Record<PartnerKind, readonly FeeModel[]> = {
+  recruitment: ["fee_per_hire", "percent_first_year_salary", "on_request"],
+  staffing: ["hourly_rate", "monthly_rate", "on_request"],
+  both: feeModels,
+};
+
+// The term a fee needs, as private.response_terms_needed: a guarantee with a placement fee, the assignment length with a
+// rate; on request asks for the one of the partner's kind.
+export function termNeeded(kind: PartnerKind, fee: FeeModel | ""): "guaranteeDays" | "assignmentWeeks" | null {
+  if (fee === "fee_per_hire" || fee === "percent_first_year_salary") return "guaranteeDays";
+  if (fee === "hourly_rate" || fee === "monthly_rate") return "assignmentWeeks";
+  if (fee === "on_request" && kind !== "both") return kind === "recruitment" ? "guaranteeDays" : "assignmentWeeks";
+  return null;
+}
+
 export const feeModelLabels: Record<FeeModel, string> = {
   fee_per_hire: "Fee per hire",
   percent_first_year_salary: "Percentage of first-year salary",
@@ -293,6 +311,7 @@ export type TermsLike = {
   feeIncludes: readonly string[];
   guaranteeDays: number | null;
   leadTimeWeeks: number | null;
+  assignmentWeeks: number | null;
 };
 
 const NOT_STATED = "Not stated";
@@ -314,6 +333,7 @@ export function termsLines(
       "Guarantee",
       terms?.guaranteeDays == null ? null : terms.guaranteeDays === 0 ? "No guarantee" : `Free replacement within ${plural(terms.guaranteeDays, "day", "days")}`,
     ],
+    ["Assignment", terms?.assignmentWeeks == null ? null : plural(terms.assignmentWeeks, "week", "weeks")],
     ["Lead time", terms?.leadTimeWeeks == null ? null : `${plural(terms.leadTimeWeeks, "week", "weeks")} from selection to arrival`],
     [
       "Language",

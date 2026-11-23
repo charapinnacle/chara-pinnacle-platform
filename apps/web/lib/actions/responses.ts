@@ -16,11 +16,12 @@ import {
 } from "@/lib/dal/responses";
 import { requireOrgRole } from "@/lib/dal/session";
 import { getUsagePrompts } from "@/lib/dal/usage";
+import { getPartnerKind } from "@/lib/dal/workforce-offer";
 import { env } from "@/lib/env";
 import { faultMessage, logFault } from "@/lib/fault";
 import { defaultLocale } from "@/lib/i18n/locale";
 import { reportQuotaRefused } from "@/lib/quota-refused";
-import { documentsLimitText, responseDecisions, type ResponseDecision } from "@/lib/responses/presentation";
+import { documentsLimitText, responseDecisions, type PartnerKind, type ResponseDecision } from "@/lib/responses/presentation";
 import {
   decisionRefusal,
   documentRefusalMessage,
@@ -69,8 +70,8 @@ const fileSchema = z.object({ name: z.string().max(200), size: z.number().int().
 // moment of the write (capacity_above_allowed names it), so a tolerance the employer changed meanwhile is honoured. The
 // schema is built per call, so "today" is the day of the request; an edit keeps the stored capacity and date as
 // update_response does.
-function serverSchema(kept?: KeptValues) {
-  return responseFormSchema({ maxCapacity: Number.MAX_SAFE_INTEGER, kept });
+function serverSchema(kind: PartnerKind, kept?: KeptValues) {
+  return responseFormSchema({ maxCapacity: Number.MAX_SAFE_INTEGER, kind, kept });
 }
 
 export type ResponseResult = {
@@ -155,7 +156,7 @@ export async function respondToRequirement(slug: string, requirementId: string, 
   const organization = await respondingPartner(slug);
   if (organization === null) return { message: GENERIC_FAILURE };
   if (organization === "release_off") return { message: RESPONSE_MESSAGES.releaseOff };
-  const parsed = serverSchema().safeParse(input);
+  const parsed = serverSchema(await getPartnerKind(organization)).safeParse(input);
   if (!parsed.success) return { errors: fieldErrors(parsed.error) };
 
   const supabase = await createClient();
@@ -187,7 +188,10 @@ export async function updateMyResponse(
   const { responseId, expectedVersion } = parsedTarget.data;
   const current = await getResponse(organization.id, responseId);
   if (!current) return { message: RESPONSE_MESSAGES.responseNotFound };
-  const parsed = serverSchema({ capacity: current.capacity, availableFrom: current.availableFrom }).safeParse(input);
+  const parsed = serverSchema(await getPartnerKind(organization), {
+    capacity: current.capacity,
+    availableFrom: current.availableFrom,
+  }).safeParse(input);
   if (!parsed.success) return { errors: fieldErrors(parsed.error) };
 
   const supabase = await createClient();

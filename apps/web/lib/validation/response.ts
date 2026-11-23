@@ -1,7 +1,17 @@
 import type { Database } from "@chara-pinnacle/db-types";
 import * as z from "zod";
 import { formatCount } from "@/lib/i18n/format";
-import { documentsLimitText, feeInclusions, feeModels, hasAmount, hasCurrency, type FeeInclusion } from "@/lib/responses/presentation";
+import {
+  documentsLimitText,
+  feeInclusions,
+  feeModels,
+  feeModelsByKind,
+  hasAmount,
+  hasCurrency,
+  termNeeded,
+  type FeeInclusion,
+  type PartnerKind,
+} from "@/lib/responses/presentation";
 
 export { feeInclusionLabels, feeInclusions, type FeeInclusion } from "@/lib/responses/presentation";
 import { characters } from "@/lib/utils";
@@ -78,18 +88,26 @@ const termsFields = {
   feeIncludes: z.array(z.enum(feeInclusions)),
   guaranteeDays: optionalWhole(365, "Enter a number of days from 0 to 365."),
   leadTimeWeeks: optionalWhole(104, "Enter a number of weeks from 1 to 104.", 1),
+  assignmentWeeks: optionalWhole(260, "Enter a number of weeks from 1 to 260.", 1),
 };
+
+export const TERM_REQUIRED = {
+  guaranteeDays: "Enter the guarantee period in days, 0 if there is none.",
+  assignmentWeeks: "Enter how many weeks the assignment lasts.",
+} as const;
+export const FEE_MODEL_FOR_KIND = "Choose one of the fee models offered here.";
 
 // The values the form keeps of the response it edits: update_response keeps an unchanged capacity above today's maximum
 // and an unchanged date in the past, so the form does too.
 export type KeptValues = { capacity: number; availableFrom: string };
 
-type SchemaOptions = { maxCapacity: number; today?: string; kept?: KeptValues };
+// kind is the partner's: it sets the fee models offered and the term the fee needs (private.partner_fee_models).
+type SchemaOptions = { maxCapacity: number; kind: PartnerKind; today?: string; kept?: KeptValues };
 
 // The form's own schema (FR-O2 AC2): numbers stay strings so that the form can use it as its resolver; toResponseArgs
 // converts them. Keys the form does not own, such as status, version or organization_id, are dropped by the parse. today
 // is the UTC date available_from is compared with, as private.response_proposal compares it.
-export function responseFormSchema({ maxCapacity, today = todayUtc(), kept }: SchemaOptions) {
+export function responseFormSchema({ maxCapacity, kind, today = todayUtc(), kept }: SchemaOptions) {
   return z
     .object({
       capacity: z
@@ -132,6 +150,9 @@ export function responseFormSchema({ maxCapacity, today = todayUtc(), kept }: Sc
       const value = context.value;
       const issue = (path: string, message: string) => context.issues.push({ code: "custom", input: value, path: [path], message });
       if (value.languageLevel !== "" && value.languageCode === "") issue("languageCode", LEVEL_NEEDS_LANGUAGE);
+      if (!feeModelsByKind[kind].includes(value.feeModel)) issue("feeModel", FEE_MODEL_FOR_KIND);
+      const needed = termNeeded(kind, value.feeModel);
+      if (needed && value[needed] === "") issue(needed, TERM_REQUIRED[needed]);
       if (hasAmount(value.feeModel)) {
         const amount = value.feeAmount;
         const percent = value.feeModel === "percent_first_year_salary";
@@ -163,6 +184,7 @@ export const emptyResponseForm: ResponseFormInput = {
   feeIncludes: [],
   guaranteeDays: "",
   leadTimeWeeks: "",
+  assignmentWeeks: "",
 };
 
 export type ResponseTermsArgs = {
@@ -173,6 +195,7 @@ export type ResponseTermsArgs = {
   p_fee_includes: FeeInclusion[];
   p_guarantee_days?: number;
   p_lead_time_weeks?: number;
+  p_assignment_weeks?: number;
 };
 
 // The terms for set_response_terms; an empty field is left out, which the function stores as none.
@@ -186,6 +209,7 @@ export function toResponseTermsArgs(values: ResponseFormValues): ResponseTermsAr
     p_fee_includes: values.feeIncludes,
     p_guarantee_days: whole(values.guaranteeDays),
     p_lead_time_weeks: whole(values.leadTimeWeeks),
+    p_assignment_weeks: whole(values.assignmentWeeks),
   };
 }
 

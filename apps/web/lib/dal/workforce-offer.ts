@@ -1,5 +1,6 @@
 import "server-only";
 import type { Database } from "@chara-pinnacle/db-types";
+import type { PartnerKind } from "@/lib/responses/presentation";
 import { createClient } from "@/lib/supabase/server";
 import type { PartnerType } from "@/lib/validation/sign-up";
 import { fromServiceTypes, type WorkforceOfferInput } from "@/lib/validation/workforce-offer";
@@ -65,4 +66,18 @@ export function workforceOfferDefaults(offer: OrganizationWorkforceOffer): Workf
     sizeBand: offer.sizeBand ?? "",
     foundedYear: offer.foundedYear === null ? "" : String(offer.foundedYear),
   };
+}
+
+// Which fee models and terms a partner's responses take (private.partner_kind): a staffing company, a recruitment company,
+// or one that also supplies staff.
+export async function getPartnerKind(organization: { id: string; type: string }): Promise<PartnerKind> {
+  if (organization.type === "staffing_company") return "staffing";
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("organization_service_types")
+    .select("service")
+    .eq("organization_id", organization.id)
+    .eq("service", "staffing");
+  if (error) throw new Error("The staffing service could not be loaded", { cause: error });
+  return data.length > 0 ? "both" : "recruitment";
 }

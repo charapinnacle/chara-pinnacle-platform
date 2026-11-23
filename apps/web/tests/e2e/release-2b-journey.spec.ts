@@ -181,6 +181,7 @@ test.describe("release 2b journeys (NFR-O4, NFR-U4)", () => {
     await pp.getByLabel("Relevant experience").fill("We placed welding crews in shipyards on the Adriatic coast for twelve years.");
     await pp.getByRole("radio", { name: "Fee per hire" }).check();
     await pp.getByLabel("Amount").fill("1200.00");
+    await pp.getByLabel("Guarantee period (days)").fill("90");
     await expect(pp.getByRole("combobox", { name: "Currency", exact: true }), "the fee currency starts on the requirement's salary currency").toHaveValue("Euro");
     await expectAccessibleAtBothWidths(pp);
     await pp.setViewportSize({ width: 1280, height: 900 });

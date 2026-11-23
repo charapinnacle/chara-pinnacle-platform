@@ -12,6 +12,7 @@ import { getItemModeration } from "@/lib/dal/item-moderation";
 import { isReleased } from "@/lib/dal/release";
 import { getResponse, getResponseDocumentsMax, getResponseTerms, listResponseDocuments } from "@/lib/dal/responses";
 import { requireOrgRole } from "@/lib/dal/session";
+import { getPartnerKind } from "@/lib/dal/workforce-offer";
 import { isLive } from "@/lib/responses/presentation";
 import { billingPath, responsePath, responsesPath } from "@/lib/routes";
 import { requirementIdSchema } from "@/lib/validation/requirement";
@@ -38,13 +39,14 @@ export default async function EditResponsePage({ params }: PageProps<"/[lang]/or
   if (hidden || !isLive(response.status) || response.requirementStatus === "closed" || response.requirementStatus === "filled") {
     redirect(responsePath(lang, slug, response.id));
   }
-  const [currencies, languages, termsById, documents, documentsMax, commitment] = await Promise.all([
+  const [currencies, languages, termsById, documents, documentsMax, commitment, kind] = await Promise.all([
     getCurrencies(),
     getLanguages(),
     getResponseTerms([response.id]),
     listResponseDocuments({ organizationId: organization.id, requirementId: response.requirementId }),
     getResponseDocumentsMax(),
     getCommitmentBlock(organization.id),
+    getPartnerKind(organization),
   ]);
 
   const terms = termsById.get(response.id);
@@ -95,6 +97,7 @@ export default async function EditResponsePage({ params }: PageProps<"/[lang]/or
             feeIncludes: (terms?.feeIncludes ?? []).filter((item): item is FeeInclusion => (feeInclusions as readonly string[]).includes(item)),
             guaranteeDays: terms?.guaranteeDays === null || terms === undefined ? "" : String(terms.guaranteeDays),
             leadTimeWeeks: terms?.leadTimeWeeks === null || terms === undefined ? "" : String(terms.leadTimeWeeks),
+            assignmentWeeks: terms?.assignmentWeeks === null || terms === undefined ? "" : String(terms.assignmentWeeks),
           },
         }}
         workersNeeded={response.workersNeeded}
@@ -104,6 +107,7 @@ export default async function EditResponsePage({ params }: PageProps<"/[lang]/or
         documents={documents}
         documentsMax={documentsMax}
         organization={{ id: organization.id, type: organization.type, canManage: organization.role !== "member" }}
+        kind={kind}
         billingHref={billingPath(lang, slug)}
         blockedBy={commitment ? BLOCKED_REASON_ID : undefined}
       />

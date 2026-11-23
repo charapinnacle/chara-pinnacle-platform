@@ -686,6 +686,9 @@ update public.organizations set status = 'active' where id = :'beta';
 
 -- FR-O2 AC3: fee models ---------------------------------------------------------------------------------------------------
 
+-- P2 also supplies staff, so it may quote every fee model (the rules per kind: 227_partner_type_rules).
+insert into public.organization_service_types (organization_id, service) values (:'p2', 'staffing');
+
 select is(
   (select string_agg(x.name || '=' || pg_temp.resp(:'u2', :'p2', pg_temp.req(:'acme', 'Fee ' || x.name), x.o::jsonb), ',' order by x.n)
    from (values

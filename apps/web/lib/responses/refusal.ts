@@ -5,6 +5,7 @@ import {
   CAPACITY_WHOLE,
   CURRENCY_REQUIRED,
   EXPERIENCE_TEXT,
+  FEE_MODEL_FOR_KIND,
   FEE_MODEL_REQUIRED,
   type ResponseFormInput,
 } from "@/lib/validation/response";
@@ -52,6 +53,7 @@ const fieldOfDetail: Record<string, [keyof ResponseFormInput, string]> = {
   timeline_note: ["timelineNote", "Write at most 1,000 characters, without special characters."],
   notes: ["notes", "Write at most 2,000 characters, without special characters."],
   fee_model: ["feeModel", FEE_MODEL_REQUIRED],
+  fee_model_for_kind: ["feeModel", FEE_MODEL_FOR_KIND],
 };
 
 function statusOf(detail: string | null | undefined): ResponseStatus | undefined {

@@ -24,7 +24,7 @@ const input: WorkforceOfferInput = {
   languages: ["en", "TL", "ar"],
   recruitmentType: "international",
   staffingService: true,
-  staffingTypes: ["temporary", "permanent"],
+  staffingTypes: ["temporary", "project"],
   sizeBand: "50_249",
   foundedYear: "2019",
 };
@@ -52,7 +52,7 @@ describe("saveWorkforceOffer (FR-K2)", () => {
       p_industries: ["C", "F"],
       p_languages: ["en", "tl", "ar"],
       p_recruitment_type: "international",
-      p_service_types: ["staffing", "temporary", "permanent"],
+      p_service_types: ["staffing", "temporary", "project"],
       p_workforce_size_band: "50_249",
       p_founded_year: 2019,
     });
@@ -66,7 +66,7 @@ describe("saveWorkforceOffer (FR-K2)", () => {
     expect(redirectMock).not.toHaveBeenCalled();
     expect(rpcMock).toHaveBeenCalledWith(
       "set_organization_workforce_offer",
-      expect.objectContaining({ p_service_types: ["temporary", "permanent"], p_workforce_size_band: undefined, p_founded_year: undefined }),
+      expect.objectContaining({ p_service_types: ["temporary", "project"], p_workforce_size_band: undefined, p_founded_year: undefined }),
     );
   });
 

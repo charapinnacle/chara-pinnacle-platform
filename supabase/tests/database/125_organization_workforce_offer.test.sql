@@ -330,15 +330,15 @@ select is(
   'AC5: a recruitment company names staffing types only with the service staffing, and staffing only with a type'
 );
 select is(
-  pg_temp.set_offer(:'ow2', :'rival', array['7212'], null, null, 'local', '{staffing,temporary,permanent}')
+  pg_temp.set_offer(:'ow2', :'rival', array['7212'], null, null, 'local', '{staffing,temporary,project}')
     || ',' || pg_temp.offer(:'rival'),
-  'ok,7212|||staffing,temporary,permanent|local',
-  'AC5: with staffing, temporary and permanent the recruitment company stores the three rows'
+  'ok,7212|||staffing,temporary,project|local',
+  'AC5: with staffing, temporary and project the recruitment company stores the three rows'
 );
 select is(
   pg_temp.set_offer(:'ow2', :'rival', array['7212'], null, null, 'local', '{}') || ',' || pg_temp.offer(:'rival')
     || ',' || (pg_temp.audits(:'rival') -> 1 -> 'service_types')::text,
-  'ok,7212||||local,{"added": [], "removed": ["permanent", "staffing", "temporary"]}',
+  'ok,7212||||local,{"added": [], "removed": ["project", "staffing", "temporary"]}',
   'AC5 states: the recruitment company switches the staffing service off again, audited'
 );
 
