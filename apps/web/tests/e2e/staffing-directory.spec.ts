@@ -179,6 +179,11 @@ test.describe("Find staffing partners and available workforce (FR-L2, FR-K3)", (
     const batch = await staffingBatch();
     const address = `${DIRECTORY}?destination=DE`;
     await page.goto(address);
+    const rules = page.getByRole("note").filter({ hasText: "Before you use a staffing company here" });
+    await expect(rules, "the German agency-work rules show for the destination Germany").toContainText(
+      "Non-EU workers cannot usually be leased in Germany",
+    );
+    await expect(rules).toContainText("General information, not legal advice.");
     const card = cards(page).filter({ hasText: batch.staffing });
     const contact = card.getByRole("link", { name: `Sign in to contact ${batch.staffing}` });
     const profile = await card.getByRole("heading").getByRole("link").getAttribute("href");

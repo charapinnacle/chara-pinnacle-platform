@@ -2,6 +2,7 @@ import "server-only";
 import type { Database } from "@chara-pinnacle/db-types";
 import { createClient, type PostgrestError } from "@supabase/supabase-js";
 import { unstable_cache } from "next/cache";
+import type { AgencyWorkRule } from "@/lib/compliance/agency-work";
 import { env } from "@/lib/env";
 
 export type ReferenceItem = { code: string; name: string };
@@ -53,6 +54,26 @@ export const getOccupations = cached("occupations", async (): Promise<Occupation
   return readAll("occupations", (from) =>
     supabase.from("occupations").select("code, label, synonyms", { count: "exact" }).order("label").order("code").range(from, from + PAGE_SIZE - 1),
   );
+});
+
+// The agency-work rules of the destination countries (FR-P2, FR-M1, FR-L2): public law, changed by a migration, read for
+// everyone like the lists above.
+export const getAgencyWorkRules = cached("agency_work_rules", async (): Promise<AgencyWorkRule[]> => {
+  const { data, error } = await anonymousClient()
+    .from("agency_work_rules")
+    .select("id, destination_country, non_eu_workers_only, title, notice, source_url, reviewed_on")
+    .order("destination_country")
+    .order("id");
+  if (error) throw new Error("The agency work rules could not be loaded", { cause: error });
+  return data.map((row) => ({
+    id: row.id,
+    destination: row.destination_country,
+    nonEuWorkersOnly: row.non_eu_workers_only,
+    title: row.title,
+    notice: row.notice,
+    sourceUrl: row.source_url,
+    reviewedOn: row.reviewed_on,
+  }));
 });
 
 // The City suggestions of the home search, asked for as the visitor types. Not cached here: the route that calls this
