@@ -14,6 +14,7 @@ import { Card } from "@/components/layout/card";
 import { OnboardingPanel } from "@/components/onboarding/onboarding-panel";
 import { OnboardingSteps } from "@/components/onboarding/onboarding-steps";
 import { PartnerReadyStep, PartnerReviewPending } from "@/components/onboarding/partner-ready";
+import { AvailabilitySection } from "@/components/organization/availability-section";
 import { CommitmentDocument } from "@/components/organization/commitment-document";
 import { CommitmentForm } from "@/components/organization/commitment-form";
 import { OrganizationForm } from "@/components/organization/organization-form";
@@ -35,6 +36,7 @@ import { getCountries, getIndustries, getLanguages, getOccupations, type Referen
 import { isReleased } from "@/lib/dal/release";
 import { requireUser } from "@/lib/dal/session";
 import { getUnenforcedAllowances, getUsagePrompts } from "@/lib/dal/usage";
+import { getAvailabilityRules, getWorkforceListings } from "@/lib/dal/workforce-availability";
 import { getWorkforceOffer, workforceOfferComplete, workforceOfferDefaults } from "@/lib/dal/workforce-offer";
 import { countryFromAcceptLanguage } from "@/lib/i18n/locale";
 import { pendingInvitationToken } from "@/lib/invitation-cookie";
@@ -441,9 +443,11 @@ async function PartnerNextStep({ lang, aal, organization, countries, industries,
     );
   }
 
-  const [targetDays, outcome] = await Promise.all([
+  const supplies = organization.type === "staffing_company" || offer.serviceTypes.includes("staffing");
+  const [targetDays, outcome, availability] = await Promise.all([
     getReviewTargetDays(),
     review.status === "info_requested" ? getReviewOutcome(organization.id) : null,
+    supplies && !member ? readyAvailability(lang, organization, aal, geographies.sourcesFrom, offer.occupations) : null,
   ]);
   return (
     <PartnerReadyStep
@@ -454,6 +458,47 @@ async function PartnerNextStep({ lang, aal, organization, countries, industries,
       infoRequested={review.status === "info_requested"}
       infoStep={reopened === undefined ? null : review.infoStep}
       message={outcome?.decision === "request_info" ? outcome.reason : null}
+      availability={availability}
+    />
+  );
+}
+
+// The available workforce on Ready (FR-K3): a listing names one of the occupations and one of the source countries saved in
+// the earlier steps. Listings change at aal2 only, so below it the step asks for the code first.
+async function readyAvailability(
+  lang: string,
+  organization: PartnerNextStepProps["organization"],
+  aal: "aal1" | "aal2",
+  sourcesFrom: readonly string[],
+  offered: readonly string[],
+) {
+  if (aal !== "aal2") {
+    return (
+      <TextLink standalone href={mfaPath(lang, partnerStepPath(lang, "ready"))}>
+        Enter your two-step code to add your available workforce
+      </TextLink>
+    );
+  }
+  const [listings, prompts, rules, countries, occupations] = await Promise.all([
+    getWorkforceListings(organization.id),
+    getUsagePrompts(organization.id, organization.type, ["workforce_listings"]),
+    getAvailabilityRules(),
+    getCountries(),
+    getOccupations(),
+  ]);
+  return (
+    <AvailabilitySection
+      slug={organization.slug}
+      organizationId={organization.id}
+      partnerType={organization.type}
+      canManage
+      listings={listings}
+      occupations={offered.map((code) => ({ code, name: occupations.find((item) => item.code === code)?.label ?? code }))}
+      countries={sourcesFrom.map((code) => ({ code, name: countries.find((item) => item.code === code)?.name ?? code }))}
+      rules={rules}
+      prompt={prompts.workforce_listings}
+      billingHref={billingPath(lang, organization.slug)}
+      now={new Date().toISOString()}
     />
   );
 }

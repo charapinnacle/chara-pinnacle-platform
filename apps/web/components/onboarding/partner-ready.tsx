@@ -47,11 +47,22 @@ type PartnerReadyStepProps = {
   infoStep: InfoStep | null;
   // What our team wrote with the request (FR-J4 AC7).
   message: string | null;
+  // A staffing company's available workforce (FR-K3), listed before it submits: occupations, numbers and source countries.
+  availability?: React.ReactNode;
 };
 
 // Ready, the last step of partner onboarding (FR-J1 AC10, AC11): what staff check, how long it takes, and the submission
 // by the owner or an admin. After a request for information it names the step staff reopened and links to it.
-export function PartnerReadyStep({ lang, organization, manager, targetDays, infoRequested, infoStep, message }: PartnerReadyStepProps) {
+export function PartnerReadyStep({
+  lang,
+  organization,
+  manager,
+  targetDays,
+  infoRequested,
+  infoStep,
+  message,
+  availability,
+}: PartnerReadyStepProps) {
   const reopen = infoStep ? reopenLinks[infoStep](lang, organization.slug) : null;
   return (
     <OnboardingPanel
@@ -77,6 +88,20 @@ export function PartnerReadyStep({ lang, organization, manager, targetDays, info
             </TextLink>
           ) : null}
         </Notice>
+      ) : null}
+      {availability ? (
+        <Card as="section" padding="lg" elevated aria-labelledby="ready-availability-heading" className="gap-5">
+          <div className="grid gap-1">
+            <h2 id="ready-availability-heading" className="text-h3">
+              Your available workforce
+            </h2>
+            <p className="text-body text-muted-foreground">
+              The workers you can supply now, per occupation and source country, for example 40 welders from the Philippines.
+              Employers find you by them. You can change them any time on your workforce profile.
+            </p>
+          </div>
+          {availability}
+        </Card>
       ) : null}
       <Card padding="lg" elevated className="gap-5">
         <ReviewChecks id="review-checks" />
