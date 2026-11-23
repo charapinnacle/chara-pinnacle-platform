@@ -3237,7 +3237,7 @@ isOneToOne: false
                            },
 "search_available_workforce":
 { Args: { "p_cursor"?: string,"p_destination": string,"p_limit"?: number,"p_occupation": string,"p_within_days": number,"p_workers_needed": number }; Returns: {
-              "available_now": number,"confirmed_at": string,"display_name": string,"id": string,"listings": Json,"next_cursor": string,"organization_type": Database["public"]['Enums']["organization_type"],"slug": string,"supply": number
+              "available_now": string,"confirmed_at": string,"display_name": string,"id": string,"listings": Json,"next_cursor": string,"organization_type": Database["public"]['Enums']["organization_type"],"slug": string,"supply": string
             }[]
                            },
 "search_employers":

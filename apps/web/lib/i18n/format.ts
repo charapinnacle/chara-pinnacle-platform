@@ -5,6 +5,11 @@ export function formatCount(count: number): string {
   return countFormat.format(count);
 }
 
+// A number of workers: exact for the company's own listings, a range such as "10–24" as the database gives it to others.
+export function workerCount(count: number | string): string {
+  return typeof count === "number" ? formatCount(count) : count;
+}
+
 // A text field's counter, written the same way on every form: "120 of 2,000 characters".
 export function characterCount(used: number, max: number): string {
   return `${formatCount(used)} of ${formatCount(max)} characters`;

@@ -250,15 +250,15 @@ select is(
   (select jsonb_build_object('occ', m ->> 'code', 'label', m ->> 'name', 'quantity', m -> 'quantity', 'available', m -> 'available',
      'from', m ->> 'available_from', 'confirmed', (m ->> 'confirmed_at')::timestamptz > now() - interval '11 days')
    from jsonb_array_elements(pg_temp.row_of('v36-q1') -> 'matching_occupations') m),
-  '{"occ": "7212", "label": "Welders and flame cutters", "quantity": 100, "available": 120, "from": "2027-02-01", "confirmed": true}'::jsonb,
-  'AC5: Q1 carries the facts of its listing: occupation, quantity, 120 available from 1 February 2027 and the confirmation');
+  '{"occ": "7212", "label": "Welders and flame cutters", "quantity": 100, "available": "100–249", "from": "2027-02-01", "confirmed": true}'::jsonb,
+  'AC5: Q1 carries the facts of its listing: occupation, quantity, 120 (as a range) available from 1 February 2027 and the confirmation');
 select is(
   (select jsonb_build_object('available', m -> 'available', 'confirmed', m -> 'confirmed_at')
    from jsonb_array_elements(pg_temp.row_of('v36-q3') -> 'matching_occupations') m),
   '{"available": null, "confirmed": null}'::jsonb,
   'AC4, AC5: a stale listing is not shown');
-select is((pg_temp.row_of('v36-q2') -> 'matching_occupations' -> 0 ->> 'available')::integer, 80,
-  'AC5: a fresh listing below the quantity is still shown with its number');
+select is(pg_temp.row_of('v36-q2') -> 'matching_occupations' -> 0 ->> 'available', '50–99',
+  'AC5: a fresh listing below the quantity is still shown, its 80 workers as a range');
 select is((select count(*)::integer from jsonb_array_elements(pg_temp.result()) e where (e ->> 'more_partners')::boolean), 0,
   'AC11: with fewer partners than the list size, more_partners is false');
 select is(pg_temp.row_of('v36-q1') ->> 'profile_updated_at', '2026-10-05T08:00:00+00:00', 'AC5: the profile time is returned');
@@ -293,7 +293,7 @@ select is(pg_temp.row_of('v36-sum') -> 'criteria_met', '["capacity", "available_
   'capacity: 60 from PH and 60 from IN cover 100, both available before the start');
 select is(
   (select jsonb_build_object('available', m -> 'available', 'from', m ->> 'available_from') from jsonb_array_elements(pg_temp.row_of('v36-sum') -> 'matching_occupations') m),
-  '{"available": 120, "from": "2027-02-15"}'::jsonb,
+  '{"available": "100–249", "from": "2027-02-15"}'::jsonb,
   'capacity: the facts are the sum and the latest available-from of the listings');
 update public.workforce_availability set available_from = date '2027-03-05' where organization_id = :'psum' and source_country = 'IN';
 select pg_temp.suggest(:'adm', :'r4') as ignored \gset
@@ -305,7 +305,7 @@ select is(pg_temp.row_of('v36-sum') -> 'criteria_met', '[]'::jsonb, 'capacity: c
 select is(
   (select string_agg((m ->> 'code') || '=' || coalesce(m ->> 'available', 'none'), ',' order by m ->> 'code')
    from jsonb_array_elements(pg_temp.row_of('v36-sum') -> 'matching_occupations') m),
-  '7212=120,7214=none',
+  '7212=100–249,7214=none',
   'capacity: the facts name the coverage per occupation, none for an occupation without a listing');
 update public.organizations set moderation_state = 'hidden' where slug = 'v36-sum';
 

@@ -11,8 +11,8 @@ const listingSchema = z.object({
   occupation: z.string(),
   source_country: z.string(),
   source_country_name: z.string(),
-  available: z.number(),
-  monthly_capacity: z.number(),
+  available: z.union([z.number(), z.string()]),
+  monthly_capacity: z.union([z.number(), z.string()]),
   available_from: z.string(),
   confirmed_at: z.string(),
 });
@@ -22,8 +22,9 @@ export type Named = z.infer<typeof namedSchema>[number];
 export type PartnerListing = {
   occupation: string;
   sourceCountry: string;
-  available: number;
-  monthlyCapacity: number;
+  // Exact for the company's own members, a range for everyone else.
+  available: number | string;
+  monthlyCapacity: number | string;
   availableFrom: string;
   confirmedAt: string;
 };
