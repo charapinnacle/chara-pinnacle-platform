@@ -22,6 +22,7 @@ import { toOptions } from "@/lib/reference-options";
 import { onboardingPath } from "@/lib/routes";
 import {
   DESCRIPTION_MAX_CHARS,
+  PARTNER_DESCRIPTION_MIN_CHARS,
   identifierKindOptions,
   companyStepSchema,
   type PartnerOrganizationFormInput,
@@ -152,8 +153,8 @@ export function OrganizationForm({ lang, countries, industries, defaultCountry, 
       control={control}
       name="description"
       id={ids.description}
-      label="About your company (optional)"
-      description={`Plain text: what you do and for whom. Line breaks are kept. ${characterCount(descriptionLength, DESCRIPTION_MAX_CHARS)}.`}
+      label="About your company"
+      description={`At least ${PARTNER_DESCRIPTION_MIN_CHARS} characters: what you do and for whom. Plain text; line breaks are kept. ${characterCount(descriptionLength, DESCRIPTION_MAX_CHARS)}.`}
     />
   );
   const identifier = (
@@ -198,8 +199,7 @@ export function OrganizationForm({ lang, countries, industries, defaultCountry, 
             {legalName}
             {displayName}
             {country}
-            {industry}
-            <div className="sm:col-span-2">{website}</div>
+            {website}
             <div className="sm:col-span-2">{description}</div>
           </StepCard>
           <StepCard title="Registration" columns>

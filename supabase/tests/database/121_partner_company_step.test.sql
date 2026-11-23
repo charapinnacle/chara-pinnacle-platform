@@ -1,5 +1,5 @@
 begin;
-select plan(12);
+select plan(15);
 
 \ir organizations_fixture.inc
 
@@ -40,16 +40,16 @@ select is(
   pg_temp.call_as(:'rc', 'authenticated',
     $$select public.create_organization('recruitment_company', 'Manila Skills Recruitment Inc.', 'Manila Skills', 'PH', 'N',
       'https://manila-skills.example', 'CS 2019-04512', 'registration_number',
-      E'  We place nurses and caregivers.\nSince 2019.  \n')$$, 'aal1'),
+      E'  We place nurses and caregivers with hospitals in Germany.\nSince 2019.  \n')$$, 'aal1'),
   'ok',
   'a recruitment company owner at aal1 creates the organisation with a description'
 );
 select is(
-  (select format('%s|%s|%s|%s|%s', o.type, o.review_status, o.legal_entity_identifier, o.slug, o.description)
+  (select format('%s|%s|%s|%s|%s|%s', o.type, o.review_status, o.legal_entity_identifier, o.slug, coalesce(o.industry_code, 'none'), o.description)
    from public.organizations o join public.organization_members m on m.organization_id = o.id
    where m.user_id = :'rc' and m.role = 'owner'),
-  E'recruitment_company|onboarding|CS201904512|manila-skills|We place nurses and caregivers.\nSince 2019.',
-  'the partner starts in onboarding with the normalised identifier and the trimmed description'
+  E'recruitment_company|onboarding|CS201904512|manila-skills|none|We place nurses and caregivers with hospitals in Germany.\nSince 2019.',
+  'the partner starts in onboarding with the normalised identifier, no industry of its own and the trimmed description'
 );
 select is(
   (select l.metadata::text from audit.log l
@@ -80,6 +80,26 @@ select is(
       'We staff hotels.')$$, 'aal1'),
   'P0001|CHARA_FORBIDDEN|organization_type_mismatch',
   'the type stays the one chosen at sign-up'
+);
+select is(
+  pg_temp.call_as(:'sc', 'authenticated',
+    $$select public.create_organization('staffing_company', 'Short Staffing Ltd', null, 'PH', null, null, 'SHORT123', 'other',
+      'We staff hotels.')$$, 'aal1'),
+  'P0001|CHARA_INVALID_INPUT|description',
+  'a partner describes itself in at least 50 characters'
+);
+select is(
+  pg_temp.call_as(:'sc', 'authenticated',
+    $$select public.create_organization('staffing_company', 'Blank Staffing Ltd', null, 'PH', null, null, 'BLANK123', 'other',
+      E' \n ')$$, 'aal1'),
+  'P0001|CHARA_INVALID_INPUT|description',
+  'a blank description counts as none for a partner'
+);
+select is(
+  pg_temp.call_as(:'own1', 'authenticated',
+    $$select public.create_organization('employer', 'No Industry GmbH', null, 'DE', null)$$, 'aal1'),
+  'P0001|CHARA_INVALID_INPUT|industry_code',
+  'an employer still needs its industry'
 );
 select is(
   (select count(*)::integer from public.organization_members where user_id = :'sc'),

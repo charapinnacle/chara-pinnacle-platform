@@ -159,7 +159,7 @@ select is(
 select is(
   pg_temp.call_as(:'p1', 'authenticated',
     $$select public.create_organization('recruitment_company', 'Manila Skills Recruitment Inc.', 'Manila Skills', 'PH', 'N',
-      'https://manila-skills.example', 'CS 2019-04512', 'registration_number')$$, 'aal1'),
+      'https://manila-skills.example', 'CS 2019-04512', 'registration_number', p_description => 'We recruit welders and electricians from the Philippines for employers in Germany.')$$, 'aal1'),
   'ok',
   'a recruitment company user at aal1 creates a recruitment company'
 );
@@ -182,13 +182,13 @@ select is(
 );
 select is(
   pg_temp.call_as(:'p1', 'authenticated',
-    $$select public.create_organization('staffing_company', 'Other Staffing Ltd', null, 'PH', 'N', null, 'AB123456', 'other')$$, 'aal1')
+    $$select public.create_organization('staffing_company', 'Other Staffing Ltd', null, 'PH', 'N', null, 'AB123456', 'other', p_description => 'We recruit welders and electricians from the Philippines for employers in Germany.')$$, 'aal1')
     || ',' ||
   pg_temp.call_as(:'p2', 'authenticated',
     $$select public.create_organization('employer', 'Staffing Employer GmbH', null, 'DE', 'F')$$, 'aal1')
     || ',' ||
   pg_temp.call_as(:'own1', 'authenticated',
-    $$select public.create_organization('recruitment_company', 'Employer Agency GmbH', null, 'DE', 'F', null, 'AB123456', 'other')$$, 'aal1'),
+    $$select public.create_organization('recruitment_company', 'Employer Agency GmbH', null, 'DE', 'F', null, 'AB123456', 'other', p_description => 'We recruit welders and electricians from the Philippines for employers in Germany.')$$, 'aal1'),
   'P0001|CHARA_FORBIDDEN|organization_type_mismatch,P0001|CHARA_FORBIDDEN|organization_type_mismatch,'
     || 'P0001|CHARA_FORBIDDEN|organization_type_mismatch',
   'another type than the one named at sign-up is refused for a partner, and a partner type for an employer user'
@@ -200,17 +200,17 @@ select is(
 );
 select is(
   pg_temp.call_as(:'wkr', 'authenticated',
-    $$select public.create_organization('recruitment_company', 'Worker Agency', null, 'DE', 'F', null, 'AB123456', 'other')$$, 'aal1')
+    $$select public.create_organization('recruitment_company', 'Worker Agency', null, 'DE', 'F', null, 'AB123456', 'other', p_description => 'We recruit welders and electricians from the Philippines for employers in Germany.')$$, 'aal1')
     || ',' ||
   pg_temp.call_as(null, 'anon',
-    $$select public.create_organization('recruitment_company', 'Anon Agency', null, 'DE', 'F', null, 'AB123456', 'other')$$),
+    $$select public.create_organization('recruitment_company', 'Anon Agency', null, 'DE', 'F', null, 'AB123456', 'other', p_description => 'We recruit welders and electricians from the Philippines for employers in Germany.')$$),
   'P0001|CHARA_FORBIDDEN|company_account_required,42501|permission denied for function create_organization|',
   'a worker is refused and an anonymous caller has no execute grant'
 );
 select pg_temp.release(false);
 select is(
   pg_temp.call_as(:'p2', 'authenticated',
-    $$select public.create_organization('staffing_company', 'Closed Staffing', null, 'DE', 'F', null, 'AB123456', 'other')$$, 'aal1'),
+    $$select public.create_organization('staffing_company', 'Closed Staffing', null, 'DE', 'F', null, 'AB123456', 'other', p_description => 'We recruit welders and electricians from the Philippines for employers in Germany.')$$, 'aal1'),
   'P0001|CHARA_FORBIDDEN|organization_type_not_available',
   'while release 2a is off the partner types are refused as in Phase 1'
 );
@@ -233,27 +233,27 @@ update public.organizations set legal_entity_identifier = 'DE123456789', legal_e
 where id = :'emp_dup';
 select is(
   pg_temp.call_as(:'p2', 'authenticated',
-    $$select public.create_organization('staffing_company', 'First Staffing GmbH', null, 'DE', 'N', null, 'DE123456789', 'vat_number')$$, 'aal1'),
+    $$select public.create_organization('staffing_company', 'First Staffing GmbH', null, 'DE', 'N', null, 'DE123456789', 'vat_number', p_description => 'We recruit welders and electricians from the Philippines for employers in Germany.')$$, 'aal1'),
   'ok',
   'the first staffing company with the identifier is created'
 );
 select pg_temp.org_of(:'p2', 'First Staffing GmbH') as stf1 \gset
 select is(
   pg_temp.call_as(:'p3', 'authenticated',
-    $$select public.create_organization('staffing_company', 'Second Staffing GmbH', null, 'DE', 'N')$$, 'aal1')
+    $$select public.create_organization('staffing_company', 'Second Staffing GmbH', null, 'DE', 'N', p_description => 'We recruit welders and electricians from the Philippines for employers in Germany.')$$, 'aal1')
     || ',' ||
   pg_temp.call_as(:'p3', 'authenticated',
-    $$select public.create_organization('staffing_company', 'Second Staffing GmbH', null, 'DE', 'N', null, 'x1', 'other')$$, 'aal1')
+    $$select public.create_organization('staffing_company', 'Second Staffing GmbH', null, 'DE', 'N', null, 'x1', 'other', p_description => 'We recruit welders and electricians from the Philippines for employers in Germany.')$$, 'aal1')
     || ',' ||
   pg_temp.call_as(:'p3', 'authenticated',
-    $$select public.create_organization('staffing_company', 'Second Staffing GmbH', null, 'DE', 'N', null, 'DE123456789', null)$$, 'aal1'),
+    $$select public.create_organization('staffing_company', 'Second Staffing GmbH', null, 'DE', 'N', null, 'DE123456789', null, p_description => 'We recruit welders and electricians from the Philippines for employers in Germany.')$$, 'aal1'),
   'P0001|CHARA_INVALID_INPUT|legal_entity_identifier,P0001|CHARA_INVALID_INPUT|legal_entity_identifier,'
     || 'P0001|CHARA_INVALID_INPUT|legal_entity_identifier_kind',
   'a partner needs an identifier of 4 to 32 letters and digits with its kind'
 );
 select is(
   pg_temp.val_as(:'p3', 'aal1',
-    $$select public.create_organization('staffing_company', 'Second Staffing GmbH', null, 'DE', 'N', null, 'de 123.456-789', 'vat_number')::text$$),
+    $$select public.create_organization('staffing_company', 'Second Staffing GmbH', null, 'DE', 'N', null, 'de 123.456-789', 'vat_number', p_description => 'We recruit welders and electricians from the Philippines for employers in Germany.')::text$$),
   pg_temp.val_as(:'p3', 'aal1',
     $$select jsonb_build_object('organization_id', o.id, 'slug', o.slug, 'duplicate_legal_name', false)::text
       from public.organizations o where o.legal_name = 'Second Staffing GmbH'$$),
@@ -278,7 +278,7 @@ select results_eq(
 );
 select is(
   pg_temp.call_as(:'p4', 'authenticated',
-    $$select public.create_organization('recruitment_company', 'Cross Recruitment BV', null, 'NL', 'N', null, 'DE123456789', 'vat_number')$$, 'aal1'),
+    $$select public.create_organization('recruitment_company', 'Cross Recruitment BV', null, 'NL', 'N', null, 'DE123456789', 'vat_number', p_description => 'We recruit welders and electricians from the Philippines for employers in Germany.')$$, 'aal1'),
   'ok',
   'a recruitment company with the same identifier is created'
 );
@@ -363,10 +363,10 @@ update public.organizations set review_status = 'listed', listed_at = now() - in
 where id = :'rec1';
 select is(
   pg_temp.call_as(:'p1', 'authenticated', format($$select public.update_organization_profile(%L, 'Manila Skills Recruitment Inc.',
-    'Manila Skills Group', 'PH', 'N', 'https://manila-skills.example', null)$$, :'rec1'))
+    'Manila Skills Group', 'PH', 'N', 'https://manila-skills.example', 'We recruit welders and electricians from the Philippines for employers in Germany.')$$, :'rec1'))
     || ',' ||
   pg_temp.call_as(:'p1', 'authenticated', format($$select public.update_organization_profile(%L, 'Manila Skills Recruitment Inc.',
-    'Manila Skills Group', 'PH', 'N', 'https://manila.example', null)$$, :'rec1')),
+    'Manila Skills Group', 'PH', 'N', 'https://manila.example', 'We recruit welders and electricians from the Philippines for employers in Germany.')$$, :'rec1')),
   'ok,ok',
   'the owner at aal2 changes the display name and then the website'
 );
@@ -378,7 +378,7 @@ select results_eq(
 );
 select is(
   pg_temp.call_as(:'p1', 'authenticated', format($$select public.update_organization_profile(%L, 'Manila Skills Recruitment Corp.',
-    'Manila Skills Group', 'PH', 'N', 'https://manila.example', null)$$, :'rec1')),
+    'Manila Skills Group', 'PH', 'N', 'https://manila.example', 'We recruit welders and electricians from the Philippines for employers in Germany.')$$, :'rec1')),
   'ok',
   'the owner changes the legal name'
 );
@@ -404,7 +404,7 @@ select is(
 update public.organizations set review_status = 'pending_review' where id = :'rec2';
 select is(
   pg_temp.call_as(:'p4', 'authenticated', format($$select public.update_organization_profile(%L, 'Cross Recruitment B.V.',
-    null, 'NL', 'N', null, null)$$, :'rec2')),
+    null, 'NL', 'N', null, 'We recruit welders and electricians from the Philippines for employers in Germany.')$$, :'rec2')),
   'ok',
   'the owner of a partner in pending review changes the legal name'
 );
@@ -499,14 +499,14 @@ select is(
 );
 select is(
   pg_temp.call_as(:'p5', 'authenticated',
-    $$select public.create_organization('recruitment_company', 'Link Recruitment Ltd', null, 'GB', 'N', null, 'LINK1234', 'other')$$, 'aal1'),
+    $$select public.create_organization('recruitment_company', 'Link Recruitment Ltd', null, 'GB', 'N', null, 'LINK1234', 'other', p_description => 'We recruit welders and electricians from the Philippines for employers in Germany.')$$, 'aal1'),
   'ok',
   'a recruitment company with a fresh identifier is created'
 );
 select pg_temp.org_of(:'p5', 'Link Recruitment Ltd') as rec3 \gset
 select is(
   pg_temp.call_as(:'pa', 'authenticated',
-    $$select public.create_organization('recruitment_company', 'Link Recruitment Two', null, 'GB', 'N', null, 'LINK1234', 'other')$$, 'aal1'),
+    $$select public.create_organization('recruitment_company', 'Link Recruitment Two', null, 'GB', 'N', null, 'LINK1234', 'other', p_description => 'We recruit welders and electricians from the Philippines for employers in Germany.')$$, 'aal1'),
   'ok',
   'a second recruitment company with the same identifier is created'
 );
