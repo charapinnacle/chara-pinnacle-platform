@@ -51,7 +51,7 @@ test.describe("Partner usage and the upgrade prompt (FR-R1)", () => {
     await signInAtAal2(page, user, secret, `/en/org/${slug}/workforce-profile`);
 
     // The free plan includes no listing: the section shows the prompt instead of the add button, and reports it.
-    const availability = page.getByRole("region", { name: "Availability" });
+    const availability = page.getByRole("region", { name: "Available workforce" });
     await expect(availability).toContainText("Workforce listings are not included in your Free plan.");
     await expect(availability).toContainText(
       "Basic includes 10 workforce listings; Professional includes 50 workforce listings; Enterprise has no limit.",
@@ -117,7 +117,7 @@ test.describe("Partner usage and the upgrade prompt (FR-R1)", () => {
     );
     await signInAtAal1(page, member, `/en/org/${slug}/workforce-profile`);
 
-    const availability = page.getByRole("region", { name: "Availability" });
+    const availability = page.getByRole("region", { name: "Available workforce" });
     await expect(availability.getByRole("heading", { name: "No availability listed yet" })).toBeVisible();
     await expect(page.getByText("on your Free plan")).toHaveCount(0);
     await expectAccessibleAtBothWidths(page);

@@ -110,7 +110,7 @@ test.describe("Partner dashboards (FR-R3, FR-R4, release 2a)", () => {
     await signInAdmin(page, admin, secret, r.slug, "recruitment");
 
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(RECRUITMENT_QUESTION);
-    const capacity = page.getByRole("main").getByRole("link", { name: "Update workforce capacity" });
+    const capacity = page.getByRole("main").getByRole("link", { name: "Update recruiting capacity" });
     await expect(capacity).toHaveAttribute("href", `/en/org/${r.slug}/workforce-profile#availability-heading`);
     await tabTo(page, capacity);
     await expectFocusVisible(capacity);
@@ -144,7 +144,7 @@ test.describe("Partner dashboards (FR-R3, FR-R4, release 2a)", () => {
     await expect(reader.page.getByRole("heading", { level: 1 })).toHaveText(RECRUITMENT_QUESTION);
     await expect(listingRow(reader.page, "Not confirmed for 60 days or more")).toHaveCount(1);
     await expect(reader.page.getByRole("button", { name: /^Confirm/ })).toHaveCount(0);
-    await expect(reader.page.getByRole("link", { name: "Update workforce capacity" })).toHaveCount(0);
+    await expect(reader.page.getByRole("link", { name: "Update recruiting capacity" })).toHaveCount(0);
     const readerPlan = reader.page.getByRole("region", { name: "Plan and usage" });
     await expect(readerPlan).toContainText("3 of 10 workforce listings");
     await expect(readerPlan.getByRole("link", { name: "Manage plan" })).toHaveCount(0);
@@ -282,7 +282,7 @@ test.describe("Partner dashboards (FR-R3, FR-R4, release 2a)", () => {
     test.setTimeout(120_000);
     for (const [type, question, action] of [
       ["staffing_company", STAFFING_QUESTION, "Add workforce"],
-      ["recruitment_company", RECRUITMENT_QUESTION, "Update workforce capacity"],
+      ["recruitment_company", RECRUITMENT_QUESTION, "Update recruiting capacity"],
     ] as const) {
       const partner = await partnerWithCompany(type);
       execute(
