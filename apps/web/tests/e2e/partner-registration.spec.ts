@@ -12,6 +12,7 @@ import { notificationsOf } from "./support/notify";
 import { currentStep, onboardingSteps } from "./support/onboarding";
 import { organizationAudit, organizationCountByName, organizationRows, uniqueToken } from "./support/organizations";
 import {
+  PARTNER_DESCRIPTION,
   createCommittedPartner,
   DRAFT_NOTICE,
   fillPartnerCompany,
@@ -135,7 +136,7 @@ test.describe("partner registration (FR-J1)", () => {
       legalName: `Manila Skills Recruitment ${token} Inc.`,
       displayName: display,
       identifier: "CS 2019-04512",
-      description: "We place nurses and caregivers.",
+      description: "We place nurses and caregivers with hospitals and care homes in Germany.",
     });
     await page.getByRole("button", { name: "Continue" }).click();
 
@@ -159,14 +160,14 @@ test.describe("partner registration (FR-J1)", () => {
       slug: `manila-skills-${token}`,
       display_name: display,
       based_in_country: "PH",
-      industry_code: "N",
+      industry_code: null,
       legal_entity_identifier: "CS201904512",
       legal_entity_identifier_kind: "registration_number",
       role: "owner",
     });
     expect(organization.accepted_at).not.toBeNull();
     expect(partnerOrganization(user.id)).toEqual([
-      { type: "recruitment_company", review_status: "onboarding", description: "We place nurses and caregivers." },
+      { type: "recruitment_company", review_status: "onboarding", description: "We place nurses and caregivers with hospitals and care homes in Germany." },
     ]);
     expect(organizationAudit(organization.id).filter((row) => row.action === "organization_created")).toEqual([
       expect.objectContaining({ actor_id: user.id, metadata: expect.objectContaining({ type: "recruitment_company" }) }),
@@ -209,7 +210,7 @@ test.describe("partner registration (FR-J1)", () => {
     await page.getByRole("button", { name: "Continue" }).click();
     await expect(page.getByRole("heading", { name: "Where you serve", level: 1 })).toBeVisible();
     await expect(page.getByRole("combobox", { name: "Where do you supply workers for?" })).toBeVisible();
-    expect(partnerOrganization(user.id)).toEqual([{ type: "staffing_company", review_status: "onboarding", description: null }]);
+    expect(partnerOrganization(user.id)).toEqual([{ type: "staffing_company", review_status: "onboarding", description: PARTNER_DESCRIPTION }]);
   });
 
   test("AC6: a staffing sign-up with a registered address looks like one with a new address", async ({ page, context }) => {
@@ -249,9 +250,9 @@ test.describe("partner registration (FR-J1)", () => {
     for (const label of ["Legal company name", "Display name (optional)", "Website (optional)", PARTNER_IDENTIFIER_LABEL]) {
       await expect(page.getByRole("textbox", { name: label, exact: true })).toBeVisible();
     }
-    for (const label of ["Country where you are based", "Industry"]) {
-      await expect(page.getByRole("combobox", { name: label, exact: true })).toBeVisible();
-    }
+    await expect(page.getByRole("combobox", { name: "Country where you are based", exact: true })).toBeVisible();
+    await expect(page.getByRole("combobox", { name: "Industry", exact: true }), "a partner has no industry of its own").toHaveCount(0);
+    await expect(page.getByRole("textbox", { name: "About your company", exact: true })).toBeVisible();
     await expect(page.getByRole("radio")).toHaveCount(0);
     await expect(page.getByRole("combobox", { name: /type of (company|organisation|organization)/i })).toHaveCount(0);
     for (const width of [360, 1280]) {
@@ -295,6 +296,6 @@ test.describe("partner registration (FR-J1)", () => {
     await expect(page.getByRole("button", { name: "Creating company..." })).toBeDisabled();
     await expect(page.getByRole("heading", { name: "Where you serve", level: 1 })).toBeVisible();
     expect(organizationCountByName(legalName)).toBe(1);
-    expect(partnerOrganization(user.id)).toEqual([{ type: "recruitment_company", review_status: "onboarding", description: null }]);
+    expect(partnerOrganization(user.id)).toEqual([{ type: "recruitment_company", review_status: "onboarding", description: PARTNER_DESCRIPTION }]);
   });
 });

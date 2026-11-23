@@ -72,6 +72,16 @@ vi.mock("@/lib/dal/workforce-offer", async () => ({
   getWorkforceOffer: offerMock,
 }));
 vi.mock("@/lib/actions/workforce-offer", () => ({ saveWorkforceOffer: vi.fn() }));
+const listingsMock = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/dal/workforce-availability", () => ({
+  getWorkforceListings: listingsMock,
+  getAvailabilityRules: async () => ({ staleDays: 60, reminderDays: 30, maxDays: 730 }),
+}));
+vi.mock("@/lib/actions/workforce-availability", () => ({
+  saveListing: vi.fn(),
+  confirmListing: vi.fn(),
+  deleteListing: vi.fn(),
+}))
 vi.mock("@/lib/dal/mfa", () => ({ hasVerifiedTotpFactor: twoStepMock }));
 vi.mock("@/lib/dal/passport", () => ({ getPassport: passportMock }));
 vi.mock("@/lib/dal/reference", () => ({
@@ -233,7 +243,9 @@ describe("the partner journey of onboarding (FR-J1)", () => {
     expect(html).toContain("Country where you are based");
     expect(html).toContain("Company registration number, VAT number or other identifier");
     expect(html).not.toContain("optional until you start your trial");
-    expect(html).toContain("About your company (optional)");
+    expect(html).toContain(">About your company<");
+    expect(html).toContain("At least 50 characters");
+    expect(html, "a partner is not asked for an industry of its own").not.toContain(">Industry<");
     expect(html).not.toMatch(/name="type"|organization_type/);
   });
 
@@ -453,6 +465,29 @@ describe("the partner journey of onboarding (FR-J1)", () => {
 
     organizationMock.mockResolvedValue({ ...owner, displayName: "Manila Skills", type: "recruitment_company", role: "admin" });
     expect(await render(OnboardingPage)).toContain("As an admin of Manila Skills you will manage");
+  });
+
+  it("asks a staffing company on Ready for its available workforce, at aal2 only, and a recruitment company not", async () => {
+    organizationMock.mockResolvedValue({ ...owner, slug: "manila-staff", displayName: "Manila Staff", type: "staffing_company" });
+    geographiesMock.mockResolvedValue({ sourcesFrom: ["AT"], servesMarket: ["DE"] });
+    offerMock.mockResolvedValue({ ...savedOffer, serviceTypes: ["staffing", "temporary"] });
+    commitmentMock.mockResolvedValue({ version: 0, isDraft: true, accepted: true, acceptedVersion: 0 });
+    twoStepMock.mockResolvedValue(true);
+    listingsMock.mockResolvedValue([]);
+    requireUserMock.mockResolvedValue({ ...partner("staffing_company"), aal: "aal2" });
+    const html = await render(OnboardingPage);
+    expect(currentStep(html)).toBe("Ready");
+    expect(html).toContain(">Your available workforce</h2>");
+    expect(html).toContain("for example 40 welders from the Philippines");
+    expect(html).toContain("Add a listing");
+    requireUserMock.mockResolvedValue({ ...partner("staffing_company"), aal: "aal1" });
+    const below = await render(OnboardingPage);
+    expect(below).toContain("Enter your two-step code to add your available workforce");
+    expect(below).not.toContain("Add a listing");
+    requireUserMock.mockResolvedValue({ ...partner("recruitment_company"), aal: "aal2" });
+    organizationMock.mockResolvedValue({ ...owner, slug: "manila-skills", displayName: "Manila Skills", type: "recruitment_company" });
+    offerMock.mockResolvedValue(savedOffer);
+    expect(await render(OnboardingPage)).not.toContain("Your available workforce");
   });
 
   it("opens Ready once Security is done, with what staff check, the review time and the submission", async () => {

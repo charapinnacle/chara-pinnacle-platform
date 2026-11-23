@@ -72,7 +72,10 @@ export async function fillPartnerSignup(page: Page, type: PartnerType, email: st
   for (const { title } of await partnerDocuments(type)) await documentBox(page, title).check();
 }
 
-// The Company step of partner onboarding, for a company based in the Philippines.
+// The description every test partner gives: a partner describes itself in at least 50 characters.
+export const PARTNER_DESCRIPTION = "We recruit welders and electricians from the Philippines for employers in Germany.";
+
+// The Company step of partner onboarding, for a company based in the Philippines. A partner has no industry of its own.
 export async function fillPartnerCompany(
   page: Page,
   details: { legalName: string; displayName?: string; identifier?: string; description?: string },
@@ -80,13 +83,12 @@ export async function fillPartnerCompany(
   await page.getByLabel("Legal company name").fill(details.legalName);
   if (details.displayName) await page.getByLabel("Display name (optional)").fill(details.displayName);
   await choose(page, "Country where you are based", "Philippines");
-  await choose(page, "Industry", "Administrative and support service activities");
   await page.getByLabel("Website (optional)").fill("https://manila-skills.example");
   if (details.identifier) {
     await page.getByLabel(PARTNER_IDENTIFIER_LABEL).fill(details.identifier);
     await page.getByLabel("Type of identifier", { exact: true }).selectOption({ value: "registration_number" });
   }
-  if (details.description) await page.getByLabel("About your company (optional)").fill(details.description);
+  await page.getByLabel("About your company", { exact: true }).fill(details.description ?? PARTNER_DESCRIPTION);
 }
 
 export async function openPartnerOnboarding(page: Page, user: TestUser): Promise<void> {
@@ -104,9 +106,10 @@ export async function partnerWithCompany(type: PartnerType): Promise<{ user: Tes
     p_legal_name: `Manila Skills ${token} Inc.`,
     p_display_name: `Manila Skills ${token}`,
     p_based_in_country: "PH",
-    p_industry_code: "N",
+    p_industry_code: "",
     p_identifier: `MS${token}`.slice(0, 32),
     p_identifier_kind: "registration_number",
+    p_description: PARTNER_DESCRIPTION,
   });
   const [organization] = organizationRows(user.id);
   return { user, id: organization.id, slug: organization.slug };

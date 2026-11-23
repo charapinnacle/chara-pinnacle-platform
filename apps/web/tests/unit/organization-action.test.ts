@@ -40,7 +40,7 @@ beforeEach(() => {
 });
 
 describe("createPartnerOrganization (FR-J1)", () => {
-  const partnerInput = { ...input, description: "  We place nurses.\nSince 2019. " };
+  const partnerInput = { ...input, industry: "", description: "  We place nurses and carers with hospitals in Germany.\nSince 2019. " };
 
   beforeEach(() => {
     requireUserMock.mockResolvedValue({ id: "user-2", intendedOrganizationType: "recruitment_company" });
@@ -55,11 +55,11 @@ describe("createPartnerOrganization (FR-J1)", () => {
       p_legal_name: "Acme Bau GmbH",
       p_display_name: "Acme Bau GmbH",
       p_based_in_country: "DE",
-      p_industry_code: "F",
+      p_industry_code: "",
       p_website: undefined,
       p_identifier: "DE123456789",
       p_identifier_kind: "vat_number",
-      p_description: "We place nurses.\nSince 2019.",
+      p_description: "We place nurses and carers with hospitals in Germany.\nSince 2019.",
     });
   });
 
@@ -251,9 +251,16 @@ describe("updateOrganizationProfile", () => {
       user: { id: "u" },
       organization: { id: orgId, slug: "manila-skills", type: "recruitment_company", role: "owner" },
     });
-    await expect(updateOrganizationProfile("manila-skills", profile)).resolves.toEqual({ saved: true, displayName: "Acme Bau AG" });
+    const partnerProfile = { ...profile, industry: "", description: "We place nurses and carers with hospitals in Germany." };
+    const short = await updateOrganizationProfile("manila-skills", { ...partnerProfile, description: "Nurses." });
+    expect(short.errors, "a partner describes itself in at least 50 characters").toEqual({
+      description: "Describe your company in at least 50 characters.",
+    });
+    expect(rpcMock).not.toHaveBeenCalled();
+    await expect(updateOrganizationProfile("manila-skills", partnerProfile)).resolves.toEqual({ saved: true, displayName: "Acme Bau AG" });
+    expect(rpcMock.mock.calls[0][1]).toMatchObject({ p_industry_code: "", p_description: partnerProfile.description });
     rpcMock.mockResolvedValue(refused("CHARA_FORBIDDEN", "aal2_required"));
-    await expect(updateOrganizationProfile("manila-skills", profile)).rejects.toThrow(
+    await expect(updateOrganizationProfile("manila-skills", partnerProfile)).rejects.toThrow(
       `REDIRECT:/en/mfa?next=${encodeURIComponent("/en/onboarding?step=company")}`,
     );
   });

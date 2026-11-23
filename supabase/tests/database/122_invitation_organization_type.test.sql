@@ -37,7 +37,7 @@ select pg_temp.call_as(:'own1', 'authenticated',
   'aal1') as setup_emp \gset
 select pg_temp.call_as(:'rc1', 'authenticated',
   $$select set_config('t.rec', (public.create_organization('recruitment_company', 'Boundary Recruitment Ltd', null, 'PH', 'N',
-    null, 'BOUND1234', 'other'))->>'organization_id', true)$$, 'aal1') as setup_rec \gset
+    null, 'BOUND1234', 'other', p_description => 'We recruit welders and electricians from the Philippines for employers in Germany.'))->>'organization_id', true)$$, 'aal1') as setup_rec \gset
 
 -- Invitations ------------------------------------------------------------------------------------------------------
 select pg_temp.invite(current_setting('t.emp')::uuid, :'own1', :'rc2', 'token-partner-to-employer');

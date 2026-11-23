@@ -306,7 +306,7 @@ test.describe("submission for review (FR-J1 AC8 to AC11)", () => {
 
     await page.getByLabel("Display name (optional)").fill(`Manila Staffing ${partner.slug}`);
     await page.getByLabel("Website (optional)").fill("https://manila-staffing.example");
-    await page.getByLabel(/^About your company/).fill("We supply welders to employers in Germany.");
+    await page.getByLabel(/^About your company/).fill("We supply welders and pipe fitters to employers in Germany and Poland.");
     await page.getByRole("button", { name: "Save profile" }).click();
     await expect(page.getByText("Company profile saved", { exact: true })).toBeVisible();
     expect(reviewRow(partner.id).review_status, "the display name, website and description keep it listed").toBe("listed");

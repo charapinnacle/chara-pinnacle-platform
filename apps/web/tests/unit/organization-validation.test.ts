@@ -174,7 +174,8 @@ describe("organization profile schema", () => {
 });
 
 describe("partner Company step schema (FR-J1 AC12)", () => {
-  const partner = { ...valid, identifier: "CS 2019-04512", identifierKind: "registration_number", description: "" };
+  const about = "We recruit welders and electricians from the Philippines for employers in Germany.";
+  const partner = { ...valid, industry: "", identifier: "CS 2019-04512", identifierKind: "registration_number", description: about };
 
   it("requires the identifier and its kind, and normalises the identifier", () => {
     const empty = partnerOrganizationInputSchema.safeParse({ ...partner, identifier: "", identifierKind: "" });
@@ -184,8 +185,19 @@ describe("partner Company step schema (FR-J1 AC12)", () => {
     const noKind = partnerOrganizationInputSchema.safeParse({ ...partner, identifierKind: "" });
     expect(noKind.success ? {} : fieldErrors(noKind.error)).toEqual({ identifierKind: "Choose the type of identifier." });
     const parsed = partnerOrganizationInputSchema.parse(partner);
-    expect(parsed).toMatchObject({ identifier: "CS201904512", identifierKind: "registration_number", description: null });
+    expect(parsed).toMatchObject({ identifier: "CS201904512", identifierKind: "registration_number", description: about, industry: "" });
     expect(parsed).not.toHaveProperty("type");
+  });
+
+  it("requires a description of at least 50 characters and no industry", () => {
+    for (const description of ["", "  ", "We recruit welders."]) {
+      const short = partnerOrganizationInputSchema.safeParse({ ...partner, description });
+      expect(short.success ? {} : fieldErrors(short.error), JSON.stringify(description)).toEqual({
+        description: "Describe your company in at least 50 characters.",
+      });
+    }
+    expect(partnerOrganizationInputSchema.parse({ ...partner, description: ` ${"a".repeat(50)} ` }).description).toHaveLength(50);
+    expect(partnerOrganizationInputSchema.safeParse({ ...partner, industry: "" }).success).toBe(true);
   });
 
   it("keeps a description of up to 2000 characters, trimmed, and refuses a longer one", () => {
@@ -197,11 +209,10 @@ describe("partner Company step schema (FR-J1 AC12)", () => {
   });
 
   it("refuses control characters in the description but keeps tabs and line breaks", () => {
-    expect(partnerOrganizationInputSchema.parse({ ...partner, description: "Nurses\tand carers.\r\nSince 2019." }).description).toBe(
-      "Nurses\tand carers.\r\nSince 2019.",
-    );
+    const text = "Nurses\tand carers for hospitals and care homes.\r\nSince 2019, in Germany.";
+    expect(partnerOrganizationInputSchema.parse({ ...partner, description: text }).description).toBe(text);
     for (const control of ["\u0000", "\u0007", "\u001b", "\u007f"]) {
-      const result = partnerOrganizationInputSchema.safeParse({ ...partner, description: `Nurses${control}carers` });
+      const result = partnerOrganizationInputSchema.safeParse({ ...partner, description: `${about}${control}` });
       expect(result.success ? {} : fieldErrors(result.error), JSON.stringify(control)).toEqual({
         description: "Remove the control characters from the description.",
       });
@@ -209,7 +220,7 @@ describe("partner Company step schema (FR-J1 AC12)", () => {
   });
 
   it("lets the employer form leave the identifier empty, as in Phase 1", () => {
-    expect(companyStepSchema(false).safeParse({ ...partner, identifier: "", identifierKind: "" }).success).toBe(true);
+    expect(companyStepSchema(false).safeParse({ ...partner, industry: "C", identifier: "", identifierKind: "" }).success).toBe(true);
     expect(companyStepSchema(true).safeParse({ ...partner, identifier: "", identifierKind: "" }).success).toBe(false);
   });
 });
