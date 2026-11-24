@@ -15,6 +15,7 @@ import { OnboardingPanel } from "@/components/onboarding/onboarding-panel";
 import { OnboardingSteps } from "@/components/onboarding/onboarding-steps";
 import { PartnerReadyStep, PartnerReviewPending } from "@/components/onboarding/partner-ready";
 import { AvailabilitySection } from "@/components/organization/availability-section";
+import { LicencesSection } from "@/components/organization/licences-section";
 import { CommitmentDocument } from "@/components/organization/commitment-document";
 import { CommitmentForm } from "@/components/organization/commitment-form";
 import { OrganizationForm } from "@/components/organization/organization-form";
@@ -27,6 +28,7 @@ import { geographiesComplete, getOrganizationGeographies } from "@/lib/dal/geogr
 import { getBillingState } from "@/lib/dal/billing";
 import { getCommitmentStatus } from "@/lib/dal/commitment";
 import { getLegalDocument, getOnboardingDocuments, getSignUpForm } from "@/lib/dal/legal";
+import { getLicenceSettings, getPartnerLicences } from "@/lib/dal/licences";
 import { hasVerifiedTotpFactor } from "@/lib/dal/mfa";
 import { getMyOrganization, getOrganizationProfile } from "@/lib/dal/organizations";
 import { getPartnerReview, getReviewOutcome, getReviewTargetDays } from "@/lib/dal/partner-review";
@@ -444,10 +446,11 @@ async function PartnerNextStep({ lang, aal, organization, countries, industries,
   }
 
   const supplies = organization.type === "staffing_company" || offer.serviceTypes.includes("staffing");
-  const [targetDays, outcome, availability] = await Promise.all([
+  const [targetDays, outcome, availability, licences] = await Promise.all([
     getReviewTargetDays(),
     review.status === "info_requested" ? getReviewOutcome(organization.id) : null,
     supplies && !member ? readyAvailability(lang, organization, aal, geographies.sourcesFrom, offer.occupations) : null,
+    member ? null : readyLicences(lang, organization, aal),
   ]);
   return (
     <PartnerReadyStep
@@ -459,6 +462,7 @@ async function PartnerNextStep({ lang, aal, organization, countries, industries,
       infoStep={reopened === undefined ? null : review.infoStep}
       message={outcome?.decision === "request_info" ? outcome.reason : null}
       availability={availability}
+      licences={licences}
       staffing={organization.type === "staffing_company"}
     />
   );
@@ -502,6 +506,33 @@ async function readyAvailability(
       prompt={prompts.workforce_listings}
       billingHref={billingPath(lang, organization.slug)}
       now={new Date().toISOString()}
+    />
+  );
+}
+
+// The licences on Ready (FR-J2), added in place instead of on the workforce profile. Like listings they change at aal2
+// only, so below it the step asks for the code first.
+async function readyLicences(lang: string, organization: PartnerNextStepProps["organization"], aal: "aal1" | "aal2") {
+  if (aal !== "aal2") {
+    return (
+      <TextLink standalone href={mfaPath(lang, partnerStepPath(lang, "ready"))}>
+        Enter your two-step code to add your licences
+      </TextLink>
+    );
+  }
+  const [licences, { patterns, maxYears }, countries] = await Promise.all([
+    getPartnerLicences(organization.id),
+    getLicenceSettings(),
+    getCountries(),
+  ]);
+  return (
+    <LicencesSection
+      slug={organization.slug}
+      canManage
+      licences={licences}
+      countries={countries}
+      patterns={patterns}
+      maxYears={maxYears}
     />
   );
 }

@@ -49,6 +49,8 @@ type PartnerReadyStepProps = {
   message: string | null;
   // A staffing company's available workforce (FR-K3), listed before it submits: occupations, numbers and source countries.
   availability?: React.ReactNode;
+  // The licences, added in place by the owner or an admin; null for a member, who reads the link to the profile.
+  licences?: React.ReactNode;
   // A staffing company needs a current agency licence and a listing before it submits (private.partner_profile_missing).
   staffing: boolean;
 };
@@ -64,6 +66,7 @@ export function PartnerReadyStep({
   infoStep,
   message,
   availability,
+  licences,
   staffing,
 }: PartnerReadyStepProps) {
   const reopen = infoStep ? reopenLinks[infoStep](lang, organization.slug) : null;
@@ -107,14 +110,26 @@ export function PartnerReadyStep({
           {availability}
         </Card>
       ) : null}
+      <Card as="section" padding="lg" elevated aria-labelledby="ready-licences-heading" className="gap-5">
+        <div className="grid gap-1">
+          <h2 id="ready-licences-heading" className="text-h3">
+            {staffing ? "Your agency licence" : "Your licences (optional)"}
+          </h2>
+          <p className="text-body text-muted-foreground">
+            {staffing
+              ? "A staffing company needs at least one current agency licence before it submits: the permit that lets you lease workers to employers, such as a German temporary agency work permit."
+              : "Add the licence or registration you hold for each country where you recruit, so our team can check it in the review."}{" "}
+            Only our team sees it.
+          </p>
+        </div>
+        {licences ?? (
+          <TextLink standalone href={licencesPath(lang, organization.slug)}>
+            See the licences on the workforce profile
+          </TextLink>
+        )}
+      </Card>
       <Card padding="lg" elevated className="gap-5">
         <ReviewChecks id="review-checks" />
-        <p className="text-body">
-          {staffing
-            ? "A staffing company needs at least one current agency licence before it submits: the permit that lets you lease workers to employers, such as a German temporary agency work permit. Add it on your workforce profile."
-            : "Licences are optional before you submit. Add the licence or registration you hold for each country where you work on your workforce profile, so our team can check it in the review."}{" "}
-          <TextLink href={licencesPath(lang, organization.slug)}>Add your licences</TextLink>
-        </p>
         {manager ? (
           <SubmitForReview slug={organization.slug} again={infoRequested} />
         ) : (

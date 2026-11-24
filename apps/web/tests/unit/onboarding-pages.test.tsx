@@ -83,6 +83,16 @@ vi.mock("@/lib/actions/workforce-availability", () => ({
   deleteListing: vi.fn(),
 }))
 vi.mock("@/lib/dal/mfa", () => ({ hasVerifiedTotpFactor: twoStepMock }));
+vi.mock("@/lib/dal/licences", () => ({
+  getPartnerLicences: async () => [],
+  getLicenceSettings: async () => ({ patterns: {}, maxYears: 20 }),
+}));
+vi.mock("@/lib/actions/licences", () => ({
+  saveLicence: vi.fn(),
+  deleteLicence: vi.fn(),
+  startEvidenceUpload: vi.fn(),
+  getEvidenceDownload: vi.fn(),
+}));
 vi.mock("@/lib/dal/passport", () => ({ getPassport: passportMock }));
 vi.mock("@/lib/dal/reference", () => ({
   getCountries: async () => [
@@ -632,7 +642,7 @@ describe("the partner journey of onboarding (FR-J1)", () => {
     expect(licences).not.toContain("(more information requested)");
   });
 
-  it("FR-J1 AC11: Ready says the licences are optional and links to their section of the workforce profile", async () => {
+  it("FR-J1 AC11: Ready has a licences section, optional for a recruitment company, that asks for the code first at aal1", async () => {
     requireUserMock.mockResolvedValue(partner("recruitment_company"));
     organizationMock.mockResolvedValue({ ...owner, type: "recruitment_company" });
     geographiesMock.mockResolvedValue({ sourcesFrom: ["AT"], servesMarket: ["DE"] });
@@ -642,8 +652,12 @@ describe("the partner journey of onboarding (FR-J1)", () => {
     const html = await render(OnboardingPage);
     expect(currentStep(html)).toBe("Ready");
     expect(html).toContain("The licences you declare");
-    expect(html).toContain("Licences are optional before you submit.");
-    expect(html).toMatch(/<a[^>]*href="\/en\/org\/acme-bau\/workforce-profile#licences-heading"[^>]*>Add your licences<\/a>/);
+    expect(html).toContain(">Your licences (optional)</h2>");
+    expect(html).toContain("Enter your two-step code to add your licences");
+    requireUserMock.mockResolvedValue({ ...partner("recruitment_company"), aal: "aal2" });
+    const atAal2 = await render(OnboardingPage);
+    expect(atAal2).toContain("No licences added yet");
+    expect(atAal2).toMatch(/<button[^>]*>Add a licence<\/button>/);
   });
 
   it("Ready asks a staffing company for an agency licence and a listing before it submits", async () => {
@@ -655,8 +669,9 @@ describe("the partner journey of onboarding (FR-J1)", () => {
     twoStepMock.mockResolvedValue(true);
     const html = await render(OnboardingPage);
     expect(currentStep(html)).toBe("Ready");
+    expect(html).toContain(">Your agency licence</h2>");
     expect(html).toContain("A staffing company needs at least one current agency licence before it submits");
-    expect(html).not.toContain("Licences are optional before you submit.");
+    expect(html).not.toContain("Your licences (optional)");
   });
 
   it("reopens the company details for the owner at aal2, and asks for the code first at aal1", async () => {

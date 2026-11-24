@@ -168,7 +168,7 @@ export function AvailabilitySection({
                   <p className="text-small text-muted-foreground">{text}</p>
                   {canManage ? (
                     <div className="flex flex-wrap gap-2">
-                      <ConfirmListing slug={slug} listing={listing} name={nameOf(listing)} />
+                      {freshness.state === "fresh" ? null : <ConfirmListing slug={slug} listing={listing} name={nameOf(listing)} />}
                       <FormButton type="button" variant="secondary" onClick={() => setEditing(listing)}>
                         Edit<span className="sr-only"> the listing for {nameOf(listing)}</span>
                       </FormButton>
