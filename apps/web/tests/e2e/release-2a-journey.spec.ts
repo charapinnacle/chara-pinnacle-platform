@@ -117,7 +117,7 @@ test.describe("release 2a journey (NFR-O4)", () => {
     await pickWithKeys(page, "Occupation", "Electric", "Building and related electricians");
     await pickWithKeys(page, "Source country", "Phil", "Philippines");
     await listing.getByLabel("Candidates ready to present").fill("60");
-    await listing.getByLabel("Monthly capacity").fill("15");
+    await listing.getByLabel("Candidates recruited per month").fill("15");
     await pickDate(listing.getByLabel("Available from"), new Date(Date.now() + 14 * 86_400_000).toISOString().slice(0, 10));
     await listing.getByRole("button", { name: "Save listing" }).click();
     await expect(page.getByText("Listing saved", { exact: true })).toBeVisible();

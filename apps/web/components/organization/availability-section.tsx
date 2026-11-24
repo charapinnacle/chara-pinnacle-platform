@@ -168,7 +168,7 @@ export function AvailabilitySection({
                   <p className="text-small text-muted-foreground">{text}</p>
                   {canManage ? (
                     <div className="flex flex-wrap gap-2">
-                      <ConfirmListing slug={slug} listing={listing} name={nameOf(listing)} />
+                      {freshness.state === "fresh" ? null : <ConfirmListing slug={slug} listing={listing} name={nameOf(listing)} />}
                       <FormButton type="button" variant="secondary" onClick={() => setEditing(listing)}>
                         Edit<span className="sr-only"> the listing for {nameOf(listing)}</span>
                       </FormButton>
@@ -183,7 +183,7 @@ export function AvailabilitySection({
           </ul>
         </>
       )}
-      <ModalDialog open={editing !== null} onClose={close} title={editing === "new" ? "Add a listing" : "Edit the listing"}>
+      <ModalDialog wide open={editing !== null} onClose={close} title={editing === "new" ? "Add a listing" : "Edit the listing"}>
         {editing ? (
           <ListingForm
             partnerType={partnerType}
@@ -220,19 +220,19 @@ export function AvailabilitySection({
 const words = {
   recruitment_company: {
     available: "Candidates ready to present",
-    availableHint: "Screened candidates you can put forward now.",
-    monthlyHint: "How many more candidates you can recruit each month.",
+    monthly: "Candidates recruited per month",
+    intro: "How many screened candidates you can put forward now and recruit each month, for one occupation and source country.",
     line: "candidates ready",
     empty: "List how many candidates you can put forward now and recruit each month, per occupation and source country.",
   },
   staffing_company: {
     available: "Workers available now",
-    availableHint: undefined,
-    monthlyHint: "How many more workers you can supply each month.",
+    monthly: "More workers per month",
+    intro: "How many workers on your payroll you can supply now and each month, for one occupation and source country.",
     line: "available",
     empty: "List how many workers you can supply now and each month, per occupation and source country.",
   },
-} as const satisfies Record<PartnerType, Record<string, string | undefined>>;
+} as const satisfies Record<PartnerType, Record<string, string>>;
 
 type ListingFormProps = {
   partnerType: PartnerType;
@@ -283,102 +283,106 @@ function ListingForm({ partnerType, slug, listing, occupations, countries, langu
   }
 
   return (
-    <form noValidate className="grid gap-4" onSubmit={handleSubmit(onSubmit)}>
+    <form noValidate className="grid gap-6" onSubmit={handleSubmit(onSubmit)}>
+      <p className="-mt-2 text-body leading-relaxed text-muted-foreground">
+        {listing ? name : words[partnerType].intro}
+      </p>
       <FormErrorSummary form={form} summaryRef={summaryRef} ids={ids} />
-      {listing ? (
-        <p className="text-body font-semibold">{name}</p>
-      ) : (
-        <>
-          <ComboboxField
-            control={control}
-            name="occupation"
-            id={ids.occupation}
-            label="Occupation"
-            description="One of the occupations you offer."
-            placeholder="Choose an occupation"
-            options={toOptions(occupations)}
-            emptyText="No matching occupation"
-          />
-          <ComboboxField
-            control={control}
-            name="country"
-            id={ids.country}
-            label="Source country"
-            description="One of the countries you source workers from."
-            placeholder="Choose a country"
-            options={toOptions(countries)}
-            emptyText="No matching country"
-          />
-        </>
-      )}
-      <InputField
-        control={control}
-        name="available"
-        id={ids.available}
-        label={words[partnerType].available}
-        description={words[partnerType].availableHint}
-        inputMode="numeric"
-        autoComplete="off"
-      />
-      <InputField
-        control={control}
-        name="monthlyCapacity"
-        id={ids.monthlyCapacity}
-        label="Monthly capacity"
-        description={words[partnerType].monthlyHint}
-        inputMode="numeric"
-        autoComplete="off"
-      />
-      <InputField
-        control={control}
-        name="availableFrom"
-        id={ids.availableFrom}
-        label="Available from"
-        description="An earlier date is saved as today."
-        type="date"
-      />
-      <fieldset className="grid gap-4">
-        <legend className="mb-1 text-small font-semibold">The workers&apos; skills (optional)</legend>
-        <div className="grid gap-4 sm:grid-cols-2 sm:items-start">
-          <ComboboxField
-            control={control}
-            name="languageCode"
-            id={ids.languageCode}
-            label="Language"
-            placeholder="Choose a language"
-            options={toOptions(languages)}
-            emptyText="No matching language"
-          />
-          <SelectField
-            control={control}
-            name="languageLevel"
-            id={ids.languageLevel}
-            label="Level, at least"
-            placeholder="Choose a level"
-            options={cefrLevels.map((level) => ({ value: level, label: level }))}
-          />
-        </div>
+      <div className="grid gap-5 sm:grid-cols-2 sm:items-start">
+        {listing ? null : (
+          <>
+            <ComboboxField
+              control={control}
+              name="occupation"
+              id={ids.occupation}
+              label="Occupation"
+              placeholder="Choose an occupation"
+              options={toOptions(occupations)}
+              emptyText="No matching occupation"
+            />
+            <ComboboxField
+              control={control}
+              name="country"
+              id={ids.country}
+              label="Source country"
+              placeholder="Choose a country"
+              options={toOptions(countries)}
+              emptyText="No matching country"
+            />
+          </>
+        )}
+        <InputField
+          control={control}
+          name="available"
+          id={ids.available}
+          label={words[partnerType].available}
+          placeholder="For example, 40"
+          inputMode="numeric"
+          autoComplete="off"
+        />
+        <InputField
+          control={control}
+          name="monthlyCapacity"
+          id={ids.monthlyCapacity}
+          label={words[partnerType].monthly}
+          placeholder="For example, 10"
+          inputMode="numeric"
+          autoComplete="off"
+        />
+        <InputField
+          control={control}
+          name="availableFrom"
+          id={ids.availableFrom}
+          label="Available from"
+          description="An earlier date is saved as today."
+          type="date"
+        />
+      </div>
+      <fieldset className="grid gap-5 rounded-xl border bg-secondary/40 p-4 sm:grid-cols-2 sm:items-start sm:p-5">
+        <legend className="float-start mb-1 text-body font-semibold sm:col-span-2">
+          The workers&apos; skills <span className="font-normal text-muted-foreground">(optional)</span>
+        </legend>
+        <ComboboxField
+          control={control}
+          name="languageCode"
+          id={ids.languageCode}
+          label="Language"
+          placeholder="Choose a language"
+          options={toOptions(languages)}
+          emptyText="No matching language"
+        />
+        <SelectField
+          control={control}
+          name="languageLevel"
+          id={ids.languageLevel}
+          label="Level, at least"
+          placeholder="Choose a level"
+          options={cefrLevels.map((level) => ({ value: level, label: level }))}
+        />
         <InputField
           control={control}
           name="minExperienceYears"
           id={ids.minExperienceYears}
           label="Experience, at least (years)"
+          placeholder="For example, 3"
           inputMode="numeric"
           autoComplete="off"
         />
-        <TextareaField
-          control={control}
-          name="certificates"
-          id={ids.certificates}
-          label="Certificates and tests"
-          description={`For example "ISO 9606-1 welders, 3G and 6G, trade-tested". Up to ${formatCount(SKILL_CERTIFICATES_MAX)} characters.`}
-        />
+        <div className="sm:col-span-2">
+          <TextareaField
+            control={control}
+            name="certificates"
+            id={ids.certificates}
+            label="Certificates and tests"
+            description={`For example "ISO 9606-1 welders, 3G and 6G, trade-tested". Up to ${formatCount(SKILL_CERTIFICATES_MAX)} characters.`}
+          />
+        </div>
       </fieldset>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <FormButton type="button" variant="secondary" disabled={formState.isSubmitting} onClick={onClose}>
+      <div className="flex flex-col-reverse gap-3 border-t pt-5 sm:flex-row sm:justify-end">
+        <FormButton type="button" variant="secondary" className="sm:w-auto" disabled={formState.isSubmitting} onClick={onClose}>
           Cancel
         </FormButton>
-        <FormButton type="submit" busy={formState.isSubmitting}>
+        <FormButton type="submit" className="sm:w-auto sm:min-w-40" busy={formState.isSubmitting}>
           {formState.isSubmitting ? "Saving..." : "Save listing"}
         </FormButton>
       </div>

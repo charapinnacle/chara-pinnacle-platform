@@ -72,7 +72,7 @@ test.describe("Workforce availability (FR-K3)", () => {
     await pickWithKeys(page, "Occupation", "Weld", "Welders and flame cutters");
     await pickWithKeys(page, "Source country", "Phil", "Philippines");
     await dialog.getByLabel("Workers available now").fill("120");
-    await dialog.getByLabel("Monthly capacity").fill("40");
+    await dialog.getByLabel("More workers per month").fill("40");
     await pickDate(dialog.getByLabel("Available from"), "2027-03-01");
     await expectAccessibleAtBothWidths(page);
     await page.setViewportSize({ width: 1280, height: 900 });
@@ -107,7 +107,7 @@ test.describe("Workforce availability (FR-K3)", () => {
     await pickWithKeys(page, "Occupation", "Weld", "Welders and flame cutters");
     await pickWithKeys(page, "Source country", "Phil", "Philippines");
     await dialog.getByLabel("Workers available now").fill("100001");
-    await dialog.getByLabel("Monthly capacity").fill("40");
+    await dialog.getByLabel("More workers per month").fill("40");
     await dialog.getByRole("button", { name: "Save listing" }).click();
     await expect(dialog.getByText("Enter a whole number from 1 to 100,000.").first()).toBeVisible();
     await dialog.getByLabel("Workers available now").fill("50");
