@@ -9,6 +9,11 @@ const getCurrentUser = vi.hoisted(() => vi.fn());
 const releasedSwitches = vi.hoisted(() => vi.fn());
 
 vi.mock("server-only", () => ({}));
+vi.mock("next/navigation", () => ({
+  redirect: (path: string) => {
+    throw new Error(`REDIRECT ${path}`);
+  },
+}));
 vi.mock("@/lib/dal/statistics", () => ({ getPlatformStatistics }));
 vi.mock("@/lib/dal/organizations", () => ({ getPostJobHref }));
 vi.mock("@/lib/dal/session", () => ({ getCurrentUser }));
@@ -103,30 +108,15 @@ describe("the home page (U73)", () => {
   it("writes no style attribute, which the page's policy would block", async () => {
     expect(await renderHome()).not.toMatch(/<[^>]+\sstyle=/);
   });
-  it("shows a signed-in worker only the job seeker's side: no employer line, band or call to join", async () => {
-    getCurrentUser.mockResolvedValue({ accountKind: "worker" });
-    getPostJobHref.mockResolvedValue(null);
-    const html = await renderHome();
-    expect(html).toContain('role="search"');
-    expect(html).toContain("home-how-heading");
-    expect(html).toContain("home-passport-heading");
-    expect(html).not.toContain("Hiring?");
-    expect(html).not.toContain('aria-label="For employers"');
-    expect(html).not.toContain('href="/en/employers"');
-    expect(html).not.toContain("home-start-heading");
-  });
-
-  it("shows a signed-in company only the employer's side: no job seeker's steps, passport or call to join", async () => {
-    getCurrentUser.mockResolvedValue({ accountKind: "company" });
-    getPostJobHref.mockResolvedValue("/en/post-job");
-    const html = await renderHome();
-    expect(html).toContain('role="search"');
-    expect(html).toContain('aria-label="For employers"');
-    expect(html).toContain('href="/en/post-job"');
-    expect(html).not.toContain("home-how-heading");
-    expect(html).not.toContain("home-passport-heading");
-    expect(html).not.toContain("home-start-heading");
-    expect(html).not.toContain("Hiring? Post a Job");
+  it("sends someone signed in to their dashboard, or to onboarding until they have one", async () => {
+    for (const [accountKind, path] of [
+      ["worker", "/en/dashboard/worker"],
+      ["company", "/en/dashboard/employer"],
+      [null, "/en/onboarding"],
+    ] as const) {
+      getCurrentUser.mockResolvedValue({ accountKind });
+      await expect(renderHome()).rejects.toThrow(`REDIRECT ${path}`);
+    }
   });
 });
 
@@ -152,18 +142,5 @@ describe("the partner audience of the home page (FR-L5 AC9)", () => {
       expect(html).toMatch(new RegExp(`<a [^>]*href="${href.replace(/[?]/g, "\\?")}"[^>]*>${label}</a>`));
     }
     expect(html.match(/<h1/g)).toHaveLength(1);
-  });
-
-  it("offers a signed-in company the directories without a sign-up, and shows a worker nothing of it", async () => {
-    releasedSwitches.mockResolvedValue(["release_partner_directories"]);
-    getCurrentUser.mockResolvedValue({ accountKind: "company" });
-    const company = await renderHome();
-    expect(company).toContain("home-partners-heading");
-    expect(company).toContain('href="/en/partners/recruitment"');
-    expect(company).not.toContain("kind=recruitment_company");
-    getCurrentUser.mockResolvedValue({ accountKind: "worker" });
-    const worker = await renderHome();
-    expect(worker).not.toContain("home-partners-heading");
-    expect(worker).not.toContain("/en/partners/");
   });
 });

@@ -76,28 +76,28 @@ test.describe("the public partner network pages (FR-L5)", () => {
   test("AC1, PR #111: a worker's Menu offers no directory, a company's and a partner's offer both and nothing of the job seeker's side", async ({ browser }) => {
     const phone = { viewport: { width: 360, height: 800 } };
     const worker = await signedInPage(browser, await createCommittedUser("worker"), phone);
+    // Signed in, the home page leads to the dashboard, so the Menu is read on another public page.
     await worker.page.goto("/en");
-    await expect(exploreLinks(await openMenu(worker.page))).toHaveText(["Find jobs", "For job seekers", "How Chara Pinnacle works"]);
+    await expect(worker.page).toHaveURL("/en/dashboard/worker");
     await worker.page.goto("/en/how-it-works");
+    await expect(exploreLinks(await openMenu(worker.page))).toHaveText(["Find jobs", "For job seekers", "How Chara Pinnacle works"]);
+    await worker.page.keyboard.press("Escape");
     await expect(worker.page.getByRole("main").getByRole("heading", { name: "For employers" })).toBeVisible();
     await expect(worker.page.getByRole("main").getByRole("link", { name: "Recruitment partners" })).toHaveCount(0);
-    await worker.page.goto("/en");
-    await expect(worker.page.locator("#home-partners-heading")).toHaveCount(0);
     await worker.context.close();
 
     const company = await newCompany();
     const employer = await signedInPage(browser, company.owner, phone);
-    await employer.page.goto("/en");
+    await employer.page.goto("/en/how-it-works");
     await expect(exploreLinks(await openMenu(employer.page))).toHaveText(["For employers", "How Chara Pinnacle works", ...DIRECTORIES]);
     await employer.context.close();
 
     const { user } = await partnerWithCompany("staffing_company");
     const partner = await signedInPage(browser, user, phone);
-    await partner.page.goto("/en");
+    await partner.page.goto("/en/how-it-works");
     await expect(exploreLinks(await openMenu(partner.page))).toHaveText(["For employers", "How Chara Pinnacle works", ...DIRECTORIES]);
     await partner.page.keyboard.press("Escape");
     await expect(partner.page.getByRole("link", { name: "Sign up as a staffing company" })).toHaveCount(0);
-    await expect(partner.page.locator("#home-how-heading")).toHaveCount(0);
     await partner.context.close();
   });
 

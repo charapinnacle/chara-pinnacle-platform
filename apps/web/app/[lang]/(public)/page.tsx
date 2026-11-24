@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { ClosingCall } from "@/components/public/closing-call";
 import { EmployerBand } from "@/components/home/employer-band";
 import { Hero } from "@/components/home/hero";
@@ -13,7 +14,7 @@ import { releasedSwitches } from "@/lib/dal/release";
 import { getCurrentUser } from "@/lib/dal/session";
 import { getCountries, getOccupations } from "@/lib/dal/reference";
 import { getPlatformStatistics } from "@/lib/dal/statistics";
-import { signUpPath } from "@/lib/routes";
+import { homePath, signUpPath } from "@/lib/routes";
 import { staticPageMetadata } from "@/lib/seo/metadata";
 
 export async function generateMetadata({ params }: PageProps<"/[lang]">): Promise<Metadata> {
@@ -22,13 +23,14 @@ export async function generateMetadata({ params }: PageProps<"/[lang]">): Promis
 
 // One audience and one job, as Indeed's and Glassdoor's home pages have (OPEN_QUESTIONS.md D90): the search for the person
 // looking for work, how it works, the passport, one line for employers, the live figures when they are credible, and the
-// closing call. The employer's story is the For employers page. Signed in, each side sees only its own: a worker no
-// employer line or band, a company none of the job seeker's steps, passport or call to join. While release 2a is on the
-// partner audience follows the employer band, for everyone but a worker (FR-L5).
+// closing call. The employer's story is the For employers page. While release 2a is on the partner audience follows the
+// employer band (FR-L5). The home page is for visitors: someone signed in goes to their dashboard, or to onboarding
+// until they have one.
 export default async function Home({ params }: PageProps<"/[lang]">) {
   const { lang } = await params;
-  const [user, tiles, postJobHref, suggestions, countries, occupations, released] = await Promise.all([
-    getCurrentUser(),
+  const user = await getCurrentUser();
+  if (user) redirect(homePath(lang, user.accountKind));
+  const [tiles, postJobHref, suggestions, countries, occupations, released] = await Promise.all([
     getPlatformStatistics(),
     getPostJobHref(lang),
     getSearchSuggestions(),
@@ -41,32 +43,25 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
     ...suggestions.titles.toSorted((a, b) => a.localeCompare(b)).map((title) => ({ value: `title:${title}`, label: title })),
     ...occupations.map((occupation) => ({ value: `isco:${occupation.code}`, label: occupation.label, keywords: occupation.synonyms.join(" ") })),
   ];
-  const kind = user?.accountKind;
   return (
     <>
       <Hero
-        showHiringLine={kind !== "worker" && kind !== "company"}
+        showHiringLine
         lang={lang}
         what={what}
         countries={countries.map((country) => ({ value: country.code, label: country.name }))}
       />
-      {kind === "company" ? null : (
-        <>
-          <HowItWorks lang={lang} />
-          <PassportSection />
-        </>
-      )}
-      {kind === "worker" ? null : <EmployerBand lang={lang} postJobHref={postJobHref} />}
-      {kind !== "worker" && released.includes("release_partner_directories") ? <PartnerBand lang={lang} visitor={!user} /> : null}
+      <HowItWorks lang={lang} />
+      <PassportSection />
+      <EmployerBand lang={lang} postJobHref={postJobHref} />
+      {released.includes("release_partner_directories") ? <PartnerBand lang={lang} visitor /> : null}
       {tiles.length > 0 ? <StatisticsBlock tiles={tiles} /> : null}
-      {user ? null : (
-        <ClosingCall
-          id="home-start-heading"
-          title="Your Workforce. Your Network. One Platform."
-          primary={{ href: signUpPath(lang), label: `Join ${BRAND_NAME}` }}
-          secondary={postJobHref ? { href: postJobHref, label: "Start hiring" } : null}
-        />
-      )}
+      <ClosingCall
+        id="home-start-heading"
+        title="Your Workforce. Your Network. One Platform."
+        primary={{ href: signUpPath(lang), label: `Join ${BRAND_NAME}` }}
+        secondary={postJobHref ? { href: postJobHref, label: "Start hiring" } : null}
+      />
     </>
   );
 }
