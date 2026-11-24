@@ -2,6 +2,7 @@ import { Notice } from "@/components/forms/notice";
 import { TextLink } from "@/components/forms/text-link";
 import { Card } from "@/components/layout/card";
 import { OnboardingPanel } from "@/components/onboarding/onboarding-panel";
+import type { PartnerStepNavigation } from "@/components/onboarding/onboarding-steps";
 import { ReviewChecks } from "@/components/onboarding/review-checks";
 import { SubmitForReview } from "@/components/onboarding/submit-for-review";
 import { WelcomeTiles } from "@/components/onboarding/welcome-tiles";
@@ -10,7 +11,6 @@ import {
   homePath,
   membersPath,
   partnerStepPath,
-  whatYouOfferPath,
   whereYouServePath,
   workforceProfilePath,
 } from "@/lib/routes";
@@ -53,6 +53,8 @@ type PartnerReadyStepProps = {
   licences?: React.ReactNode;
   // A staffing company needs a current agency licence and a listing before it submits (private.partner_profile_missing).
   staffing: boolean;
+  // The sidebar's links back to the steps reached.
+  nav: PartnerStepNavigation;
 };
 
 // Ready, the last step of partner onboarding (FR-J1 AC10, AC11): what staff check, how long it takes, and the submission
@@ -68,11 +70,12 @@ export function PartnerReadyStep({
   availability,
   licences,
   staffing,
+  nav,
 }: PartnerReadyStepProps) {
   const reopen = infoStep ? reopenLinks[infoStep](lang, organization.slug) : null;
   return (
     <OnboardingPanel
-      partnerStep={{ current: 5, reopened: infoStep ? infoStepIndexes[infoStep] : undefined }}
+      partnerStep={{ current: 5, reopened: infoStep ? infoStepIndexes[infoStep] : undefined, ...nav }}
       title={infoRequested ? "Submit your company again" : "Submit your company for review"}
       description={`Our team reviews ${organization.displayName} before it is listed in the partner directories. A review usually takes ${reviewTimeText(targetDays)}.`}
     >
@@ -131,32 +134,13 @@ export function PartnerReadyStep({
       <Card padding="lg" elevated className="gap-5">
         <ReviewChecks id="review-checks" />
         {manager ? (
-          <SubmitForReview slug={organization.slug} again={infoRequested} />
+          <SubmitForReview slug={organization.slug} again={infoRequested} backHref={partnerStepPath(lang, "commitments")} />
         ) : (
           <Notice tone="info" role="status">
             The owner or an admin of {organization.displayName} submits the company for review.
           </Notice>
         )}
       </Card>
-      <div className="flex flex-wrap gap-x-6 gap-y-3">
-        {manager
-          ? [
-              { href: partnerStepPath(lang, "company"), label: "Change your company details" },
-              { href: whereYouServePath(lang), label: "Change where you serve" },
-              { href: whatYouOfferPath(lang), label: "Change what you offer" },
-            ]
-              // The step staff reopened is linked in their notice already.
-              .filter(({ href }) => href !== reopen?.href)
-              .map(({ href, label }) => (
-                <TextLink key={href} standalone href={href}>
-                  {label}
-                </TextLink>
-              ))
-          : null}
-        <TextLink standalone href={`/${lang}`}>
-          Go to the home page
-        </TextLink>
-      </div>
     </OnboardingPanel>
   );
 }

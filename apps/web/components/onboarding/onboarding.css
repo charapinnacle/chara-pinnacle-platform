@@ -4,7 +4,8 @@
    colour so that the fields slide under it; the page keeps the band's height free when it scrolls a focused field into
    view, so the button never covers the field in focus (WCAG 2.4.11). */
 @media (width < 40rem) {
-  .onboarding-step form > button[type="submit"] {
+  .onboarding-step form > button[type="submit"],
+  .onboarding-step form > .step-actions {
     position: sticky;
     bottom: 0.75rem;
     z-index: 10;
@@ -16,11 +17,22 @@
   }
 }
 
+/* Back and the submit button share the foot of a step: below 40 rem the submit button takes the rest of the row. */
+.step-actions > button[type="submit"] {
+  flex: 1;
+}
+
 /* From 40 rem a partner step (FR-J1), now a few short cards, ends with its Continue button at the end of the form column
    instead of across it; below 40 rem it stays sticky at the foot of the screen like every step (above). */
 @media (width >= 40rem) {
   .partner-step form > button[type="submit"] {
     justify-self: end;
+    width: auto;
+    min-width: 12rem;
+  }
+
+  .partner-step .step-actions > button[type="submit"] {
+    flex: none;
     width: auto;
     min-width: 12rem;
   }
