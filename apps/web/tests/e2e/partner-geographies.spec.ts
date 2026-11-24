@@ -155,8 +155,8 @@ test.describe("Where you serve (FR-K1)", () => {
     ]);
     await expectAccessibleAtBothWidths(page);
 
-    // The countries can be changed again from the next step by Back; the saved ones are the chips.
-    await page.getByRole("link", { name: "Back", exact: true }).click();
+    // The countries can be changed again from a later step by the steps beside the form; the saved ones are the chips.
+    await page.getByRole("list", { name: "Setting up your account" }).getByRole("link", { name: "Where you serve" }).click();
     await expect(page.getByRole("heading", { name: "Where you serve", level: 1 })).toBeVisible();
     await expect(chips(page, RECRUITS_FOR)).toHaveText(["United Arab Emirates", "Germany", "Saudi Arabia"]);
     await page.getByRole("button", { name: "Remove Saudi Arabia" }).click();
