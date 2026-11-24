@@ -9,6 +9,7 @@ import { UpgradePrompt } from "@/components/billing/upgrade-prompt";
 import { toast, toastError } from "@/components/feedback/toast-store";
 import { CheckboxField } from "@/components/forms/checkbox-field";
 import { CheckboxGroupField } from "@/components/forms/checkbox-group-field";
+import { StepActions } from "@/components/onboarding/step-actions";
 import { StepCard } from "@/components/onboarding/step-card";
 import { ChipsField, type ChipOption } from "@/components/forms/chips-field";
 import { FormButton } from "@/components/forms/form-button";
@@ -49,6 +50,8 @@ type WorkforceOfferFormProps = {
   billingHref: string;
   // Onboarding continues with the next step; the workforce profile page stays and confirms the save.
   onboarding: boolean;
+  // During onboarding, the step before this one.
+  backHref?: string;
   // The availability listings per occupation (FR-K3), on the workforce profile page only.
   listingCounts?: Promise<Readonly<Record<string, number>>>;
 };
@@ -90,6 +93,7 @@ export function WorkforceOfferForm({
   occupationsPrompt,
   billingHref,
   onboarding,
+  backHref,
   listingCounts,
 }: WorkforceOfferFormProps) {
   const router = useRouter();
@@ -264,9 +268,11 @@ export function WorkforceOfferForm({
           />
         </Suspense>
       ) : null}
-      <FormButton type="submit" busy={formState.isSubmitting}>
-        {formState.isSubmitting ? "Saving..." : onboarding ? "Continue" : "Save what you offer"}
-      </FormButton>
+      <StepActions backHref={backHref}>
+        <FormButton type="submit" busy={formState.isSubmitting}>
+          {formState.isSubmitting ? "Saving..." : onboarding ? "Continue" : "Save what you offer"}
+        </FormButton>
+      </StepActions>
     </form>
   );
 }

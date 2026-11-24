@@ -7,6 +7,7 @@ import { useForm, useWatch } from "react-hook-form";
 import { UpgradePrompt } from "@/components/billing/upgrade-prompt";
 import { toast, toastError } from "@/components/feedback/toast-store";
 import { ChipsField } from "@/components/forms/chips-field";
+import { StepActions } from "@/components/onboarding/step-actions";
 import { StepCard } from "@/components/onboarding/step-card";
 import { FormButton } from "@/components/forms/form-button";
 import { FormErrorSummary } from "@/components/forms/form-error-summary";
@@ -40,6 +41,8 @@ type WhereYouServeFormProps = {
   billingHref: string;
   // Onboarding continues with the next step; the workforce profile page stays and confirms the save.
   onboarding: boolean;
+  // During onboarding, the step before this one.
+  backHref?: string;
   // The availability listings per source country (FR-K3), on the workforce profile page only.
   listingCounts?: Promise<Readonly<Record<string, number>>>;
   // The workforce profile page, where the licence prompt opens the licence form (FR-K1 AC8).
@@ -62,6 +65,7 @@ export function WhereYouServeForm({
   marketsAllowance,
   billingHref,
   onboarding,
+  backHref,
   listingCounts,
   profilePath,
 }: WhereYouServeFormProps) {
@@ -185,9 +189,11 @@ export function WhereYouServeForm({
           />
         </Suspense>
       ) : null}
-      <FormButton type="submit" busy={formState.isSubmitting}>
-        {formState.isSubmitting ? "Saving..." : onboarding ? "Continue" : "Save countries"}
-      </FormButton>
+      <StepActions backHref={backHref}>
+        <FormButton type="submit" busy={formState.isSubmitting}>
+          {formState.isSubmitting ? "Saving..." : onboarding ? "Continue" : "Save countries"}
+        </FormButton>
+      </StepActions>
       <div role="status" className="grid gap-3 empty:hidden">
         {licencePrompts.map((code) => (
           <Notice key={code} tone="info" className="grid gap-3">

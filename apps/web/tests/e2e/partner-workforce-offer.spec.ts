@@ -159,8 +159,8 @@ test.describe("What you offer (FR-K2)", () => {
     );
     expect(stamp.recent).toBe(true);
 
-    // The offer can be changed again from the next step; switching staffing off removes its rows.
-    await page.getByRole("link", { name: "Change what you offer" }).click();
+    // The offer can be changed again from the next step by Back; switching staffing off removes its rows.
+    await page.getByRole("link", { name: "Back", exact: true }).click();
     await expect(page.getByRole("heading", { name: "What you offer", level: 1 })).toBeVisible();
     await expect(chips(page, OCCUPATIONS)).toHaveText(["Plumbers and pipe fitters", "Welders and flame cutters"]);
     await page.getByRole("checkbox", { name: STAFFING_SERVICE }).uncheck();

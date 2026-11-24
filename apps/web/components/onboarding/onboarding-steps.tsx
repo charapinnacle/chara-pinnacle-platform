@@ -1,4 +1,5 @@
 import { Check } from "lucide-react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 // The steps that are left once the email is confirmed and the account type is committed: what the person did on an earlier
@@ -86,9 +87,22 @@ const partnerHints = [
 // Classes, not an inline style (see columns above): the progress bar of the partner journey at each of its six steps.
 const progressWidths = ["w-1/6", "w-2/6", "w-3/6", "w-4/6", "w-5/6", "w-full"] as const;
 
-// The partner journey (FR-J1) beside the form from 1024 px: each step with what it asks for. Below that a slim progress
-// bar with "Step 3 of 6: What you offer" takes its place, and the list stays for screen readers.
-export function PartnerSteps({ current, reopened = [] }: { current: number; reopened?: readonly number[] }) {
+export type PartnerStepNavigation = {
+  // The furthest step the partner may open: every step before it is done.
+  reach?: number;
+  // The address of each step the owner or an admin may go back to; null for one without a page (Security).
+  links?: readonly (string | null)[];
+};
+
+// The partner journey (FR-J1) beside the form from 1024 px: each step with what it asks for, and each step already reached
+// a link back to it. Below that a slim progress bar with "Step 3 of 6: What you offer" takes its place, and the list stays
+// for screen readers.
+export function PartnerSteps({
+  current,
+  reopened = [],
+  reach = current,
+  links = [],
+}: { current: number; reopened?: readonly number[] } & PartnerStepNavigation) {
   const steps = onboardingJourneys.partner;
   return (
     <div className="grid gap-4">
@@ -103,7 +117,8 @@ export function PartnerSteps({ current, reopened = [] }: { current: number; reop
       <ol aria-label="Setting up your account" className="grid gap-1 max-lg:sr-only">
         {steps.map((label, index) => {
           const state =
-            index === current ? "current" : reopened.includes(index) ? "reopened" : index < current ? "done" : "upcoming";
+            index === current ? "current" : reopened.includes(index) ? "reopened" : index < reach ? "done" : "upcoming";
+          const href = index !== current && index <= reach ? links[index] : null;
           return (
             <li
               key={label}
@@ -111,6 +126,7 @@ export function PartnerSteps({ current, reopened = [] }: { current: number; reop
               className={cn(
                 "relative grid grid-cols-[1.75rem_minmax(0,1fr)] gap-x-3 rounded-lg px-3 py-2.5",
                 state === "current" && "bg-card shadow-card",
+                href && "transition-colors hover:bg-card/70 has-focus-visible:ring-2 has-focus-visible:ring-ring",
               )}
             >
               <span
@@ -126,7 +142,13 @@ export function PartnerSteps({ current, reopened = [] }: { current: number; reop
               </span>
               <span className={cn("text-small leading-snug", state === "current" ? "font-semibold" : "font-medium")}>
                 <span className="sr-only">{`Step ${index + 1} of ${steps.length}: `}</span>
-                {label}
+                {href ? (
+                  <Link href={href} className="outline-none after:absolute after:inset-0 after:rounded-lg">
+                    {label}
+                  </Link>
+                ) : (
+                  label
+                )}
                 {state === "done" ? <span className="sr-only"> (done)</span> : null}
                 {state === "reopened" ? <span className="sr-only"> (more information requested)</span> : null}
               </span>

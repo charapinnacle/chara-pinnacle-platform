@@ -153,7 +153,9 @@ test.describe("the employer-pays commitment (FR-J3)", () => {
       await expect(page.getByRole("heading", { name: "What this document will cover", level: 3 })).toBeVisible();
       await expect(page.getByRole("checkbox")).toHaveCount(0);
       await expect(page.getByRole("button", { name: "Accept and continue" })).toHaveCount(0);
-      await expect(page.getByRole("link", { name: "Change what you offer" })).toHaveCount(changeLinks);
+      await expect(page.getByRole("list", { name: "Setting up your account" }).getByRole("link", { name: "What you offer" })).toHaveCount(
+        changeLinks,
+      );
       await expectAccessibleAtBothWidths(page);
       await page.context().clearCookies();
     }

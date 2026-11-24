@@ -7,6 +7,7 @@ import { CheckboxField } from "@/components/forms/checkbox-field";
 import { FormButton } from "@/components/forms/form-button";
 import { FormErrorSummary } from "@/components/forms/form-error-summary";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
+import { StepActions } from "@/components/onboarding/step-actions";
 import { acceptCommitment, acceptUpdatedCommitment } from "@/lib/actions/commitment";
 import { COMMITMENT_LABEL, commitmentSchema, type CommitmentInput } from "@/lib/validation/commitment";
 
@@ -16,6 +17,8 @@ type CommitmentFormProps = {
   version: number;
   // Past onboarding the page stays: the caller is told once the acceptance is recorded.
   onAccepted?: () => void;
+  // During onboarding, the step before this one.
+  backHref?: string;
 };
 
 const FAILURE_TITLE = "Could not accept the commitment";
@@ -23,7 +26,7 @@ const ids = { confirmed: "commitment-confirmed" } as const;
 
 // The owner's confirmation of the employer-pays commitment (FR-J3 AC1): one box of its own, never ticked in advance. A
 // refused submit moves the focus to the box, whose message sits next to it, rather than to the summary.
-export function CommitmentForm({ slug, version, onAccepted }: CommitmentFormProps) {
+export function CommitmentForm({ slug, version, onAccepted, backHref }: CommitmentFormProps) {
   const form = useForm<CommitmentInput>({
     resolver: zodResolver(commitmentSchema),
     defaultValues: { confirmed: false },
@@ -47,9 +50,11 @@ export function CommitmentForm({ slug, version, onAccepted }: CommitmentFormProp
       <CheckboxField control={control} name="confirmed" id={ids.confirmed}>
         {COMMITMENT_LABEL}
       </CheckboxField>
-      <FormButton type="submit" busy={formState.isSubmitting}>
-        {formState.isSubmitting ? "Saving..." : onAccepted ? "Accept the commitment" : "Accept and continue"}
-      </FormButton>
+      <StepActions backHref={backHref}>
+        <FormButton type="submit" busy={formState.isSubmitting}>
+          {formState.isSubmitting ? "Saving..." : onAccepted ? "Accept the commitment" : "Accept and continue"}
+        </FormButton>
+      </StepActions>
     </form>
   );
 }

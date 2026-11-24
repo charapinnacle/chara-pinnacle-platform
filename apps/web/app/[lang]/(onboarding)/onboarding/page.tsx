@@ -11,8 +11,10 @@ import { partnerTypeLabels } from "@/components/forms/account-kind-options";
 import { TextLink } from "@/components/forms/text-link";
 import { EnrolmentStartForm } from "@/components/mfa/enrolment-start-form";
 import { Card } from "@/components/layout/card";
+import { LinkButton } from "@/components/layout/link-button";
 import { OnboardingPanel } from "@/components/onboarding/onboarding-panel";
 import { OnboardingSteps } from "@/components/onboarding/onboarding-steps";
+import { StepActions } from "@/components/onboarding/step-actions";
 import { PartnerReadyStep, PartnerReviewPending } from "@/components/onboarding/partner-ready";
 import { AvailabilitySection } from "@/components/organization/availability-section";
 import { LicencesSection } from "@/components/organization/licences-section";
@@ -259,6 +261,21 @@ async function PartnerNextStep({ lang, aal, organization, countries, industries,
   const offerDone = workforceOfferComplete(organization.type, offer);
   if (step === "ready" && !(geographiesDone && offerDone && commitment.accepted && twoStepDone)) redirect(onboardingPath(lang));
   const reopened = review.status === "info_requested" && review.infoStep ? infoStepIndexes[review.infoStep] : undefined;
+  // The furthest step open, and for the owner or an admin a link back to each step reached (the sidebar).
+  const reach = !geographiesDone ? 1 : !offerDone ? 2 : !commitment.accepted ? 3 : !twoStepDone ? 4 : 5;
+  const nav = {
+    reach,
+    links: member
+      ? []
+      : [
+          partnerStepPath(lang, "company"),
+          whereYouServePath(lang),
+          whatYouOfferPath(lang),
+          partnerStepPath(lang, "commitments"),
+          null,
+          partnerStepPath(lang, "ready"),
+        ],
+  };
 
   if (member && !(geographiesDone && offerDone)) {
     return (
@@ -280,7 +297,7 @@ async function PartnerNextStep({ lang, aal, organization, countries, industries,
       : "No company registration number or VAT number is recorded yet.";
     return (
       <OnboardingPanel
-        partnerStep={{ current: 0 }}
+        partnerStep={{ current: 0, ...nav }}
         title="Your company details"
         description="Our team checks these details in the review."
       >
@@ -327,7 +344,7 @@ async function PartnerNextStep({ lang, aal, organization, countries, industries,
     const basedIn = countries.find(({ code }) => code === profile?.country)?.name ?? profile?.country ?? "";
     return (
       <OnboardingPanel
-        partnerStep={{ current: 1 }}
+        partnerStep={{ current: 1, ...nav }}
         title="Where you serve"
         description="Employers and job orders reach you through these countries, not through your address. Choose them from the list."
       >
@@ -342,6 +359,7 @@ async function PartnerNextStep({ lang, aal, organization, countries, industries,
           marketsAllowance={allowances.markets}
           billingHref={billingPath(lang, organization.slug)}
           onboarding
+          backHref={partnerStepPath(lang, "company")}
         />
       </OnboardingPanel>
     );
@@ -355,7 +373,7 @@ async function PartnerNextStep({ lang, aal, organization, countries, industries,
     ]);
     return (
       <OnboardingPanel
-        partnerStep={{ current: 2 }}
+        partnerStep={{ current: 2, ...nav }}
         title="What you offer"
         description="Employers, job orders and the directories find you by the occupations you recruit or supply. Choose them from the list."
       >
@@ -370,6 +388,7 @@ async function PartnerNextStep({ lang, aal, organization, countries, industries,
           occupationsPrompt={prompts.listed_occupations}
           billingHref={billingPath(lang, organization.slug)}
           onboarding
+          backHref={whereYouServePath(lang)}
         />
       </OnboardingPanel>
     );
@@ -382,7 +401,7 @@ async function PartnerNextStep({ lang, aal, organization, countries, industries,
     const owner = organization.role === "owner";
     return (
       <OnboardingPanel
-        partnerStep={{ current: 3 }}
+        partnerStep={{ current: 3, ...nav }}
         title="Commitments"
         description={
           commitment.accepted
@@ -398,31 +417,22 @@ async function PartnerNextStep({ lang, aal, organization, countries, industries,
           </Notice>
         ) : null}
         <CommitmentDocument document={document} outdated={outdated} />
-        {commitment.accepted ? null : owner ? (
-          <CommitmentForm slug={organization.slug} version={document.version} />
+        {commitment.accepted ? (
+          member ? null : (
+            <StepActions backHref={whatYouOfferPath(lang)}>
+              <LinkButton href={partnerStepPath(lang, "ready")} className="min-h-12 sm:min-w-48">
+                Continue
+              </LinkButton>
+            </StepActions>
+          )
+        ) : owner ? (
+          <CommitmentForm slug={organization.slug} version={document.version} backHref={whatYouOfferPath(lang)} />
         ) : (
           <Notice tone="info" role="status">
             Only the owner of {organization.displayName} can accept the commitment. Ask them to sign in and accept it, then
             come back to this page.
           </Notice>
         )}
-        <div className="flex flex-wrap gap-x-6 gap-y-3">
-          {member ? null : (
-            <>
-              <TextLink standalone href={whereYouServePath(lang)}>
-                Change where you serve
-              </TextLink>
-              <TextLink standalone href={whatYouOfferPath(lang)}>
-                Change what you offer
-              </TextLink>
-            </>
-          )}
-          {commitment.accepted ? (
-            <TextLink standalone href={partnerStepPath(lang, "ready")}>
-              Back to Ready
-            </TextLink>
-          ) : null}
-        </div>
       </OnboardingPanel>
     );
   }
@@ -430,7 +440,7 @@ async function PartnerNextStep({ lang, aal, organization, countries, industries,
   if (!twoStepDone) {
     return (
       <OnboardingPanel
-        partnerStep={{ current: 4 }}
+        partnerStep={{ current: 4, ...nav }}
         title="Secure your account"
         description={`As ${organization.role === "owner" ? "the owner" : "an admin"} of ${organization.displayName} you will manage its team, billing, job orders and candidates, so ${BRAND_NAME} asks for a code from an authenticator app before you open them. It takes about a minute.`}
       >
@@ -464,6 +474,7 @@ async function PartnerNextStep({ lang, aal, organization, countries, industries,
       availability={availability}
       licences={licences}
       staffing={organization.type === "staffing_company"}
+      nav={nav}
     />
   );
 }

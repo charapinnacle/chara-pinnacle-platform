@@ -108,8 +108,8 @@ test.describe("submission for review (FR-J1 AC8 to AC11)", () => {
     await page.goto("/en/onboarding?step=ready");
     await expect(page).toHaveURL(/\/en\/onboarding$/);
     await expect(page.getByRole("heading", { name: "Commitments", exact: true, level: 1 })).toBeVisible();
-    // Back to Where you serve, with the saved countries.
-    await page.getByRole("link", { name: "Change where you serve" }).click();
+    // Back to Where you serve by the steps beside the form, with the saved countries.
+    await page.getByRole("list", { name: "Setting up your account" }).getByRole("link", { name: "Where you serve" }).click();
     await expect(page.getByRole("heading", { name: "Where you serve", level: 1 })).toBeVisible();
     await expect(page.getByRole("button", { name: "Remove Philippines" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Remove Germany" })).toBeVisible();

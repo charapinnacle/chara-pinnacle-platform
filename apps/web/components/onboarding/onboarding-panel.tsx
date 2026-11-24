@@ -1,10 +1,10 @@
-import { PartnerSteps } from "@/components/onboarding/onboarding-steps";
+import { PartnerSteps, type PartnerStepNavigation } from "@/components/onboarding/onboarding-steps";
 import { StepHeading } from "@/components/onboarding/step-heading";
 
 type OnboardingPanelProps = {
   steps?: React.ReactNode;
   // A step of the partner journey (FR-J1): the wide layout with the steps beside the form instead of above it.
-  partnerStep?: { current: number; reopened?: readonly number[] };
+  partnerStep?: { current: number; reopened?: readonly number[] } & PartnerStepNavigation;
   title: string;
   description?: string;
   children?: React.ReactNode;
@@ -21,7 +21,7 @@ export function OnboardingPanel({ steps, partnerStep, title, description, childr
     return (
       <div className="partner-step grid animate-rise gap-6 lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start lg:gap-10">
         <aside className="grid gap-4 lg:sticky lg:top-8">
-          <PartnerSteps current={partnerStep.current} reopened={partnerStep.reopened} />
+          <PartnerSteps {...partnerStep} />
           <p className="text-caption leading-relaxed text-muted-foreground max-lg:hidden">
             Each step is saved when you continue. Our team reviews your company before it is listed.
           </p>

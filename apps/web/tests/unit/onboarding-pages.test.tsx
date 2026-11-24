@@ -287,7 +287,7 @@ describe("the partner journey of onboarding (FR-J1)", () => {
     organizationMock.mockResolvedValue({ ...owner, displayName: "Manila Staff", type: "staffing_company" });
     const html = await render(OnboardingPage);
     expect(currentStep(html)).toBe("Where you serve");
-    expect(html).toMatch(/Step 1 of 6: <\/span>Company<span class="sr-only"> \(done\)<\/span>/);
+    expect(html).toMatch(/Step 1 of 6: <\/span><a[^>]*>Company<\/a><span class="sr-only"> \(done\)<\/span>/);
     expect(html).toContain(">Where you serve</h1>");
     expect(html).toMatch(/<p aria-hidden="true"[^>]*>Step 2 of 6: Where you serve<\/p>/);
     expect(html).toMatch(/<dt[^>]*>Where are you based\?<\/dt><dd[^>]*>Austria<\/dd>/);
@@ -339,7 +339,7 @@ describe("the partner journey of onboarding (FR-J1)", () => {
     const html = await render(OnboardingPage);
     expect(currentStep(html)).toBe("What you offer");
     expect(html).toMatch(/<p aria-hidden="true"[^>]*>Step 3 of 6: What you offer<\/p>/);
-    expect(html).toMatch(/Step 2 of 6: <\/span>Where you serve<span class="sr-only"> \(done\)<\/span>/);
+    expect(html).toMatch(/Step 2 of 6: <\/span><a[^>]*>Where you serve<\/a><span class="sr-only"> \(done\)<\/span>/);
     expect(html).toContain(">What you offer</h1>");
     expect(html).toContain("Which occupations do you recruit or supply?");
     expect(html).toContain(">0 of 10 occupations</p>");
@@ -367,7 +367,7 @@ describe("the partner journey of onboarding (FR-J1)", () => {
     offerMock.mockResolvedValue(savedOffer);
     const html = await render(OnboardingPage);
     expect(currentStep(html)).toBe("Commitments");
-    expect(html).toMatch(/Step 2 of 6: <\/span>Where you serve<span class="sr-only"> \(done\)<\/span>/);
+    expect(html).toMatch(/Step 2 of 6: <\/span><a[^>]*>Where you serve<\/a><span class="sr-only"> \(done\)<\/span>/);
     expect(html).toContain(">Commitments</h1>");
     expect(html).toContain("Workers never pay fees to get a job through Chara Pinnacle. Every recruitment and staffing company");
     expect(html).toContain("Draft - not yet approved by legal counsel.");
@@ -380,8 +380,9 @@ describe("the partner journey of onboarding (FR-J1)", () => {
     expect(html).not.toMatch(/<input[^>]*id="commitment-confirmed"[^>]*checked/);
     expect(html).toContain(">We charge workers no recruitment fees or related costs</label>");
     expect(html).toMatch(/<button[^>]*type="submit"[^>]*>Accept and continue<\/button>/);
-    expect(html).toMatch(/<a[^>]*href="\/en\/onboarding\?step=where-you-serve"[^>]*>Change where you serve/);
-    expect(html).toMatch(/<a[^>]*href="\/en\/onboarding\?step=what-you-offer"[^>]*>Change what you offer/);
+    expect(html).toMatch(/<a[^>]*href="\/en\/onboarding\?step=what-you-offer"[^>]*>(?:(?!<\/a>).)*Back<\/a>/);
+    expect(html).toMatch(/<a[^>]*href="\/en\/onboarding\?step=where-you-serve"[^>]*>Where you serve<\/a>/);
+    expect(html).not.toContain("Change what you offer");
     expect(commitmentMock).toHaveBeenCalledWith("org-1");
     expect(legalDocumentMock).toHaveBeenCalledWith("employer-pays-commitment");
 
@@ -434,7 +435,7 @@ describe("the partner journey of onboarding (FR-J1)", () => {
     expect(html).toMatch(/<div[^>]*role="status"[^>]*>Only the owner of Manila Skills can accept the commitment\./);
     expect(html).toContain("What this document will cover");
     expect(html).not.toContain("<form");
-    expect(html).toContain("Change what you offer");
+    expect(html).toMatch(/<a[^>]*href="\/en\/onboarding\?step=what-you-offer"[^>]*>What you offer<\/a>/);
   });
 
   it("shows what changed when the owner accepted an earlier version, without the draft notice", async () => {
@@ -467,7 +468,7 @@ describe("the partner journey of onboarding (FR-J1)", () => {
     commitmentMock.mockResolvedValue({ version: 0, isDraft: true, accepted: true, acceptedVersion: 0 });
     const html = await render(OnboardingPage);
     expect(currentStep(html)).toBe("Security");
-    expect(html).toMatch(/Step 4 of 6: <\/span>Commitments<span class="sr-only"> \(done\)<\/span>/);
+    expect(html).toMatch(/Step 4 of 6: <\/span><a[^>]*>Commitments<\/a><span class="sr-only"> \(done\)<\/span>/);
     expect(html).toContain(">Secure your account</h1>");
     expect(html).toContain("As the owner of Manila Skills you will manage its team, billing, job orders and candidates");
     expect(html).toContain("Show the QR code");
@@ -516,8 +517,10 @@ describe("the partner journey of onboarding (FR-J1)", () => {
       expect(html).toContain("<li>Your company name and registration number</li><li>Your website</li><li>The licences you declare</li>");
       expect(html).toMatch(/<button[^>]*type="submit"[^>]*>Submit for review<\/button>/);
       expect(html).not.toContain('id="resubmit-checked"');
-      expect(html).toMatch(/<a[^>]*href="\/en\/onboarding\?step=company"[^>]*>Change your company details/);
-      expect(html).toMatch(/<a[^>]*href="\/en\/onboarding\?step=where-you-serve"[^>]*>Change where you serve/);
+      expect(html).toMatch(/<a[^>]*href="\/en\/onboarding\?step=company"[^>]*>Company<\/a>/);
+      expect(html).toMatch(/<a[^>]*href="\/en\/onboarding\?step=where-you-serve"[^>]*>Where you serve<\/a>/);
+      expect(html).toMatch(/<a[^>]*href="\/en\/onboarding\?step=commitments"[^>]*>(?:(?!<\/a>).)*Back<\/a>/);
+      expect(html).not.toContain("Go to the home page");
       expect(html).not.toMatch(/approved|verified/i);
     }
   });
@@ -616,15 +619,15 @@ describe("the partner journey of onboarding (FR-J1)", () => {
     expect(html).toContain("Message from our team");
     expect(html).toContain("Please add the countries you source workers from.");
     expect(html).toMatch(/<a[^>]*href="\/en\/onboarding\?step=where-you-serve"[^>]*>Change where you serve/);
-    expect(html).toMatch(/Step 2 of 6: <\/span>Where you serve<span class="sr-only"> \(more information requested\)<\/span>/);
-    expect(html).toMatch(/Step 1 of 6: <\/span>Company<span class="sr-only"> \(done\)<\/span>/);
+    expect(html).toMatch(/Step 2 of 6: <\/span><a[^>]*>Where you serve<\/a><span class="sr-only"> \(more information requested\)<\/span>/);
+    expect(html).toMatch(/Step 1 of 6: <\/span><a[^>]*>Company<\/a><span class="sr-only"> \(done\)<\/span>/);
     expect(html).toMatch(/<button[^>]*>Submit again for review<\/button>/);
     expect(html).toMatch(/<input[^>]*type="checkbox"[^>]*id="resubmit-checked"/);
     expect(html).toContain(
       "I have updated what our team asked about, or checked that nothing needs to change.",
     );
     expect(html.match(/>Change where you serve</g)).toHaveLength(1);
-    expect(html).toMatch(/>Change your company details</);
+    expect(html).not.toMatch(/>Change your company details</);
 
     reviewMock.mockResolvedValue({ status: "info_requested", submittedAt: null, infoStep: "commitments" });
     const commitments = await render(OnboardingPage);
@@ -633,7 +636,8 @@ describe("the partner journey of onboarding (FR-J1)", () => {
     expect(currentStep(reopened)).toBe("Commitments");
     expect(reopened).toContain("Manila Skills has accepted the employer-pays commitment.");
     expect(reopened).not.toContain("<form");
-    expect(reopened).toMatch(/<a[^>]*href="\/en\/onboarding\?step=ready"[^>]*>Back to Ready/);
+    expect(reopened).toMatch(/<a[^>]*href="\/en\/onboarding\?step=ready"[^>]*>Continue<\/a>/);
+    expect(reopened).toMatch(/<a[^>]*href="\/en\/onboarding\?step=what-you-offer"[^>]*>(?:(?!<\/a>).)*Back<\/a>/);
 
     reviewMock.mockResolvedValue({ status: "info_requested", submittedAt: null, infoStep: "licences" });
     const licences = await render(OnboardingPage);
