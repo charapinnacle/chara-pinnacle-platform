@@ -96,11 +96,8 @@ test.describe("the For employers page (U73)", () => {
     const worker = await createCommittedUser("worker");
     const candidate = await signedInPage(browser, worker);
     await candidate.page.goto("/en/employers");
-    await expect(candidate.page).toHaveURL("/en");
-    await expect(candidate.page.getByRole("search", { name: "Search jobs" })).toBeVisible();
-    await expect(candidate.page.getByRole("main").getByRole("link", { name: "Post a Job" })).toHaveCount(0);
-    await expect(candidate.page.getByRole("region", { name: "For employers" })).toHaveCount(0);
-    await expect(candidate.page.getByText("Hiring?")).toHaveCount(0);
+    // For employers sends a worker home, and home sends someone signed in to their dashboard.
+    await expect(candidate.page).toHaveURL("/en/dashboard/worker");
     await candidate.context.close();
   });
 });
