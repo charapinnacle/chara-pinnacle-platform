@@ -329,3 +329,26 @@
   outline: var(--focus-ring);
   outline-offset: var(--focus-ring-offset);
 }
+
+/* The padding of a modal dialog, which the sticky row of its submit button reaches into (ModalDialog). */
+.modal-dialog {
+  --dialog-pad: var(--spacing-card-xl);
+}
+
+@media (width >= 40rem) {
+  .modal-dialog {
+    --dialog-pad: var(--spacing-card-2xl);
+  }
+}
+
+/* The last row of a form in a dialog, when it holds the submit button, stays at the foot of the dialog while the fields
+   scroll under it, on the dialog's own colour; at the end of the form it sits where it would anyway. */
+.modal-dialog form > :last-child:has(button[type="submit"]) {
+  position: sticky;
+  bottom: calc(-1 * var(--dialog-pad));
+  z-index: 1;
+  margin-bottom: calc(-1 * var(--dialog-pad));
+  padding-bottom: var(--dialog-pad);
+  background: var(--card);
+  box-shadow: 0 -1rem 1rem -1rem color-mix(in oklch, var(--foreground) 12%, transparent);
+}

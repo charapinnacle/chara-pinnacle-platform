@@ -19,6 +19,8 @@ type ModalDialogProps = {
 // close it through onClose at once: the native close event comes a task later, and a press on the trigger in between
 // would find the state still open and be lost. For the same reason a close event that arrives once the dialog is open
 // again is ignored. It sits near the top, not centred, so its title and fields stay still when an error summary appears.
+// It is never taller than the screen: a long form scrolls inside it, and the row of its submit button stays at its foot
+// (modal-dialog in globals.css), so Save is always in reach.
 export function ModalDialog({ open, onClose, title, children, closeOnBackdrop = false, wide = false }: ModalDialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
@@ -46,7 +48,7 @@ export function ModalDialog({ open, onClose, title, children, closeOnBackdrop = 
         if (outside) onClose();
       }}
       className={cn(
-        "mx-auto mt-[min(12vh,6rem)] mb-auto w-[calc(100%-2rem)] rounded-2xl border bg-card p-card-xl text-foreground shadow-card backdrop:bg-black/50 sm:p-card-2xl",
+        "modal-dialog mx-auto mt-4 mb-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] overflow-y-auto overscroll-contain rounded-2xl border bg-card p-(--dialog-pad) text-foreground shadow-card backdrop:bg-black/50 sm:mt-[min(8vh,4rem)] sm:max-h-[calc(100dvh-min(8vh,4rem)-1rem)]",
         wide ? "max-w-2xl" : "max-w-md",
       )}
     >
