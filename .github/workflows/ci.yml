@@ -76,8 +76,9 @@ jobs:
       - run: deno check "*/index.ts"
       - run: deno test --frozen --allow-env=NODE_ENV
 
-  # The projects of apps/web/playwright.config.ts form three groups that only wait for one another so as not to share a
-  # database: on separate runners each group gets its own, so they run side by side.
+  # The projects of apps/web/playwright.config.ts form four groups that only wait for one another so as not to share a
+  # database: on separate runners each group gets its own, so they run side by side. The release tests are two groups
+  # (release, release-2), each about half of the chain.
   e2e:
     needs: [web, db]
     runs-on: ubuntu-latest
@@ -85,7 +86,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        group: [parallel, serial, release]
+        group: [parallel, serial, release, release-2]
     env:
       E2E_GROUP: ${{ matrix.group }}
     steps:
