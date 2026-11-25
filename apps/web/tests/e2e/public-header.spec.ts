@@ -31,8 +31,8 @@ test.describe("the header of the public pages (FR-H1 AC3, D81, D90)", () => {
     await expect(page).toHaveURL("/en/login?next=%2Fen%2Fpost-job");
     await page.getByRole("link", { name: "Create an account" }).click();
     await expect(page).toHaveURL("/en/signup?kind=company");
-    await expect(page.getByRole("radio", { name: "I'm an employer" })).toBeChecked();
-    await expect(page.getByRole("radio", { name: "I'm a worker" })).not.toBeChecked();
+    await expect(page.getByRole("radio", { name: "Employer" })).toBeChecked();
+    await expect(page.getByRole("radio", { name: "Worker" })).not.toBeChecked();
     await expect(page.getByText("Employer Terms")).toBeVisible();
   });
 

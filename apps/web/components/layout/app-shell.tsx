@@ -21,7 +21,7 @@ export function AppShell({ homeHref, headerActions, sidebar, footerLinks, childr
       <div className="hidden border-e bg-secondary/50 lg:block">
         <aside className="sticky top-0 flex h-dvh flex-col">
           <div className="flex min-h-16 items-center px-5">
-            <BrandLink href={homeHref} subline />
+            <BrandLink href={homeHref} />
           </div>
           {sidebar}
         </aside>

@@ -69,7 +69,7 @@ export function RadioGroupField<T extends FieldValues, N extends FieldPath<T>>({
                 {description}
               </p>
             ) : null}
-            <div className={cn("grid gap-3 sm:grid-cols-2", threeColumns && "lg:grid-cols-3")}>
+            <div className={cn("grid auto-rows-fr gap-3 sm:grid-cols-2", threeColumns && "lg:grid-cols-3")}>
               {options.map((option, index) => {
                 const optionId = index === 0 ? id : `${id}-${option.value}`;
                 const optionDescriptionId = `${optionId}-description`;
@@ -96,9 +96,9 @@ export function RadioGroupField<T extends FieldValues, N extends FieldPath<T>>({
                     />
                     <FieldLabel
                       htmlFor={optionId}
-                      className="items-center gap-2.5 text-body font-medium text-foreground"
+                      className="items-start gap-2.5 text-body font-medium text-foreground"
                     >
-                      <Icon aria-hidden className="size-5 shrink-0 text-muted-foreground transition-colors duration-120 group-has-checked/option:text-foreground" />
+                      <Icon aria-hidden className="mt-0.5 size-5 shrink-0 text-muted-foreground transition-colors duration-120 group-has-checked/option:text-foreground" />
                       {option.label}
                     </FieldLabel>
                     <span

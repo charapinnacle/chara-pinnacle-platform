@@ -252,8 +252,8 @@ describe("the account type choice (U67)", () => {
           id="kind"
           legend="I want to register as"
           options={[
-            { value: "worker", label: "I'm a worker", icon: UserRound, description: "Find work." },
-            { value: "company", label: "I'm an employer", icon: Building2, description: "Hire." },
+            { value: "worker", label: "Worker", icon: UserRound, description: "Find work." },
+            { value: "company", label: "Employer", icon: Building2, description: "Hire." },
           ]}
         />
       );
@@ -266,7 +266,7 @@ describe("the account type choice (U67)", () => {
     expect(html).toContain('role="radiogroup"');
     expect(html.match(/type="radio"/g)).toHaveLength(2);
     expect(html).toMatch(/<input[^>]*id="kind"[^>]*aria-describedby="kind-description"/);
-    expect(html).toMatch(/<label[^>]*for="kind"[^>]*>.*I(?:'|&#x27;)m a worker<\/label>/);
+    expect(html).toMatch(/<label[^>]*for="kind"[^>]*>.*Worker<\/label>/);
     expect(html).toContain("Find work.");
     expect(html).toContain("Hire.");
   });
@@ -279,7 +279,7 @@ describe("the account type choice (U67)", () => {
     expect(html).not.toContain("has-checked:bg-accent");
   });
 
-  it("makes the two cards equal columns from the sm breakpoint and one column on a phone", () => {
-    expect(choice()).toMatch(/class="grid gap-3 sm:grid-cols-2"/);
+  it("makes the cards equal columns and equal rows from the sm breakpoint, and one column on a phone", () => {
+    expect(choice()).toMatch(/class="grid auto-rows-fr gap-3 sm:grid-cols-2"/);
   });
 });

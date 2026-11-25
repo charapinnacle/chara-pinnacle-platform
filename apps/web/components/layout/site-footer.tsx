@@ -10,7 +10,7 @@ export function SiteFooter({ links }: { links?: React.ReactNode }) {
         <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-20">
           <span className="inline-flex shrink-0 items-start gap-3">
             <BrandMark />
-            <Wordmark subline tone="inverse" />
+            <Wordmark tone="inverse" />
           </span>
           {links}
         </div>

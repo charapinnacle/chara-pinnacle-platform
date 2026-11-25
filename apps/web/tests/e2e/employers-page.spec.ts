@@ -41,7 +41,7 @@ test.describe("the For employers page (U73)", () => {
     await hero.getByRole("link", { name: "Post a Job" }).click();
     await expect(page).toHaveURL("/en/login?next=%2Fen%2Fpost-job");
     await page.getByRole("link", { name: "Create an account" }).click();
-    await expect(page.getByRole("radio", { name: "I'm an employer" })).toBeChecked();
+    await expect(page.getByRole("radio", { name: "Employer" })).toBeChecked();
   });
 
   test("the pricing teaser shows the lowest public price of the plan records, its name and its trial, and leads to the pricing page", async ({ page }) => {

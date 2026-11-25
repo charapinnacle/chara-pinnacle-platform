@@ -15,18 +15,18 @@ const document = (slug: string, version: number, title = slug): LegalDocumentSum
 describe("the account choices of sign-up (FR-J1 AC2)", () => {
   it("are worker and employer while the partner documents are not loaded (release 2a off)", () => {
     expect(accountChoiceOptions({ worker: [], company: [] }).map(({ label }) => label)).toEqual([
-      "I'm a worker",
-      "I'm an employer",
+      "Worker",
+      "Employer",
     ]);
   });
 
   it("add the recruitment and the staffing company, in that order, when their documents are loaded", () => {
     const options = accountChoiceOptions({ worker: [], company: [], recruitment_company: [], staffing_company: [] });
     expect(options.map(({ value, label }) => `${value}:${label}`)).toEqual([
-      "worker:I'm a worker",
-      "company:I'm an employer",
-      "recruitment_company:I'm a recruitment company",
-      "staffing_company:I'm a staffing company",
+      "worker:Worker",
+      "company:Employer",
+      "recruitment_company:Recruitment company",
+      "staffing_company:Staffing company",
     ]);
     for (const { description } of options) expect(description).not.toMatch(/verified|approved/i);
   });

@@ -46,7 +46,7 @@ test.describe("the main journeys with the keyboard alone (NFR-U1)", () => {
     await page.goto("/en/signup");
     await waitForHydration(page.getByLabel("Email address"));
 
-    await press(page, page.getByRole("radio", { name: "I'm a worker" }), "Space");
+    await press(page, page.getByRole("radio", { name: "Worker" }), "Space");
     await typeInto(page, page.getByLabel("Email address"), email);
     await typeInto(page, page.getByLabel("Password", { exact: true }), PASSWORD);
     for (const { slug, title } of await currentDocuments("worker")) {
