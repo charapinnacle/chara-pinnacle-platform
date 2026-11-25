@@ -22,14 +22,12 @@ export function BrandMark({ size = "sm", className }: { size?: "sm" | "lg"; clas
 
 type BrandLinkProps = {
   href: string;
-  // Pinnacle is set under the wordmark where there is room for it (the sidebar).
-  subline?: boolean;
   tone?: "default" | "inverse";
   className?: string;
 };
 
 // The way home: the monogram tile and the wordmark. The accessible name is the product name.
-export function BrandLink({ href, subline = false, tone = "default", className }: BrandLinkProps) {
+export function BrandLink({ href, tone = "default", className }: BrandLinkProps) {
   return (
     <Link
       href={href}
@@ -39,26 +37,23 @@ export function BrandLink({ href, subline = false, tone = "default", className }
       )}
     >
       <BrandMark />
-      <Wordmark subline={subline} tone={tone} />
+      <Wordmark tone={tone} />
     </Link>
   );
 }
 
-// The letter-spaced CHARA / PINNACLE lock-up is the logo drawn in type, so it is hidden from assistive technology and the
-// product name is read instead: an uppercase word can be spelt out letter by letter, and without the subline Pinnacle
-// would be lost.
-export function Wordmark({ subline = false, tone = "default" }: Pick<BrandLinkProps, "subline" | "tone">) {
+// The letter-spaced CHARA / PINNACLE lock-up is the logo drawn in type, always whole, so it is hidden from assistive
+// technology and the product name is read instead: an uppercase word can be spelt out letter by letter.
+export function Wordmark({ tone = "default" }: Pick<BrandLinkProps, "tone">) {
   return (
     <span className="grid leading-none">
       <span className="sr-only">{BRAND_NAME}</span>
       <span aria-hidden className={cn("text-body font-semibold tracking-[0.24em]", tone === "inverse" ? "text-inverse-foreground" : "text-foreground")}>
         CHARA
       </span>
-      {subline ? (
-        <span aria-hidden className={cn("mt-1 text-caption tracking-[0.32em] uppercase", tone === "inverse" ? "text-brand" : "text-brand-ink")}>
-          Pinnacle
-        </span>
-      ) : null}
+      <span aria-hidden className={cn("mt-1 text-caption tracking-[0.32em] uppercase", tone === "inverse" ? "text-brand" : "text-brand-ink")}>
+        Pinnacle
+      </span>
     </span>
   );
 }

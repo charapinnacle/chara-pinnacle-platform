@@ -3,21 +3,21 @@ import { BRAND_NAME } from "@/lib/brand";
 import type { AccountChoice, PartnerType } from "@/lib/validation/sign-up";
 
 const kindOptions = [
-  { value: "worker", label: "I'm a worker", icon: UserRound, description: "Find work and apply to vacancies." },
-  { value: "company", label: "I'm an employer", icon: Building2, description: "Publish vacancies and hire." },
+  { value: "worker", label: "Worker", icon: UserRound, description: "Find work and apply to vacancies." },
+  { value: "company", label: "Employer", icon: Building2, description: "Publish vacancies and hire." },
 ] as const;
 
 // The partner choices of release 2a (FR-J1), after the two of Phase 1.
 const partnerOptions = [
   {
     value: "recruitment_company",
-    label: "I'm a recruitment company",
+    label: "Recruitment company",
     icon: Handshake,
     description: "Find candidates for employers. Listed after a review by our team.",
   },
   {
     value: "staffing_company",
-    label: "I'm a staffing company",
+    label: "Staffing company",
     icon: UsersRound,
     description: "Supply workers to employers. Listed after a review by our team.",
   },

@@ -13,8 +13,8 @@ import { adminRequest, type TestUser } from "./test-user";
 export type PartnerType = "recruitment_company" | "staffing_company";
 
 export const PARTNER_LABEL: Record<PartnerType, string> = {
-  recruitment_company: "I'm a recruitment company",
-  staffing_company: "I'm a staffing company",
+  recruitment_company: "Recruitment company",
+  staffing_company: "Staffing company",
 };
 
 export const PARTNER_IDENTIFIER_LABEL = "Company registration number, VAT number or other identifier";

@@ -13,7 +13,7 @@ export default async function OnboardingLayout({ children, params }: LayoutProps
     <div className="onboarding-step flex min-h-dvh flex-col">
       <header>
         <div className="mx-auto flex min-h-16 w-full max-w-content items-center justify-between gap-4 px-4 sm:px-6 lg:px-10">
-          <BrandLink href={`/${lang}`} subline />
+          <BrandLink href={`/${lang}`} />
           <LogoutButton className="min-w-0 border-transparent bg-transparent px-3 text-muted-foreground shadow-none hover:bg-secondary hover:text-foreground" />
         </div>
       </header>

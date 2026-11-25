@@ -14,7 +14,7 @@ export function AuthBrandPanel() {
       <span aria-hidden className="absolute inset-x-10 top-0 h-0.5 rounded-b-full bg-brand-gradient" />
       <span className="inline-flex items-center gap-4">
         <BrandMark size="lg" />
-        <Wordmark subline tone="inverse" />
+        <Wordmark tone="inverse" />
       </span>
       <div className="grid gap-8">
         <p className="text-display text-balance text-inverse-foreground">The global workforce network.</p>

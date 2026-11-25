@@ -166,7 +166,7 @@ test.describe("the public pages", () => {
     }
     const inRegion = (region: string) => stops.filter((stop) => stop.region === region).map((stop) => stop.text);
     // The logo link's text is its name for assistive technology, then the CHARA lock-up drawn in type (hidden from it).
-    expect(inRegion("header")).toEqual(["Chara Pinnacle\nCHARA", ...HEADER_SHOWN]);
+    expect(inRegion("header")).toEqual(["Chara Pinnacle\nCHARA\nPINNACLE", ...HEADER_SHOWN]);
     expect(inRegion("footer")).toEqual(FOOTER_LABELS);
     const regions = stops.map((stop) => stop.region);
     expect(regions.lastIndexOf("header")).toBeLessThan(regions.indexOf("footer"));

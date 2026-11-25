@@ -174,7 +174,7 @@ test.describe("the home page (U73)", () => {
     await expect(how.getByRole("link")).toHaveCount(1);
     await how.getByRole("link", { name: "Create your CHARA Passport" }).click();
     await expect(page).toHaveURL("/en/signup?kind=worker");
-    await expect(page.getByRole("radio", { name: "I'm a worker" })).toBeChecked();
+    await expect(page.getByRole("radio", { name: "Worker" })).toBeChecked();
   });
 
   test("the passport section states the four facts and nothing else; the employer band leads to the employer sign-up and to For employers", async ({ page }) => {
@@ -236,7 +236,7 @@ test.describe("the home page (U73)", () => {
     }
     expect(stops).toEqual([
       "other:Skip to main content",
-      "header:Chara Pinnacle\nCHARA",
+      "header:Chara Pinnacle\nCHARA\nPINNACLE",
       ...HEADER_SHOWN.map((label) => `header:${label}`),
       "main:Job title, skill or occupation",
       "main:Any country",

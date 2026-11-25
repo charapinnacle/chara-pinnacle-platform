@@ -4,8 +4,8 @@ import { displayTitle } from "@/lib/validation/consents";
 import { currentDocuments } from "./accounts";
 
 export const PASSWORD = "Valid-Passw0rd";
-export const WORKER_LABEL = "I'm a worker";
-export const EMPLOYER_LABEL = "I'm an employer";
+export const WORKER_LABEL = "Worker";
+export const EMPLOYER_LABEL = "Employer";
 
 export function newEmail(): string {
   return `e2e-${randomUUID()}@example.test`;
