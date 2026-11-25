@@ -108,10 +108,10 @@ jobs:
       - run: deno check "*/index.ts"
       - run: deno test --frozen --allow-env=NODE_ENV
 
-  # The projects of apps/web/playwright.config.ts form four groups that only wait for one another so as not to share a
-  # database: on separate runners each group gets its own, so they run side by side. The release tests are two groups
-  # (release, release-2), each about half of the chain; the parallel group, whose tests are independent, is split in
-  # two by Playwright's --shard.
+  # The projects of apps/web/playwright.config.ts form five groups that only wait for one another so as not to share a
+  # database: on separate runners each group gets its own, so they run side by side. The release tests are three groups
+  # (release, release-2, release-3), each about a third of the chain's running time; the parallel group, whose tests are
+  # independent, is split in three by Playwright's --shard. Seven standard runners in all, free for a public repository.
   e2e:
     name: e2e (${{ matrix.group }}${{ matrix.shard && format(' {0}', matrix.shard) || '' }})
     needs: [web, db, changes]
@@ -122,11 +122,13 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { group: parallel, shard: 1/2, part: "-1" }
-          - { group: parallel, shard: 2/2, part: "-2" }
+          - { group: parallel, shard: 1/3, part: "-1" }
+          - { group: parallel, shard: 2/3, part: "-2" }
+          - { group: parallel, shard: 3/3, part: "-3" }
           - { group: serial }
           - { group: release }
           - { group: release-2 }
+          - { group: release-3 }
     env:
       E2E_GROUP: ${{ matrix.group }}
     steps:
