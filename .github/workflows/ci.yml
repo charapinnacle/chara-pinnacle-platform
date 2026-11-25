@@ -13,6 +13,38 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Whether the browser tests are needed: a pull request that only changes documentation (Markdown, docs/) or the
+  # repository's settings files (CODEOWNERS, Dependabot, the pull request template) cannot change what the site does, so
+  # it skips them. This workflow itself is not on the list: it defines those tests, so a change to it runs them. A push
+  # to main always runs everything.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      e2e: ${{ steps.diff.outputs.e2e }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - id: diff
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ "$EVENT" != "pull_request" ]; then
+            echo "e2e=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          changed=$(git diff --name-only "$BASE"...HEAD)
+          echo "Changed files:"
+          echo "$changed"
+          code=$(echo "$changed" | grep -vE '(\.md$|^docs/|^\.github/(CODEOWNERS|dependabot\.yml)$)' || true)
+          if [ -n "$code" ]; then
+            echo "e2e=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Only documentation or repository settings changed: the browser tests are skipped."
+            echo "e2e=false" >> "$GITHUB_OUTPUT"
+          fi
+
   web:
     runs-on: ubuntu-latest
     steps:
@@ -82,7 +114,8 @@ jobs:
   # two by Playwright's --shard.
   e2e:
     name: e2e (${{ matrix.group }}${{ matrix.shard && format(' {0}', matrix.shard) || '' }})
-    needs: [web, db]
+    needs: [web, db, changes]
+    if: needs.changes.outputs.e2e == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     strategy:
