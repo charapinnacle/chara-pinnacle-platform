@@ -78,15 +78,22 @@ jobs:
 
   # The projects of apps/web/playwright.config.ts form four groups that only wait for one another so as not to share a
   # database: on separate runners each group gets its own, so they run side by side. The release tests are two groups
-  # (release, release-2), each about half of the chain.
+  # (release, release-2), each about half of the chain; the parallel group, whose tests are independent, is split in
+  # two by Playwright's --shard.
   e2e:
+    name: e2e (${{ matrix.group }}${{ matrix.shard && format(' {0}', matrix.shard) || '' }})
     needs: [web, db]
     runs-on: ubuntu-latest
     timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
-        group: [parallel, serial, release, release-2]
+        include:
+          - { group: parallel, shard: 1/2, part: "-1" }
+          - { group: parallel, shard: 2/2, part: "-2" }
+          - { group: serial }
+          - { group: release }
+          - { group: release-2 }
     env:
       E2E_GROUP: ${{ matrix.group }}
     steps:
@@ -115,11 +122,13 @@ jobs:
           npm run db:start
       - run: npx playwright install --with-deps chromium
         working-directory: apps/web
-      - run: npm run e2e
+      - name: Run the e2e tests
+        run: npx playwright test ${{ matrix.shard && format('--shard={0}', matrix.shard) || '' }}
+        working-directory: apps/web
       - if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: e2e-test-results-${{ matrix.group }}
+          name: e2e-test-results-${{ matrix.group }}${{ matrix.part }}
           path: apps/web/test-results
           if-no-files-found: ignore
 
