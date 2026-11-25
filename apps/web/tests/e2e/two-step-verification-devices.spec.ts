@@ -244,7 +244,7 @@ test.describe("two-step verification: devices, limits and sessions", () => {
     await logOut(page);
     await expect(page).toHaveURL(/\/en\/login$/);
     await logIn(page, user);
-    await expect(page).toHaveURL(/\/en\/dashboard\/employer$/);
+    await expect(page).toHaveURL(`/en/mfa?next=${encodeURIComponent("/en/admin")}`);
     expect((await sessionClaims(page.context())).aal).toBe("aal1");
     await page.goto("/en/admin");
     await expect(page.getByRole("heading", { name: "Verify it is you" })).toBeVisible();
