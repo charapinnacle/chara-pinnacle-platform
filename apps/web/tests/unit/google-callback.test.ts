@@ -8,7 +8,13 @@ const currentUserMock = vi.hoisted(() => vi.fn());
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/dal/rate-limit", () => ({ isThrottled: throttledMock }));
-vi.mock("@/lib/dal/session", () => ({ getCurrentUser: currentUserMock }));
+vi.mock("@/lib/dal/session", async () => {
+  const { homePath } = await import("@/lib/routes");
+  return {
+    getCurrentUser: currentUserMock,
+    landingPath: async (lang: string, kind: Parameters<typeof homePath>[1]) => homePath(lang, kind),
+  };
+});
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => ({
     auth: { exchangeCodeForSession: exchangeMock, signOut: signOutMock },

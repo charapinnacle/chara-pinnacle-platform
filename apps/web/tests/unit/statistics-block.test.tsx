@@ -7,6 +7,7 @@ const getPlatformStatistics = vi.hoisted(() => vi.fn());
 const getPostJobHref = vi.hoisted(() => vi.fn());
 const getCurrentUser = vi.hoisted(() => vi.fn());
 const releasedSwitches = vi.hoisted(() => vi.fn());
+const rolesMock = vi.hoisted(() => vi.fn(async (): Promise<string[]> => []));
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/navigation", () => ({
@@ -16,7 +17,14 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("@/lib/dal/statistics", () => ({ getPlatformStatistics }));
 vi.mock("@/lib/dal/organizations", () => ({ getPostJobHref }));
-vi.mock("@/lib/dal/session", () => ({ getCurrentUser }));
+vi.mock("@/lib/dal/session", async () => {
+  const { homePath } = await import("@/lib/routes");
+  return {
+    getCurrentUser: getCurrentUser,
+    landingPath: async (lang: string, kind: Parameters<typeof homePath>[1]) =>
+      (await rolesMock()).length > 0 ? `/${lang}/admin` : homePath(lang, kind),
+  };
+});
 vi.mock("@/lib/dal/release", () => ({ releasedSwitches }));
 vi.mock("@/lib/dal/hiring", () => ({ getSearchSuggestions: async () => ({ titles: ["Plumber"] }) }));
 vi.mock("@/lib/dal/reference", () => ({
@@ -117,6 +125,9 @@ describe("the home page (U73)", () => {
       getCurrentUser.mockResolvedValue({ accountKind });
       await expect(renderHome()).rejects.toThrow(`REDIRECT ${path}`);
     }
+    getCurrentUser.mockResolvedValue({ accountKind: "worker" });
+    rolesMock.mockResolvedValueOnce(["admin"]);
+    await expect(renderHome()).rejects.toThrow("REDIRECT /en/admin");
   });
 });
 

@@ -10,9 +10,8 @@ import {
   SUSPENDED,
 } from "@/lib/auth-errors";
 import { isThrottled } from "@/lib/dal/rate-limit";
-import { getCurrentUser } from "@/lib/dal/session";
+import { getCurrentUser, landingPath } from "@/lib/dal/session";
 import { defaultLocale } from "@/lib/i18n/locale";
-import { homePath } from "@/lib/routes";
 import { safeNextPath } from "@/lib/safe-next";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -53,7 +52,7 @@ export async function signIn(input: LoginInput): Promise<LoginResult | undefined
   }
 
   const target = safeNextPath(next);
-  redirect(target === "/" ? homePath(defaultLocale, user?.accountKind ?? null) : target);
+  redirect(target === "/" ? await landingPath(defaultLocale, user?.accountKind ?? null) : target);
 }
 
 export async function signOut(): Promise<{ message: string } | undefined> {
