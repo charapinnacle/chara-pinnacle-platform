@@ -82,7 +82,8 @@ test.describe("publishing and exporting legal documents", () => {
   test("FR-H3 AC11: an administrator at the first step is sent to the two-step page, and Trust & Safety gets no form and no file", async ({ page, browser }) => {
     const unverified = await staffUser("admin");
     await logIn(page, unverified);
-    await expect(page).toHaveURL(/\/en\/dashboard\/employer$/);
+    // Platform staff start at the console, which asks for the code at aal1.
+    await expect(page).toHaveURL(`/en/mfa?next=${encodeURIComponent("/en/admin")}`);
     await page.goto("/en/admin/legal");
     await expect(page).toHaveURL(`/en/mfa?next=${encodeURIComponent("/en/admin/legal")}`);
     await expect(page.getByLabel("Document name")).toHaveCount(0);

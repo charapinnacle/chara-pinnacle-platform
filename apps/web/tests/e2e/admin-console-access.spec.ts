@@ -58,7 +58,8 @@ test.describe("the administration console: who gets in and what each role sees",
   }) => {
     const fresh = await staffUser("admin");
     await logIn(page, fresh);
-    await expect(page).toHaveURL(/\/en\/dashboard\/employer$/);
+    // Platform staff start at the console, which asks for the code at aal1.
+    await expect(page).toHaveURL(`/en/mfa?next=${encodeURIComponent("/en/admin")}`);
     await page.goto("/en/admin");
     await expect(page).toHaveURL(`/en/mfa?next=${encodeURIComponent("/en/admin")}`);
     await expect(page.getByRole("heading", { name: "Set up two-step verification" })).toBeVisible();
@@ -67,7 +68,7 @@ test.describe("the administration console: who gets in and what each role sees",
     const enrolled = await staffUser("admin");
     const secret = await enrollTotp(enrolled);
     await logIn(page, enrolled);
-    await expect(page).toHaveURL(/\/en\/dashboard\/employer$/);
+    await expect(page).toHaveURL(`/en/mfa?next=${encodeURIComponent("/en/admin")}`);
     await page.goto("/en/admin");
     await expect(page).toHaveURL(`/en/mfa?next=${encodeURIComponent("/en/admin")}`);
     await expect(page.getByRole("heading", { name: "Verify it is you" })).toBeVisible();

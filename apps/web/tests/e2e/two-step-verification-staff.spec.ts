@@ -10,7 +10,8 @@ test.describe("two-step verification: platform staff", () => {
     }) => {
       const user = await staffUser(role);
       await logIn(page, user);
-      await expect(page).toHaveURL(/\/en\/dashboard\/employer$/);
+      // Platform staff start at the console, which asks for the code at aal1.
+      await expect(page).toHaveURL(`/en/mfa?next=${encodeURIComponent("/en/admin")}`);
       await page.goto("/en/admin");
       await expect(page).toHaveURL(`/en/mfa?next=${encodeURIComponent("/en/admin")}`);
       await expect(page.getByRole("heading", { name: "Set up two-step verification" })).toBeVisible();
@@ -41,7 +42,8 @@ test.describe("two-step verification: platform staff", () => {
     const user = await staffUser("admin");
     const secret = await enrollTotp(user);
     await logIn(page, user);
-    await expect(page).toHaveURL(/\/en\/dashboard\/employer$/);
+    // Platform staff start at the console, which asks for the code at aal1.
+    await expect(page).toHaveURL(`/en/mfa?next=${encodeURIComponent("/en/admin")}`);
     await page.goto("/en/admin");
     await expect(page).toHaveURL(`/en/mfa?next=${encodeURIComponent("/en/admin")}`);
     await expect(page.getByRole("heading", { name: "Verify it is you" })).toBeVisible();

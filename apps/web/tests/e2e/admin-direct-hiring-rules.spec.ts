@@ -78,7 +78,8 @@ test.describe("the direct-hiring rules of the console (FR-Q5)", () => {
     const admin = await staffUser("admin");
     await enrollTotp(admin);
     await logIn(page, admin);
-    await expect(page).toHaveURL(/\/en\/dashboard\/employer$/);
+    // Platform staff start at the console, which asks for the code at aal1.
+    await expect(page).toHaveURL(`/en/mfa?next=${encodeURIComponent("/en/admin")}`);
     await page.goto(PAGE);
     await expect(page).toHaveURL(`/en/mfa?next=${encodeURIComponent(PAGE)}`);
     await expect(page.getByRole("heading", { name: "Verify it is you" })).toBeVisible();
