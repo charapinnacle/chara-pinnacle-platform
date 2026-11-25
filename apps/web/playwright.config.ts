@@ -49,18 +49,19 @@ process.env.DOCUMENT_URL_ENDPOINT ||= `http://127.0.0.1:${process.env.DOCUMENT_U
 process.env.BILLING_CHECKOUT_ENDPOINT ||= `http://127.0.0.1:${process.env.BILLING_CHECKOUT_PORT}/`;
 process.env.BILLING_PLAN_PRICE_ENDPOINT ||= `http://127.0.0.1:${process.env.BILLING_PLAN_PRICE_PORT}/`;
 
-// CI runs the projects in four jobs, each against its own database (E2E_GROUP): the projects chained after "versions",
-// after "notifications-release" and after "workforce-requirements-release" only wait for the earlier projects so as not
-// to share a database with them. The release chain is cut in two where the job orders begin (release 2b), so that each
-// half fits the job's time limit on its own runner. A group keeps the order of its own projects and drops its
-// dependencies on the other groups.
+// CI runs the projects in five groups, each against its own database (E2E_GROUP): the projects chained after
+// "versions", "notifications-release", "partner-dashboards-release" and "find-employers-release" only wait for the earlier
+// projects so as not to share a database with them. The release chain is cut in three parts of about the same running
+// time, so that each finishes well within the job's time limit on its own runner. A group keeps the order of its own
+// projects and drops its dependencies on the other groups.
 const e2eGroupRoots = new Map([
   ["chromium", "parallel"],
   ["versions", "serial"],
   ["notifications-release", "release"],
-  ["workforce-requirements-release", "release-2"],
+  ["partner-dashboards-release", "release-2"],
+  ["find-employers-release", "release-3"],
 ]);
-const e2eGroupOrder = ["parallel", "serial", "release", "release-2"];
+const e2eGroupOrder = ["parallel", "serial", "release", "release-2", "release-3"];
 
 function inE2EGroup(config: PlaywrightTestConfig): PlaywrightTestConfig {
   const group = process.env.E2E_GROUP;
