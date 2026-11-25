@@ -10,10 +10,18 @@ const signInMock = vi.fn();
 const signOutMock = vi.fn();
 const userMock = vi.hoisted(() => vi.fn());
 const throttledMock = vi.hoisted(() => vi.fn());
+const rolesMock = vi.hoisted(() => vi.fn(async (): Promise<string[]> => []));
 
 vi.mock("next/navigation", () => ({ redirect: redirectMock }));
 vi.mock("@/lib/dal/rate-limit", () => ({ isThrottled: throttledMock }));
-vi.mock("@/lib/dal/session", () => ({ getCurrentUser: userMock }));
+vi.mock("@/lib/dal/session", async () => {
+  const { homePath } = await import("@/lib/routes");
+  return {
+    getCurrentUser: userMock,
+    landingPath: async (lang: string, kind: Parameters<typeof homePath>[1]) =>
+      (await rolesMock()).length > 0 ? `/${lang}/admin` : homePath(lang, kind),
+  };
+});
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => ({
     auth: { signInWithPassword: signInMock, signOut: signOutMock },
@@ -46,6 +54,12 @@ describe("signIn", () => {
     await expect(signIn(input)).rejects.toThrow("REDIRECT:/en/dashboard/employer");
     userMock.mockResolvedValue({ id: "user-1", accountKind: null, suspended: false });
     await expect(signIn(input)).rejects.toThrow("REDIRECT:/en/onboarding");
+  });
+
+  it("lands platform staff on the administration console, whatever their own account", async () => {
+    userMock.mockResolvedValue({ id: "user-1", accountKind: "worker", suspended: false });
+    rolesMock.mockResolvedValueOnce(["admin"]);
+    await expect(signIn(input)).rejects.toThrow("REDIRECT:/en/admin");
   });
 
   it("honours a relative next path", async () => {

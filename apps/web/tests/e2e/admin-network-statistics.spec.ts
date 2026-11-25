@@ -197,7 +197,8 @@ test.describe("Network statistics for administrators (FR-S2, release 2a)", () =>
     await page.context().clearCookies();
 
     await logIn(page, await staffUser("admin"));
-    await expect(page).toHaveURL(/\/en\/dashboard\/employer$/);
+    // Platform staff start at the console, which asks for the code at aal1.
+    await expect(page).toHaveURL(`/en/mfa?next=${encodeURIComponent("/en/admin")}`);
     await page.goto(STATISTICS);
     await expect(page).toHaveURL(`/en/mfa?next=${encodeURIComponent(STATISTICS)}`);
     await page.context().clearCookies();

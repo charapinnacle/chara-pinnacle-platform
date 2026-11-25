@@ -222,7 +222,8 @@ test.describe("two-step verification: devices, limits and sessions", () => {
     const user = await staffUser("admin");
     const secret = await enrollTotp(user);
     await logIn(page, user);
-    await expect(page).toHaveURL(/\/en\/dashboard\/employer$/);
+    // Platform staff start at the console, which asks for the code at aal1.
+    await expect(page).toHaveURL(`/en/mfa?next=${encodeURIComponent("/en/admin")}`);
     expect((await sessionClaims(page.context())).aal).toBe("aal1");
 
     await page.goto("/en/admin");
@@ -243,7 +244,7 @@ test.describe("two-step verification: devices, limits and sessions", () => {
     await logOut(page);
     await expect(page).toHaveURL(/\/en\/login$/);
     await logIn(page, user);
-    await expect(page).toHaveURL(/\/en\/dashboard\/employer$/);
+    await expect(page).toHaveURL(`/en/mfa?next=${encodeURIComponent("/en/admin")}`);
     expect((await sessionClaims(page.context())).aal).toBe("aal1");
     await page.goto("/en/admin");
     await expect(page.getByRole("heading", { name: "Verify it is you" })).toBeVisible();
@@ -254,7 +255,8 @@ test.describe("two-step verification: devices, limits and sessions", () => {
     await enrollTotp(user);
     await removeFactors(user.id);
     await logIn(page, user);
-    await expect(page).toHaveURL(/\/en\/dashboard\/employer$/);
+    // Platform staff start at the console, which asks for the code at aal1.
+    await expect(page).toHaveURL(`/en/mfa?next=${encodeURIComponent("/en/admin")}`);
     await page.goto("/en/admin");
     await expect(page.getByRole("heading", { name: "Set up two-step verification" })).toBeVisible();
     await enterCode(page, await beginSetup(page));

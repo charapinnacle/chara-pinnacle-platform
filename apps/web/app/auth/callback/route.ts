@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { logAuthFailure } from "@/lib/auth-errors";
 import { isThrottled } from "@/lib/dal/rate-limit";
-import { getCurrentUser } from "@/lib/dal/session";
+import { getCurrentUser, landingPath } from "@/lib/dal/session";
 import { env } from "@/lib/env";
 import {
   googleErrorCode,
@@ -9,7 +9,6 @@ import {
   type GoogleErrorCode,
 } from "@/lib/google-sign-in";
 import { defaultLocale } from "@/lib/i18n/locale";
-import { homePath } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
 import { confirmTokenSchema } from "@/lib/validation/sign-up";
 
@@ -50,5 +49,5 @@ export async function GET(request: NextRequest) {
     await supabase.auth.signOut({ scope: "local" });
     return refused("suspended");
   }
-  return to(homePath(defaultLocale, user?.accountKind ?? null));
+  return to(await landingPath(defaultLocale, user?.accountKind ?? null));
 }

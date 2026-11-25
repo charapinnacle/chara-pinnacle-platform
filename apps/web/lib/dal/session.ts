@@ -5,7 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 import { getPendingReconsents } from "@/lib/dal/legal";
 import { createClient } from "@/lib/supabase/server";
-import { homePath, mfaPath, onboardingPath } from "@/lib/routes";
+import { adminPath, homePath, mfaPath, onboardingPath } from "@/lib/routes";
 import { safeNextPath } from "@/lib/safe-next";
 import type { PlatformRole } from "@/lib/validation/admin";
 import type { MemberRole } from "@/lib/validation/team";
@@ -87,6 +87,12 @@ export const getPlatformRoles = cache(async (): Promise<PlatformRole[]> => {
   if (error) throw new Error("The platform roles could not be loaded", { cause: error });
   return data;
 });
+
+// Where someone signed in starts when nothing else was asked for: platform staff at the administration console, whatever
+// their own account is, and everyone else at the dashboard of their account (or onboarding until they have one).
+export async function landingPath(lang: string, accountKind: AccountKind | null): Promise<string> {
+  return (await getPlatformRoles()).length > 0 ? adminPath(lang) : homePath(lang, accountKind);
+}
 
 // The platform roles are looked up on every request, never read from the token. A user who holds no active role gets
 // the not-found page, so the console does not show that it exists, and not an MFA prompt; staff must be at aal2 for

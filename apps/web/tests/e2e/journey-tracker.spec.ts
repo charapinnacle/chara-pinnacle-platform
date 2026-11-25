@@ -264,7 +264,8 @@ test.describe("the candidate's journey tracker", () => {
     const staff = await staffUser("trust_safety");
     const secret = await enrollTotp(staff);
     await logIn(page, staff);
-    await expect(page).toHaveURL(/\/en\/dashboard\/employer$/);
+    // Platform staff start at the console, which asks for the code at aal1.
+    await expect(page).toHaveURL(`/en/mfa?next=${encodeURIComponent("/en/admin")}`);
     for (const path of paths) {
       await page.goto(path);
       await expect(page).toHaveURL(`/en/mfa?next=${encodeURIComponent("/en/admin")}`);

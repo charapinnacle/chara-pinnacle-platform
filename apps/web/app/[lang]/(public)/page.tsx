@@ -11,10 +11,10 @@ import { BRAND_NAME } from "@/lib/brand";
 import { getSearchSuggestions } from "@/lib/dal/hiring";
 import { getPostJobHref } from "@/lib/dal/organizations";
 import { releasedSwitches } from "@/lib/dal/release";
-import { getCurrentUser } from "@/lib/dal/session";
+import { getCurrentUser, landingPath } from "@/lib/dal/session";
 import { getCountries, getOccupations } from "@/lib/dal/reference";
 import { getPlatformStatistics } from "@/lib/dal/statistics";
-import { homePath, signUpPath } from "@/lib/routes";
+import { signUpPath } from "@/lib/routes";
 import { staticPageMetadata } from "@/lib/seo/metadata";
 
 export async function generateMetadata({ params }: PageProps<"/[lang]">): Promise<Metadata> {
@@ -29,7 +29,7 @@ export async function generateMetadata({ params }: PageProps<"/[lang]">): Promis
 export default async function Home({ params }: PageProps<"/[lang]">) {
   const { lang } = await params;
   const user = await getCurrentUser();
-  if (user) redirect(homePath(lang, user.accountKind));
+  if (user) redirect(await landingPath(lang, user.accountKind));
   const [tiles, postJobHref, suggestions, countries, occupations, released] = await Promise.all([
     getPlatformStatistics(),
     getPostJobHref(lang),
