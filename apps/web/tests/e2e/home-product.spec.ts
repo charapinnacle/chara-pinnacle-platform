@@ -236,7 +236,7 @@ test.describe("the home page (U73)", () => {
     }
     expect(stops).toEqual([
       "other:Skip to main content",
-      "header:Chara Pinnacle\nCHARA",
+      "header:Chara Pinnacle\nCHARA\nPINNACLE",
       ...HEADER_SHOWN.map((label) => `header:${label}`),
       "main:Job title, skill or occupation",
       "main:Any country",
