@@ -304,6 +304,13 @@ test.describe("Partner reviews (FR-J4)", () => {
   test("AC7: the owner follows the request for information, changes the step and resubmits to the end of the queue", async ({ page }) => {
     test.setTimeout(150_000);
     const partner = await submittedPartner("2002-01-01T09:00:00Z");
+    // A recruitment company submits again only with a current licence, as it did the first time.
+    execute(
+      `insert into public.partner_licences (organization_id, country_code, issuing_authority, licence_number, valid_until,
+         confirmed_at, partner_terms_version)
+       values (${literal(partner.id)}, 'PH', 'Department of Migrant Workers', 'DMW-' || left(${literal(partner.id)}, 8),
+         current_date + 365, now(), 1)`,
+    );
     const staff = await createTestUser("company");
     execute(`insert into public.platform_staff (user_id, role) values (${literal(staff.id)}, 'trust_safety')`);
     execute(

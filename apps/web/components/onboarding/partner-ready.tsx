@@ -51,7 +51,8 @@ type PartnerReadyStepProps = {
   availability?: React.ReactNode;
   // The licences, added in place by the owner or an admin; null for a member, who reads the link to the profile.
   licences?: React.ReactNode;
-  // A staffing company needs a current agency licence and a listing before it submits (private.partner_profile_missing).
+  // Every partner needs a current licence before it submits, and a staffing company a listing too
+  // (private.partner_profile_missing); the card names the licence of the partner's type.
   staffing: boolean;
   // The sidebar's links back to the steps reached.
   nav: PartnerStepNavigation;
@@ -116,12 +117,12 @@ export function PartnerReadyStep({
       <Card as="section" padding="lg" elevated aria-labelledby="ready-licences-heading" className="gap-5">
         <div className="grid gap-1">
           <h2 id="ready-licences-heading" className="text-h3">
-            {staffing ? "Your agency licence" : "Your licences (optional)"}
+            {staffing ? "Your agency licence" : "Your recruitment licence"}
           </h2>
           <p className="text-body text-muted-foreground">
             {staffing
               ? "A staffing company needs at least one current agency licence before it submits: the permit that lets you lease workers to employers, such as a German temporary agency work permit."
-              : "Add the licence or registration you hold for each country where you recruit, so our team can check it in the review."}{" "}
+              : "A recruitment company needs at least one current licence before it submits: the licence to recruit and place workers, such as an Overseas Employment Promoter licence in Pakistan or a DMW licence in the Philippines."}{" "}
             Only our team sees it.
           </p>
         </div>

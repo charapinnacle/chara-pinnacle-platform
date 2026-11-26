@@ -294,8 +294,15 @@ test.describe("Partner dashboards (FR-R3, FR-R4, release 2a)", () => {
       const segment = type === "staffing_company" ? "staffing" : "recruitment";
       await expect(owner.page).toHaveURL(dashboardUrl(segment, partner.slug));
       await expect(owner.page.getByRole("heading", { level: 1 })).toHaveText(question);
-      const workforce = owner.page.getByRole("region", { name: "Available workforce" });
-      await expect(workforce).toContainText("Add the workers you can supply, by country and occupation.");
+      // A recruitment company's listings are its recruiting capacity, a staffing company's its available workforce.
+      const workforce = owner.page.getByRole("region", {
+        name: type === "staffing_company" ? "Available workforce" : "Recruiting capacity",
+      });
+      await expect(workforce).toContainText(
+        type === "staffing_company"
+          ? "Add the workers you can supply, by country and occupation."
+          : "Add how many candidates you can put forward and recruit each month, by country and occupation.",
+      );
       await expect(workforce.getByRole("link", { name: action })).toBeVisible();
       await expect(owner.page.getByRole("region", { name: "Profile views" })).toContainText(
         "Views appear here once employers open your profile.",

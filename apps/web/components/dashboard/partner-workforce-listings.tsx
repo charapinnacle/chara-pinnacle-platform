@@ -13,6 +13,8 @@ type PartnerWorkforceListingsProps = {
   // The names of the occupations and source countries of the listings, by code.
   names: { occupations: Record<string, string>; countries: Record<string, string> };
   rules: AvailabilityRules;
+  // A recruitment company lists its recruiting capacity: candidates it can put forward and recruit, not workers it supplies.
+  recruiter?: boolean;
   action: { label: string; href: string };
   now: string;
 };
@@ -20,7 +22,21 @@ type PartnerWorkforceListingsProps = {
 // The available workforce of a partner on its dashboard (FR-R3 AC8, FR-R4 AC4, AC5): every listing with the date it was
 // last confirmed, the longest unconfirmed first, a warning in words on a listing hidden from search and, for the owner and
 // admins, Confirm on each listing that needs it (FR-K3; the same action as the workforce profile).
-export function PartnerWorkforceListings({ slug, canManage, listings, names, rules, action, now }: PartnerWorkforceListingsProps) {
+export function PartnerWorkforceListings({ slug, canManage, listings, names, rules, action, now, recruiter = false }: PartnerWorkforceListingsProps) {
+  if (listings.length === 0 && recruiter) {
+    return (
+      <EmptyState
+        title="No recruiting capacity listed yet"
+        description={
+          canManage
+            ? "Add how many candidates you can put forward and recruit each month, by country and occupation."
+            : "Your owner or an administrator lists the candidates your company can put forward, by country and occupation."
+        }
+      >
+        {canManage ? <LinkButton href={action.href}>{action.label}</LinkButton> : null}
+      </EmptyState>
+    );
+  }
   if (listings.length === 0) {
     return canManage ? (
       <EmptyState title="No workforce listed yet" description="Add the workers you can supply, by country and occupation.">

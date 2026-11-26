@@ -1,5 +1,5 @@
 begin;
-select plan(44);
+select plan(45);
 
 \ir organizations_fixture.inc
 
@@ -45,6 +45,10 @@ begin
   insert into public.organization_occupations (organization_id, occupation_id) values (p_org, '7212');
   if private.org_type(p_org) = 'staffing_company' then
     insert into public.organization_service_types (organization_id, service) values (p_org, 'temporary');
+  else
+    insert into public.partner_licences (organization_id, country_code, issuing_authority, licence_number, valid_until,
+      confirmed_at, partner_terms_version)
+    values (p_org, 'PH', 'Department of Migrant Workers', 'DMW-' || left(p_org::text, 8), current_date + 365, now(), 1);
   end if;
   insert into public.consents (user_id, purpose, version, action)
   values (v_owner, 'employer-pays-commitment', private.current_legal_version('employer-pays-commitment'), 'granted');
@@ -181,6 +185,13 @@ select is(
   'AC10: anonymous has no grant; the member, a competing partner, an employer and a worker get CHARA_FORBIDDEN; the owner and the admin at aal1 aal2_required'
 );
 select is(pg_temp.state(:'manila') || '/' || pg_temp.audits(:'manila'), 'onboarding|null|-/', 'the refused calls changed nothing');
+
+-- A recruitment company names a current licence before review, as a staffing company does.
+select is(pg_temp.submit(:'ow', :'manila'), 'P0001|CHARA_PROFILE_INCOMPLETE|agency_licence',
+  'a recruitment company without a current licence is incomplete');
+insert into public.partner_licences (organization_id, country_code, issuing_authority, licence_number, valid_until,
+  confirmed_at, partner_terms_version)
+values (:'manila', 'PH', 'Department of Migrant Workers', 'DMW-MANILA', current_date + 365, now(), 1);
 
 -- AC10: the owner submits; a repeat is a no-op ------------------------------------------------------------------------
 select is(pg_temp.submit(:'ow', :'manila'), 'ok', 'AC10: the owner at aal2 submits the complete profile');

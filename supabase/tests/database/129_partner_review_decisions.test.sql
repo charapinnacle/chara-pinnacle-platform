@@ -454,6 +454,9 @@ insert into public.organization_occupations (organization_id, occupation_id) val
 update public.organizations set recruitment_type = 'international' where id = :'a10';
 insert into public.consents (user_id, purpose, version, action)
 values (:'ow2', 'employer-pays-commitment', private.current_legal_version('employer-pays-commitment'), 'granted');
+insert into public.partner_licences (organization_id, country_code, issuing_authority, licence_number, valid_until,
+  confirmed_at, partner_terms_version)
+values (:'a10', 'PH', 'Department of Migrant Workers', 'DMW-A10', current_date + 365, now(), 1);
 select is(
   pg_temp.call_as(:'ow2', 'authenticated', format('select public.submit_partner_for_review(%L)', :'a10')),
   'ok', 'AC7: the owner resubmits after the request for information'
