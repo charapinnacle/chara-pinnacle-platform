@@ -56,11 +56,8 @@ export type NavIcon =
 
 // match is the address the link stands for: the page and everything below it, or only the page when exact is set. icon
 // names the picture the sidebar draws next to the label.
-// also lists further pages the link stands for (a tab of its page, such as Invitations under Job orders); group names the
-// heading the sidebar draws the link under.
-export type NavLink = { label: string; href: string; match: string; icon: NavIcon; exact?: true; also?: readonly string[]; group?: NavGroup };
-
-export type NavGroup = "Work" | "Your company" | "Account";
+// also lists further pages the link stands for (a tab of its page, such as Invitations under Job orders).
+export type NavLink = { label: string; href: string; match: string; icon: NavIcon; exact?: true; also?: readonly string[] };
 
 export type Crumb = { label: string; href?: string };
 
@@ -125,7 +122,7 @@ function messagesLink(href: string): NavLink {
   return { label: "Messages", href, match: href, icon: "messages" };
 }
 
-// The pages of one organisation in three groups: Work, Your company and Account. Billing is for owners and administrators,
+// The pages of one organisation, one list. Billing is for owners and administrators,
 // as the page itself requires, and a suspended organisation has none of them: each answers with a notice that it is
 // suspended. A recruitment or staffing company has its dashboard, its workforce profile and its team instead of vacancies
 // and applicants (FR-J1, FR-K1). While release 2b is on, an employer has its workforce requirements and a partner Job orders
@@ -159,13 +156,12 @@ export function organizationLinks(
           match: findWorkersPath(lang, slug),
           also: [orgContactRequestsPath(lang, slug)],
           icon: "workers",
-          group: "Work",
         },
       ]
     : [];
-  const team: NavLink = { label: "Team", href: membersPath(lang, slug), match: membersPath(lang, slug), icon: "team", group: "Your company" };
+  const team: NavLink = { label: "Team", href: membersPath(lang, slug), match: membersPath(lang, slug), icon: "team" };
   const analyticsLinks: NavLink[] = analytics
-    ? [{ label: "Analytics", href: analyticsPath(lang, slug), match: analyticsPath(lang, slug), icon: "analytics", group: "Your company" }]
+    ? [{ label: "Analytics", href: analyticsPath(lang, slug), match: analyticsPath(lang, slug), icon: "analytics" }]
     : [];
   const links: NavLink[] = partnerSegment
     ? [
@@ -174,7 +170,6 @@ export function organizationLinks(
           href: companyDashboardPath(lang, partnerSegment, slug),
           match: `/${lang}/dashboard/${partnerSegment}`,
           icon: "dashboard",
-          group: "Work",
         },
         ...(jobOrders
           ? ([
@@ -184,16 +179,14 @@ export function organizationLinks(
                 match: jobOrdersPath(lang, slug),
                 also: [invitationsPath(lang, slug)],
                 icon: "jobOrders",
-                group: "Work",
               },
-              { label: "Find employers", href: findEmployersPath(lang, slug), match: findEmployersPath(lang, slug), icon: "employers", group: "Work" },
+              { label: "Find employers", href: findEmployersPath(lang, slug), match: findEmployersPath(lang, slug), icon: "employers" },
               {
                 label: "Responses",
                 href: responsesPath(lang, slug),
                 match: responsesPath(lang, slug),
                 also: candidateSubmissions ? [partnerSubmissionsPath(lang, slug)] : [],
                 icon: "responses",
-                group: "Work",
               },
             ] satisfies NavLink[])
           : []),
@@ -203,15 +196,14 @@ export function organizationLinks(
           href: workforceProfilePath(lang, slug),
           match: workforceProfilePath(lang, slug),
           icon: "workforce",
-          group: "Your company",
         },
         ...analyticsLinks,
         team,
       ]
     : [
-        { label: "Dashboard", href: employerDashboardPath(lang, slug), match: `/${lang}/dashboard/employer`, icon: "dashboard", group: "Work" },
-        { label: "Vacancies", href: jobsPath(lang, slug), match: `/${lang}/org/${slug}/jobs`, icon: "vacancies", group: "Work" },
-        { label: "Applicants", href: applicantsPath(lang, slug), match: `/${lang}/org/${slug}/applicants`, icon: "applicants", group: "Work" },
+        { label: "Dashboard", href: employerDashboardPath(lang, slug), match: `/${lang}/dashboard/employer`, icon: "dashboard" },
+        { label: "Vacancies", href: jobsPath(lang, slug), match: `/${lang}/org/${slug}/jobs`, icon: "vacancies" },
+        { label: "Applicants", href: applicantsPath(lang, slug), match: `/${lang}/org/${slug}/applicants`, icon: "applicants" },
         ...(jobOrders
           ? [
               {
@@ -219,7 +211,6 @@ export function organizationLinks(
                 href: requirementsPath(lang, slug),
                 match: requirementsPath(lang, slug),
                 icon: "requirements",
-                group: "Work",
               } satisfies NavLink,
             ]
           : []),
@@ -227,7 +218,7 @@ export function organizationLinks(
         ...analyticsLinks,
         team,
       ];
-  if (role !== "member") links.push({ label: "Billing", href: billingPath(lang, slug), match: billingPath(lang, slug), icon: "billing", group: "Account" });
+  if (role !== "member") links.push({ label: "Billing", href: billingPath(lang, slug), match: billingPath(lang, slug), icon: "billing" });
   return links;
 }
 
@@ -260,18 +251,6 @@ export function isGatePage(lang: string, pathname: string): boolean {
 
 export function isCurrent(pathname: string, { match, exact, also = [] }: Pick<NavLink, "match" | "exact" | "also">): boolean {
   return [match, ...also].some((path) => pathname === path || (!exact && pathname.startsWith(`${path}/`)));
-}
-
-// The links in their groups, in the order of their first link; links without a group form one group without a heading.
-export function groupLinks(links: readonly NavLink[]): { group: NavGroup | null; links: NavLink[] }[] {
-  const groups: { group: NavGroup | null; links: NavLink[] }[] = [];
-  for (const link of links) {
-    const group = link.group ?? null;
-    const last = groups.find((entry) => entry.group === group);
-    if (last) last.links.push(link);
-    else groups.push({ group, links: [link] });
-  }
-  return groups;
 }
 
 // The organisation a person is working in: the one named by the address (/org/<slug>/... or ?org=<slug>), else the first.

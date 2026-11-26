@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { accountLinks, currentOrganization, groupLinks, isCurrent, isGatePage, type NavOrganization, organizationCrumb, organizationLinks, workerLinks } from "@/lib/app/navigation";
+import { accountLinks, currentOrganization, isCurrent, isGatePage, type NavOrganization, organizationCrumb, organizationLinks, workerLinks } from "@/lib/app/navigation";
 
 const labels = (links: readonly { label: string }[]) => links.map(({ label }) => label);
 
@@ -118,10 +118,14 @@ describe("the header links of an organisation", () => {
       ["Team", "/en/org/manila/members"],
     ]);
     const partner = organizationLinks("en", { slug: "manila", role: "owner", suspended: false, partnerSegment: "recruitment", jobOrders: true });
-    expect(groupLinks(partner).map(({ group, links }) => [group, links.map(({ label }) => label)])).toEqual([
-      ["Work", ["Dashboard", "Job orders", "Find employers", "Responses"]],
-      ["Your company", ["Workforce profile", "Team"]],
-      ["Account", ["Billing"]],
+    expect(labels(partner), "one list, Billing last for the owner").toEqual([
+      "Dashboard",
+      "Job orders",
+      "Find employers",
+      "Responses",
+      "Workforce profile",
+      "Team",
+      "Billing",
     ]);
     const jobOrders = partner.find(({ label }) => label === "Job orders")!;
     expect(isCurrent("/en/org/manila/invitations", jobOrders), "Invitations is a tab of Job orders").toBe(true);

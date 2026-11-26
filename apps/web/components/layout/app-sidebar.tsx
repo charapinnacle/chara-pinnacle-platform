@@ -28,7 +28,7 @@ import { OrganizationList, useAppNavigation, type AppNavProps } from "@/componen
 import { MenuDisclosure } from "@/components/layout/menu-disclosure";
 import { SidebarIdentity } from "@/components/layout/sidebar-identity";
 import { SidebarLink } from "@/components/layout/sidebar-link";
-import { groupLinks, isCurrent, type NavIcon } from "@/lib/app/navigation";
+import { isCurrent, type NavIcon } from "@/lib/app/navigation";
 
 const icons: Record<NavIcon, LucideIcon> = {
   dashboard: LayoutDashboard,
@@ -65,19 +65,14 @@ export function AppSidebar(props: AppNavProps) {
   return (
     <>
       {links.length > 0 ? (
-        <nav aria-label="Main" className="grid min-h-0 flex-1 content-start gap-4 overflow-y-auto px-3 py-2">
-          {groupLinks(links).map(({ group, links: grouped }) => (
-            <div key={group ?? "links"} className="grid gap-1">
-              {group ? <p className="px-3 pt-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">{group}</p> : null}
-              <ul className="grid gap-1">
-                {grouped.map((link) => (
-                  <li key={link.href}>
-                    <SidebarLink href={link.href} label={link.label} icon={icons[link.icon]} current={isCurrent(pathname, link)} />
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+        <nav aria-label="Main" className="min-h-0 flex-1 overflow-y-auto px-3 py-2">
+          <ul className="grid gap-1">
+            {links.map((link) => (
+              <li key={link.href}>
+                <SidebarLink href={link.href} label={link.label} icon={icons[link.icon]} current={isCurrent(pathname, link)} />
+              </li>
+            ))}
+          </ul>
         </nav>
       ) : (
         <div className="flex-1" />

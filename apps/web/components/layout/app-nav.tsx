@@ -7,7 +7,7 @@ import { HeaderMenu } from "@/components/layout/header-menu";
 import { NavLink } from "@/components/layout/nav-link";
 import { MessagesBadge } from "@/components/messaging/messages-badge";
 import { NotificationBell } from "@/components/notifications/notification-bell";
-import { accountLinks, currentOrganization, groupLinks, isGatePage, organizationLinks, workerLinks, type NavOrganization } from "@/lib/app/navigation";
+import { accountLinks, currentOrganization, isGatePage, organizationLinks, workerLinks, type NavOrganization } from "@/lib/app/navigation";
 import type { UnreadMessages } from "@/lib/messaging/thread";
 import { companyDashboardPath } from "@/lib/routes";
 import { cn } from "@/lib/utils";
@@ -98,19 +98,14 @@ export function AppNav(props: AppNavProps) {
     >
       <div className="grid gap-2 lg:flex lg:items-center lg:gap-1">
         {links.length > 0 ? (
-          <nav aria-label="Main" className="grid gap-3 lg:hidden">
-            {groupLinks(links).map(({ group, links: grouped }) => (
-              <div key={group ?? "links"} className="grid">
-                {group ? <p className="px-3 text-xs font-medium tracking-wide text-muted-foreground uppercase">{group}</p> : null}
-                <ul className="grid">
-                  {grouped.map((link) => (
-                    <li key={link.href}>
-                      <NavLink link={link} />
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
+          <nav aria-label="Main" className="lg:hidden">
+            <ul className="grid">
+              {links.map((link) => (
+                <li key={link.href}>
+                  <NavLink link={link} />
+                </li>
+              ))}
+            </ul>
           </nav>
         ) : null}
         {switcher ? (
