@@ -263,7 +263,7 @@ test.describe("Partner team pages (FR-J1 AC9, AC11, release 2a)", () => {
     }
   });
 
-  test("FR-J1 AC11: Ready offers Invite your team, the dashboard has the team and the members usage", async ({ page }) => {
+  test("FR-J1 AC11: Ready offers Invite your team, and the dashboard plan line says the members usage", async ({ page }) => {
     test.setTimeout(120_000);
     const team = await partnerTeam("recruitment_company", { state: "pending_review" });
     subscribePartner(team, "recruitment_partner", "trialing");
@@ -283,11 +283,11 @@ test.describe("Partner team pages (FR-J1 AC9, AC11, release 2a)", () => {
     await expect(page).toHaveURL(membersPath(team.slug));
 
     await page.goto(`/en/dashboard/recruitment?org=${team.slug}`);
-    const block = page.getByRole("region", { name: "Your team" });
-    await expect(block.getByRole("link", { name: "Invite your team" })).toHaveAttribute("href", membersPath(team.slug));
+    // The team is in the sidebar, so the dashboard has no team card; the plan line says the full limit.
+    await expect(page.getByRole("region", { name: "Your team" })).toHaveCount(0);
     const plan = page.getByRole("region", { name: "Plan and usage" });
-    await expect(plan).toContainText("1 of 1 team member · Limit reached. Upgrade");
-    await expect(plan.getByRole("link", { name: "Upgrade (team members)" }), "FR-R1: a full limit offers the upgrade").toHaveAttribute(
+    await expect(plan).toContainText("1 of 1 team member · limit reached");
+    await expect(plan.getByRole("link", { name: /^(Upgrade|Choose a plan)$/ }), "FR-R1: a full limit offers the upgrade").toHaveAttribute(
       "href",
       `/en/org/${team.slug}/billing`,
     );
