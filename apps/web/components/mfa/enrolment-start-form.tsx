@@ -59,7 +59,7 @@ export function EnrolmentStartForm({ first = false, next }: EnrolmentStartFormPr
           autoComplete="off"
         />
       )}
-      <FormButton type="submit" variant={first ? "primary" : "secondary"} busy={formState.isSubmitting}>
+      <FormButton fullWidth type="submit" variant={first ? "primary" : "secondary"} busy={formState.isSubmitting}>
         {formState.isSubmitting ? "Starting..." : first ? "Show the QR code" : "Add a backup device"}
       </FormButton>
     </form>

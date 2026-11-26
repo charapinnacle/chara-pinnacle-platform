@@ -38,7 +38,7 @@ export default async function JobOrdersPage({ params, searchParams }: PageProps<
   };
 
   return (
-    <div className="grid w-full max-w-5xl gap-section">
+    <div className="grid w-full gap-section">
       <PageHeader title="Job orders" breadcrumb={<Breadcrumbs items={[organizationCrumb(lang, organization), { label: "Job orders" }]} />}>
         <p className="max-w-[65ch] text-body leading-relaxed text-muted-foreground">
           Workforce requirements that employers published for recruitment and staffing companies, newest first. Job orders

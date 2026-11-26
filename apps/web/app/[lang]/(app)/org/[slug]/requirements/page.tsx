@@ -48,7 +48,7 @@ export default async function RequirementsPage({ params, searchParams }: PagePro
   ) : null;
 
   return (
-    <div className="grid w-full max-w-3xl gap-section">
+    <div className="grid w-full gap-section">
       <PageHeader
         title="Workforce requirements"
         description={`${organization.displayName}. Describe a need for a group of workers once; candidates do not apply to it.`}

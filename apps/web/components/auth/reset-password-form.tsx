@@ -65,7 +65,7 @@ export function ResetPasswordForm({ tokenHash }: { tokenHash: string }) {
           autoComplete="one-time-code"
         />
       ) : null}
-      <FormButton type="submit" busy={formState.isSubmitting}>
+      <FormButton fullWidth type="submit" busy={formState.isSubmitting}>
         {formState.isSubmitting ? "Saving..." : "Change password"}
       </FormButton>
     </form>

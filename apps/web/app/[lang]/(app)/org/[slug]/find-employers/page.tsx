@@ -47,7 +47,7 @@ export default async function FindEmployersPage({ params, searchParams }: PagePr
   const context = { lang, slug, names, canManage };
 
   return (
-    <div className="grid w-full max-w-5xl gap-section">
+    <div className="grid w-full gap-section">
       <PageHeader title="Find employers" breadcrumb={<Breadcrumbs items={[organizationCrumb(lang, organization), { label: "Find employers" }]} />}>
         <p className="max-w-[65ch] text-body leading-relaxed text-muted-foreground">
           Employers with a public company page, and the open job orders you can supply, newest activity first. Where an

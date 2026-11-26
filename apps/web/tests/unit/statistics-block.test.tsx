@@ -99,16 +99,16 @@ describe("the home page (U73)", () => {
     expect(html).not.toContain("/images/");
   });
 
-  it("leads every Post a Job of the page where the header's does, and offers none to whom the header offers none", async () => {
+  it("leads every Post a job of the page where the header's does, and offers none to whom the header offers none", async () => {
     getPostJobHref.mockResolvedValue("/en/post-job");
     const employer = await renderHome();
-    // The employer band's Post a Job and the closing call's Start hiring; the hero's line leads to For employers.
+    // The employer band's Post a job and the closing call's Start hiring; the hero's line leads to For employers.
     expect(employer.match(/href="\/en\/post-job"/g)).toHaveLength(2);
     getPostJobHref.mockResolvedValue(null);
     const candidate = await renderHome();
     // Only the hero's quiet line remains, and it leads to For employers, not to posting.
-    expect(candidate.match(/>Post a Job</g)).toHaveLength(1);
-    expect(candidate).toContain('href="/en/employers">Post a Job</a>');
+    expect(candidate.match(/>Post a job</g)).toHaveLength(1);
+    expect(candidate).toContain('href="/en/employers">Post a job</a>');
     expect(candidate).not.toContain("Start hiring");
     expect(candidate).toContain('role="search"');
   });

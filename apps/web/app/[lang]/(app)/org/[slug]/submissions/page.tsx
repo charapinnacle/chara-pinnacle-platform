@@ -24,7 +24,7 @@ export default async function PartnerSubmissionsPage({ params, searchParams }: P
   const cursor = typeof raw.cursor === "string" && UUID.test(raw.cursor) ? raw.cursor : null;
 
   return (
-    <div className="grid w-full max-w-3xl gap-section">
+    <div className="grid w-full gap-section">
       <PageHeader
         title="Submissions"
         description="The candidates your company asked to submit to employers, newest first. A candidate is submitted only once they approve."

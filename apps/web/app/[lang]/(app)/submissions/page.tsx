@@ -28,7 +28,7 @@ export default async function SubmissionsPage({ params }: PageProps<"/[lang]/sub
   const [requests, submissions] = await Promise.all([listMySubmissionRequests(), listMySubmissions()]);
 
   return (
-    <div className="grid w-full max-w-3xl gap-section">
+    <div className="grid w-full gap-section">
       <PageHeader
         title="Submissions"
         description="Recruitment and staffing companies ask your permission before they submit you to an employer. Nothing is shared until you approve."

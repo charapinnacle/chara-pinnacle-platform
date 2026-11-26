@@ -64,7 +64,7 @@ export default async function ContactRequestsPage({ params }: PageProps<"/[lang]
   const answered = requests.filter(({ status }) => status !== "pending");
 
   return (
-    <div className="grid w-full max-w-3xl gap-section">
+    <div className="grid w-full gap-section">
       <PageHeader
         title="Contact requests"
         description="Companies that found your card in Find Workers ask to contact you. They do not see your name or contact details unless you accept."

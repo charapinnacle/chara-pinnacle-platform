@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { redirect, unstable_rethrow } from "next/navigation";
 import { TextLink } from "@/components/forms/text-link";
 import { LinkButton } from "@/components/layout/link-button";
-import { PostJobLabel } from "@/components/layout/post-job-label";
 import { PageContainer } from "@/components/layout/page-container";
 import { Band } from "@/components/public/band";
 import { ClosingCall } from "@/components/public/closing-call";
@@ -122,9 +121,9 @@ function PartnersSection({ lang }: { lang: string }) {
   );
 }
 
-// The employer's own page, as Indeed's is (OPEN_QUESTIONS.md D90): one promise and Post a Job, the three steps, what the
+// The employer's own page, as Indeed's is (OPEN_QUESTIONS.md D90): one promise and Post a job, the three steps, what the
 // product enforces, the partner directories while release 2a is on, the starting price from the plan records, and a last
-// call. Post a Job leads where the header's does.
+// call. Post a job leads where the header's does.
 export default async function EmployersPage({ params }: PageProps<"/[lang]/employers">) {
   const { lang } = await params;
   // A worker's account cannot hire, so the employer's page is not theirs (the header offers it only to the others).
@@ -144,7 +143,7 @@ export default async function EmployersPage({ params }: PageProps<"/[lang]/emplo
           <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-3">
             {postJobHref ? (
               <LinkButton href={postJobHref} prefetch={false} className="min-h-12 px-6">
-                <PostJobLabel />
+                Post a job
               </LinkButton>
             ) : null}
             {SHOW_PRICING ? (
@@ -169,7 +168,7 @@ export default async function EmployersPage({ params }: PageProps<"/[lang]/emplo
       </Band>
       {released.includes("release_partner_directories") ? <PartnersSection lang={lang} /> : null}
       {SHOW_PRICING ? <PricingTeaser lang={lang} plan={plan} /> : null}
-      <ClosingCall id="employers-start-heading" title="Ready to hire?" primary={postJobHref ? { href: postJobHref, label: <PostJobLabel /> } : null} />
+      <ClosingCall id="employers-start-heading" title="Ready to hire?" primary={postJobHref ? { href: postJobHref, label: "Post a job" } : null} />
     </>
   );
 }

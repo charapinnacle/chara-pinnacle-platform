@@ -1,5 +1,5 @@
+import { TabLinks } from "@/components/layout/tab-links";
 import { MessagesSquare } from "lucide-react";
-import Link from "next/link";
 import { Suspense } from "react";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { LoadingSkeleton } from "@/components/feedback/loading-skeleton";
@@ -9,7 +9,6 @@ import { ConversationList } from "@/components/messaging/conversation-list";
 import { getUnreadMessageCounts, listConversations } from "@/lib/dal/messaging";
 import { conversationCursor, inboxContexts, type MessagingViewer } from "@/lib/messaging/present";
 import { conversationPath, messagesPath } from "@/lib/routes";
-import { cn } from "@/lib/utils";
 import { parseJobCursor } from "@/lib/validation/job";
 import { parseInboxFilter, type PageContext } from "@/lib/validation/messaging";
 
@@ -120,27 +119,15 @@ export function MessagesInbox({ lang, viewer, userId, organizationId, breadcrumb
         }
         breadcrumb={breadcrumb}
       />
-      <nav aria-label="Filter by context">
-        <ul className="flex flex-wrap gap-2">
-          {filters.map((filter) => {
-            const current = filter === context;
-            return (
-              <li key={filter ?? "all"}>
-                <Link
-                  href={messagesPath(lang, slug, { context: filter })}
-                  aria-current={current ? "page" : undefined}
-                  className={cn(
-                    "inline-flex min-h-11 items-center rounded-full border px-4 text-small font-medium transition-colors duration-150 hover:bg-secondary",
-                    current && "border-primary bg-primary text-primary-foreground hover:bg-primary",
-                  )}
-                >
-                  {filter ? filterLabels[filter] : "All"}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
+      <TabLinks
+        label="Filter by context"
+        items={filters.map((filter) => ({
+          key: filter ?? "all",
+          href: messagesPath(lang, slug, { context: filter }),
+          label: filter ? filterLabels[filter] : "All",
+          current: filter === context,
+        }))}
+      />
       <Suspense key={`${context ?? "all"}|${before ?? ""}`} fallback={<LoadingSkeleton rows={4} />}>
         <Inbox lang={lang} viewer={viewer} userId={userId} organizationId={organizationId} context={context} before={before} />
       </Suspense>

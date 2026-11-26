@@ -98,12 +98,12 @@ describe("the For employers page (U73, FR-H1, FR-H2)", () => {
     expect(html).not.toContain('href="/en/pricing"');
   });
 
-  it("leads both Post a Job buttons where the header does, and offers none to whom the header offers none", async () => {
+  it("leads both Post a job buttons where the header does, and offers none to whom the header offers none", async () => {
     getPostJobHref.mockResolvedValue("/en/post-job");
-    expect((await render()).match(/<a [^>]*href="\/en\/post-job"[^>]*><span>Post <span class="normal-case">a<\/span> Job<\/span><\/a>/g)).toHaveLength(2);
+    expect((await render()).match(/<a [^>]*href="\/en\/post-job"[^>]*>Post a job<\/a>/g)).toHaveLength(2);
     getPostJobHref.mockResolvedValue(null);
     const candidate = await render();
-    expect(candidate).not.toContain("Post a Job");
+    expect(candidate).not.toContain("Post a job");
     expect(candidate).toContain("Ready to hire?");
   });
 

@@ -25,7 +25,7 @@ export default async function AppealsPage({ params }: PageProps<"/[lang]/appeals
   const decisions = await listMyAppeals();
 
   return (
-    <div className="grid w-full max-w-3xl gap-section">
+    <div className="grid w-full gap-section">
       <PageHeader
         title="Moderation decisions"
         description="Decisions of our moderators about your organisations, with their reasons. An owner or admin can appeal each one."

@@ -294,7 +294,7 @@ test.describe("U67: layout and accessibility of the changed pages", () => {
     await page.goto("/en/login");
     await page.setViewportSize({ width: 1280, height: 900 });
     expect(await card()).toEqual({ radius: "16px", padding: "40px", shadow: true });
-    expect((await page.getByRole("button", { name: "Log in" }).boundingBox())?.height).toBe(48);
+    expect((await page.getByRole("button", { name: "Log in" }).boundingBox())?.height).toBe(44);
     await page.setViewportSize({ width: 375, height: 800 });
     expect(await card()).toMatchObject({ padding: "24px" });
   });

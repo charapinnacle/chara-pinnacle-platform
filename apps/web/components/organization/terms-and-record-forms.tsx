@@ -169,8 +169,8 @@ export function StandardTermsForm({ slug, kind, terms, currencies }: StandardTer
           description={`For example "Trade test and visa processing included". Up to ${formatCount(TERMS_NOTE_MAX)} characters.`}
         />
       </div>
-      <div className="flex justify-end">
-        <FormButton type="submit" className="sm:w-auto sm:min-w-48" busy={formState.isSubmitting}>
+      <div>
+        <FormButton type="submit" busy={formState.isSubmitting}>
           {formState.isSubmitting ? "Saving..." : "Save standard terms"}
         </FormButton>
       </div>
@@ -242,8 +242,8 @@ export function TrackRecordForm({ slug, placementsLastYear, countriesPlaced, cou
           />
         </div>
       </div>
-      <div className="flex justify-end">
-        <FormButton type="submit" className="sm:w-auto sm:min-w-48" busy={formState.isSubmitting}>
+      <div>
+        <FormButton type="submit" busy={formState.isSubmitting}>
           {formState.isSubmitting ? "Saving..." : "Save track record"}
         </FormButton>
       </div>

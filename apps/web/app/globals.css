@@ -212,9 +212,10 @@
   --success-foreground: oklch(0.4 0.1 155);
   --success-background: oklch(0.97 0.03 155);
   --success-border: oklch(0.76 0.1 155);
-  --warning-foreground: oklch(0.42 0.09 65);
-  --warning-background: oklch(0.97 0.045 85);
-  --warning-border: oklch(0.78 0.11 80);
+  /* A calm cream and the brand's ink instead of a yellow fill (owner's choice, 27 Nov 2026). */
+  --warning-foreground: oklch(0.45 0.08 72);
+  --warning-background: oklch(0.97 0.014 85);
+  --warning-border: oklch(0.76 0.07 80);
   --danger-foreground: var(--destructive);
   --danger-background: var(--destructive-surface);
   --danger-border: oklch(0.78 0.1 25);

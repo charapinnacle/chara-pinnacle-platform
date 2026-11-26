@@ -181,7 +181,7 @@ export function SignupForm({ documents, attestationWording, invitation, preselec
           ) : null}
         </fieldset>
       ) : null}
-      <FormButton type="submit" busy={formState.isSubmitting}>
+      <FormButton fullWidth type="submit" busy={formState.isSubmitting}>
         {formState.isSubmitting ? "Creating account..." : "Create account"}
       </FormButton>
     </form>

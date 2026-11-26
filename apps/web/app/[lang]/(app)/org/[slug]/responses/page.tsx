@@ -26,7 +26,7 @@ export default async function ResponsesPage({ params, searchParams }: PageProps<
   const countries = await getCountries();
 
   return (
-    <div className="grid w-full max-w-3xl gap-section">
+    <div className="grid w-full gap-section">
       <PageHeader
         title="Responses"
         description="The responses your company sent to job orders and invitations, newest first. Open one to read, change or withdraw it."

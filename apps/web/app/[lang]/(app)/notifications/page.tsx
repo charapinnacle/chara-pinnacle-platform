@@ -23,7 +23,7 @@ export default async function NotificationsPage({ params, searchParams }: PagePr
   const [{ items, nextCursor }, undeliverable] = await Promise.all([listMyNotifications(cursor), getEmailUndeliverable()]);
 
   return (
-    <div className="grid w-full max-w-3xl gap-section">
+    <div className="grid w-full gap-section">
       <PageHeader
         title="Notifications"
         description="Updates about your account and your work on the platform, newest first."

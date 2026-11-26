@@ -6,7 +6,7 @@ import { FormButton } from "@/components/forms/form-button";
 export function ConfirmButton() {
   const { pending } = useFormStatus();
   return (
-    <FormButton type="submit" busy={pending}>
+    <FormButton fullWidth type="submit" busy={pending}>
       {pending ? "Confirming..." : "Confirm email address"}
     </FormButton>
   );

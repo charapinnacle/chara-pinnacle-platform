@@ -1,3 +1,4 @@
+import { TabLinks } from "@/components/layout/tab-links";
 import { Handshake } from "lucide-react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -29,7 +30,6 @@ import { requireOrgRole } from "@/lib/dal/session";
 import { getPublicSettings } from "@/lib/dal/settings";
 import { formatDate } from "@/lib/i18n/format";
 import { appealPath, conversationPath, findWorkersPath, orgContactRequestsPath } from "@/lib/routes";
-import { cn } from "@/lib/utils";
 
 // Nothing about a worker who has not accepted is in the title or the metadata (NFR-S9).
 export const metadata: Metadata = { title: "Contact requests", robots: { index: false } };
@@ -152,27 +152,21 @@ export default async function OrganizationContactRequestsPage({ params, searchPa
   const filters: (ContactRequestStatus | null)[] = [null, ...contactRequestStatuses];
 
   return (
-    <div className="grid w-full max-w-4xl gap-section">
+    <div className="grid w-full gap-section">
       <PageHeader
         title="Contact requests"
         description="Requests your organisation sent to workers in Find Workers. A worker's name is shown only after they accept."
         breadcrumb={<Breadcrumbs items={[organizationCrumb(lang, organization), { label: "Contact requests" }]} />}
       />
-      <nav aria-label="Filter by status">
-        <ul className="flex flex-wrap gap-2">
-          {filters.map((value) => (
-            <li key={value ?? "all"}>
-              <TextLink
-                href={pagePath(lang, slug, value)}
-                aria-current={value === status ? "page" : undefined}
-                className={cn("inline-flex min-h-11 items-center rounded-lg px-3", value === status && "bg-accent text-accent-foreground")}
-              >
-                {value ? filterLabels[value] : "All"}
-              </TextLink>
-            </li>
-          ))}
-        </ul>
-      </nav>
+      <TabLinks
+        label="Filter by status"
+        items={filters.map((value) => ({
+          key: value ?? "all",
+          href: pagePath(lang, slug, value),
+          label: value ? filterLabels[value] : "All",
+          current: value === status,
+        }))}
+      />
       {page.items.length === 0 ? (
         <div role="status">
           <EmptyState

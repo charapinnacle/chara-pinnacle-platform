@@ -187,14 +187,16 @@ describe("Spinner", () => {
 
 describe("Notice tones", () => {
   it.each([
-    ["warning", "bg-warning-background"],
-    ["error", "bg-danger-background"],
-    ["info", "bg-info-background"],
-  ] as const)("the %s tone uses its status tokens", (tone, background) => {
-    expect(html(<Notice tone={tone}>Message</Notice>)).toContain(background);
+    ["warning", "border-s-brand"],
+    ["error", "border-s-danger-foreground"],
+    ["info", "border-s-info-foreground"],
+  ] as const)("the %s tone is a white card with its coloured edge, never a tinted fill", (tone, edge) => {
+    const markup = html(<Notice tone={tone}>Message</Notice>);
+    expect(markup).toContain(edge);
+    expect(markup).toContain("bg-card");
   });
 
-  it.each(["warning", "error"] as const)("the %s tone has a hidden icon beside the text", (tone) => {
+  it.each(["warning", "error", "info"] as const)("the %s tone has a hidden icon beside the text", (tone) => {
     const markup = html(<Notice tone={tone}>Message</Notice>);
     expect(markup).toContain('aria-hidden="true"');
     expect(markup).toContain("Message");
@@ -202,7 +204,6 @@ describe("Notice tones", () => {
 
   it("keeps the role and the text the caller gives", () => {
     expect(html(<Notice tone="error" role="alert">Wrong password</Notice>)).toMatch(/role="alert"[^>]*>.*Wrong password/);
-    expect(html(<Notice tone="info">Plain</Notice>)).not.toContain("<svg");
   });
 });
 

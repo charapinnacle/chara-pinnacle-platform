@@ -77,7 +77,7 @@ export function CheckEmailPanel({ initialCooldown, resend, changeAddress }: Chec
           {outcome.text}
         </Notice>
       ) : null}
-      <FormButton
+      <FormButton fullWidth
         type="button"
         aria-disabled={waiting || sending || undefined}
         aria-busy={sending || undefined}
