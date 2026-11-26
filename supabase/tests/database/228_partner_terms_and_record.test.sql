@@ -36,10 +36,10 @@ $$;
 \set rown '00000000-0000-0000-0000-0000000f2801'
 \set sown '00000000-0000-0000-0000-0000000f2802'
 \set rmem '00000000-0000-0000-0000-0000000f2803'
+update private.settings set value = 'true' where key = 'release_partner_directories';
 select pg_temp.new_partner_user(:'rown', 'recruitment_company');
 select pg_temp.new_partner_user(:'sown', 'staffing_company');
 select pg_temp.new_partner_user(:'rmem', 'recruitment_company');
-update private.settings set value = 'true' where key = 'release_partner_directories';
 select pg_temp.partner(:'rown', 'recruitment_company', 'terms-recruit') as rec \gset
 select pg_temp.partner(:'sown', 'staffing_company', 'terms-staff') as stf \gset
 insert into public.organization_members (organization_id, user_id, role, accepted_at) values (:'rec', :'rmem', 'member', now());
