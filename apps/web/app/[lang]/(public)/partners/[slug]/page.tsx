@@ -15,6 +15,7 @@ import { getContactEmployer } from "@/lib/dal/connection-actions";
 import { getProfileConnection } from "@/lib/dal/connections";
 import { getInviteChoices } from "@/lib/dal/invitations";
 import { getPartnerProfile } from "@/lib/dal/partner-profile";
+import { getPublicTermsAndRecord } from "@/lib/dal/partner-terms";
 import { getAgencyWorkRules, getCountries, getOccupations } from "@/lib/dal/reference";
 import { outsideFreeMovement } from "@/lib/compliance/agency-work";
 import { isReleased } from "@/lib/dal/release";
@@ -154,7 +155,7 @@ export default async function PartnerProfilePage({ params, searchParams }: PageP
   );
   return (
     <PageContainer layout="page">
-      <PartnerProfileView lang={lang} profile={profile} actions={actions} />
+      <PartnerProfileView lang={lang} profile={profile} actions={actions} termsAndRecord={await getPublicTermsAndRecord(profile.slug)} />
     </PageContainer>
   );
 }

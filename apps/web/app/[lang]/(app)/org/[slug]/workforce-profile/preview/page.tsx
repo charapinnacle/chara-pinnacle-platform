@@ -5,6 +5,7 @@ import { TextLink } from "@/components/forms/text-link";
 import { SuspendedOrganization } from "@/components/layout/suspended-organization";
 import { PartnerProfileView } from "@/components/partners/partner-profile-view";
 import { getPartnerProfilePreview } from "@/lib/dal/partner-profile";
+import { getPublicTermsAndRecord } from "@/lib/dal/partner-terms";
 import { isReleased } from "@/lib/dal/release";
 import { requireOrgRole } from "@/lib/dal/session";
 import { partnerProfilePath, workforceProfilePath } from "@/lib/routes";
@@ -19,7 +20,7 @@ export default async function WorkforceProfilePreviewPage({ params }: PageProps<
   if (!(await isReleased("release_partner_directories"))) notFound();
   const { organization } = await requireOrgRole(lang, slug, "member", { mfa: false, hideFromOutsiders: true, partner: true });
   if (organization.suspended) return <SuspendedOrganization title="Profile preview" subject="details" />;
-  const { profile, isPublic } = await getPartnerProfilePreview(organization.id);
+  const [{ profile, isPublic }, termsAndRecord] = await Promise.all([getPartnerProfilePreview(organization.id), getPublicTermsAndRecord(slug)]);
   const banner = (
     <Notice tone={isPublic ? "info" : "warning"} role="status">
       {isPublic ? (
@@ -35,5 +36,5 @@ export default async function WorkforceProfilePreviewPage({ params }: PageProps<
       </p>
     </Notice>
   );
-  return <PartnerProfileView lang={lang} profile={profile} banner={banner} />;
+  return <PartnerProfileView lang={lang} profile={profile} banner={banner} termsAndRecord={termsAndRecord} />;
 }

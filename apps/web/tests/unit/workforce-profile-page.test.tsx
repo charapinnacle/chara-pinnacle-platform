@@ -26,7 +26,24 @@ vi.mock("@/lib/dal/geographies", () => ({
 }));
 vi.mock("@/lib/dal/usage", () => ({ getUsagePrompts: promptsMock, getUnenforcedAllowances: async () => ({ markets: null }) }));
 vi.mock("@/lib/actions/limits", () => ({ recordLimitPrompt: vi.fn() }));
+vi.mock("@/lib/dal/partner-terms", () => ({
+  getOwnStandardTerms: async () => ({
+    feeModel: "fee_per_hire",
+    feeAmount: 1500,
+    feeCurrency: "EUR",
+    guaranteeDays: 90,
+    minAssignmentWeeks: null,
+    note: null,
+  }),
+  getOwnTrackRecord: async () => ({ placementsLastYear: 120, countriesPlaced: ["DE"] }),
+  getPublicTermsAndRecord: async () => ({
+    terms: null,
+    record: { placementsLastYear: 120, countriesPlaced: [{ code: "DE", name: "Germany" }], platformHires: 2 },
+  }),
+}));
+vi.mock("@/lib/actions/partner-terms", () => ({ saveStandardTerms: vi.fn(), saveTrackRecord: vi.fn() }));
 vi.mock("@/lib/dal/reference", () => ({
+  getCurrencies: async () => [{ code: "EUR", name: "Euro" }],
   getCountries: async () => [
     { code: "DE", name: "Germany" },
     { code: "NP", name: "Nepal" },
@@ -48,6 +65,7 @@ vi.mock("@/lib/dal/reference", () => ({
 vi.mock("@/lib/actions/geographies", () => ({ saveOrganizationGeographies: vi.fn() }));
 vi.mock("@/lib/dal/workforce-offer", async () => ({
   ...(await vi.importActual<typeof import("@/lib/dal/workforce-offer")>("@/lib/dal/workforce-offer")),
+  getPartnerKind: async () => "recruitment",
   getWorkforceOffer: async () => ({
     occupations: ["7212"],
     industries: ["C", "F"],
@@ -202,6 +220,19 @@ describe("the workforce profile page (FR-K1, FR-K2)", () => {
     expect(html).toMatch(/<button[^>]*type="submit"[^>]*>Save what you offer<\/button>/);
   });
 
+  it("lets the owner state the standard terms and the track record, next to the hires counted on the platform", async () => {
+    requireOrgRoleMock.mockResolvedValue(organization("owner", "recruitment_company"));
+    const html = await render();
+    expect(html).toContain(">Standard terms</h2>");
+    expect(html).toMatch(/<input[^>]*type="radio"[^>]*checked="" value="fee_per_hire"/);
+    expect(html).toMatch(/<input[^>]*value="90"/);
+    expect(html).toMatch(/<button[^>]*type="submit"[^>]*>Save standard terms<\/button>/);
+    expect(html).toContain(">Track record</h2>");
+    expect(html).toContain("Hires through Chara Pinnacle: 2");
+    expect(html).toMatch(/<input[^>]*value="120"/);
+    expect(html).toMatch(/<button[^>]*type="submit"[^>]*>Save track record<\/button>/);
+  });
+
   it("shows a member the countries without a form", async () => {
     requireOrgRoleMock.mockResolvedValue(organization("member", "recruitment_company"));
     const html = await render();
@@ -213,6 +244,8 @@ describe("the workforce profile page (FR-K1, FR-K2)", () => {
     expect(html).toMatch(/<dt[^>]*>Recruitment type<\/dt><dd[^>]*>International<\/dd>/);
     expect(html).toMatch(/<dt[^>]*>Staffing types<\/dt><dd[^>]*>Temporary<\/dd>/);
     expect(html).toMatch(/<dt[^>]*>Year founded<\/dt><dd[^>]*>2019<\/dd>/);
+    expect(html).toContain("EUR 1,500.00 per hire");
+    expect(html).toContain("120 workers placed in the last 12 months");
   });
 
   it("says a suspended partner's details are not available", async () => {

@@ -4,9 +4,10 @@ import { Card } from "@/components/layout/card";
 import { DetailList } from "@/components/layout/detail-list";
 import { PageHeader } from "@/components/layout/page-header";
 import { ImmigrationNotice } from "@/components/public/immigration-notice";
-import { formatDate, workerCount } from "@/lib/i18n/format";
+import { formatCount, formatDate, workerCount } from "@/lib/i18n/format";
 import { publicWebsite } from "@/lib/jobs/presentation";
 import type { Named, PartnerProfile } from "@/lib/partners/profile";
+import { standardTermsLines, trackRecordLines, type StandardTerms, type TrackRecord } from "@/lib/partners/terms-and-record";
 import { loginPath, partnerProfilePath } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 import { WORKERS_NEVER_PAY } from "@/lib/validation/commitment";
@@ -18,6 +19,7 @@ type PartnerProfileViewProps = {
   // The viewer's actions (FR-K4 AC4) or the preview banner; the page that owns the viewer decides.
   actions?: React.ReactNode;
   banner?: React.ReactNode;
+  termsAndRecord?: { terms: StandardTerms | null; record: TrackRecord } | null;
 };
 
 // The served countries in the words of the partner's own form (FR-K1 AC9, lib/validation/geographies.ts servedQuestion).
@@ -44,9 +46,10 @@ function Countries({ items, empty }: { items: readonly Named[]; empty: string })
 }
 
 // The CHARA Workforce Profile of a listed partner (FR-K4, spec section 17), shared by the public page and the members'
-// preview. Only the partner's own structured data is shown: no badge, rating, ranking, platform figure or word of
-// verification [d2.5, d2.6], and no member, contact detail or licence (DATA_MODEL.md section 10).
-export function PartnerProfileView({ lang, profile, actions, banner }: PartnerProfileViewProps) {
+// preview. The partner's own structured data is shown, its stated record labelled as such, and the one platform figure is
+// the hires counted from selected responses: no badge, rating, ranking or word of verification [d2.5, d2.6], and no
+// member, contact detail or licence (DATA_MODEL.md section 10).
+export function PartnerProfileView({ lang, profile, actions, banner, termsAndRecord }: PartnerProfileViewProps) {
   const kind = partnerTypeLabels[profile.type];
   const website = publicWebsite(profile.website);
   const staffingTypes = profile.serviceTypes.flatMap((service) => (service === "staffing" ? [] : [staffingTypeLabels[service]]));
@@ -151,6 +154,43 @@ export function PartnerProfileView({ lang, profile, actions, banner }: PartnerPr
               </ul>
             )}
           </ProfileSection>
+
+          {termsAndRecord ? (
+            <>
+              <ProfileSection id="profile-terms" title="Standard terms">
+                {termsAndRecord.terms ? (
+                  <ul className="grid gap-1 text-body">
+                    {standardTermsLines(termsAndRecord.terms).map((line) => (
+                      <li key={line} className="break-words">
+                        {line}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-body text-muted-foreground">No standard terms stated</p>
+                )}
+                <p className="text-small text-muted-foreground">The fee for a job order is stated in the response to it.</p>
+              </ProfileSection>
+              <ProfileSection id="profile-record" title="Track record">
+                <p className="text-body">
+                  <span className="font-semibold">{formatCount(termsAndRecord.record.platformHires)}</span> hires through Chara
+                  Pinnacle
+                </p>
+                {trackRecordLines(termsAndRecord.record).length > 0 ? (
+                  <div className="grid gap-1">
+                    <p className="text-small font-medium text-muted-foreground">Stated by the company</p>
+                    <ul className="grid gap-1 text-body">
+                      {trackRecordLines(termsAndRecord.record).map((line) => (
+                        <li key={line} className="break-words">
+                          {line}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+              </ProfileSection>
+            </>
+          ) : null}
 
           {profile.languages.length > 0 ? (
             <ProfileSection id="profile-languages" title="Languages">
