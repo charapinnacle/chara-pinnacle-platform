@@ -61,7 +61,7 @@ export function ProfileTabs({
   }
 
   return (
-    <div ref={root} className="grid scroll-mt-8 gap-6 lg:grid-cols-[13rem_minmax(0,1fr)] lg:items-start">
+    <div ref={root} className="grid scroll-mt-8 grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[13rem_minmax(0,1fr)] lg:items-start">
       <div
         role="tablist"
         aria-label="Sections of the workforce profile"
