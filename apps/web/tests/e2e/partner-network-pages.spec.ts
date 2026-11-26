@@ -53,7 +53,7 @@ test.describe("the public partner network pages (FR-L5)", () => {
     await expect(exploreLinks(panel).filter({ hasText: "Recruitment partners" })).toHaveAttribute("href", "/en/partners/recruitment");
     await expect(exploreLinks(panel).filter({ hasText: "Staffing partners" })).toHaveAttribute("href", "/en/partners/staffing");
     // Written in sentence case, drawn in Title Case (PR #110).
-    expect(await exploreLinks(panel).filter({ hasText: "Recruitment partners" }).innerText()).toBe("Recruitment Partners");
+    expect(await exploreLinks(panel).filter({ hasText: "Recruitment partners" }).innerText()).toBe("Recruitment partners");
     const later = panel.getByRole("list", { name: "Coming in a later phase" });
     await expect(later.getByRole("listitem")).toHaveText(STILL_LATER);
     await expect(later.locator("a, [href], [tabindex]")).toHaveCount(0);

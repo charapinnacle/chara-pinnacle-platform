@@ -7,7 +7,7 @@ export type TabLink = { key: string; href: string; label: React.ReactNode; curre
 // ink, that scrolls sideways on a phone instead of wrapping.
 export function TabLinks({ label, items, className }: { label: string; items: readonly TabLink[]; className?: string }) {
   return (
-    <nav aria-label={label} className={cn("-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0", className)}>
+    <nav aria-label={label} className={cn("-mx-4 min-w-0 overflow-x-auto px-4 sm:mx-0 sm:px-0", className)}>
       <ul className="flex min-w-max gap-1 border-b">
         {items.map((item) => (
           <li key={item.key}>

@@ -25,11 +25,11 @@ export function EmptyState({
   flat,
   children,
 }: EmptyStateProps) {
-  // A compact row: the words on the left, the action on the right (below them on a phone), never a tall centred box.
+  // Compact: the words, then the action under them on the left (where no toast covers it), never a tall centred box.
   return (
     <Empty
       className={cn(
-        "animate-rise flex-col items-start justify-between gap-4 p-5 text-start sm:flex-row sm:items-center",
+        "animate-rise flex-col items-start justify-start gap-4 p-5 text-start",
         !flat && "border border-solid bg-card",
         flat && "p-0",
       )}
@@ -47,7 +47,7 @@ export function EmptyState({
           {description ? <EmptyDescription className="text-small">{description}</EmptyDescription> : null}
         </EmptyHeader>
       </div>
-      {children ? <EmptyContent className="w-auto max-w-none shrink-0 items-start sm:items-end">{children}</EmptyContent> : null}
+      {children ? <EmptyContent className={cn("w-auto max-w-none flex-row flex-wrap items-center gap-x-6 gap-y-3", Icon && "sm:ps-13")}>{children}</EmptyContent> : null}
     </Empty>
   );
 }
