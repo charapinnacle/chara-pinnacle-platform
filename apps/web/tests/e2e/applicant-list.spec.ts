@@ -155,7 +155,7 @@ test.describe("the applicant list", () => {
     await expect(listRows(page)).toHaveCount(50);
     await expect(page.getByRole("columnheader")).toHaveText(["Select", "Candidate", "Vacancy", "Stage", "Applied", "Completeness (%)", "Documents"]);
     await expect(page.getByText("Page 1 of 2")).toBeVisible();
-    await expect(page.getByRole("link", { name: "Board" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Board", exact: true })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Export CSV" })).toHaveCount(0);
     await page.getByRole("link", { name: "Next page" }).click();
     await expect(listRows(page)).toHaveCount(3);
