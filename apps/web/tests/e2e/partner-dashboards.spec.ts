@@ -240,7 +240,8 @@ test.describe("Partner dashboards (FR-R3, FR-R4, release 2a)", () => {
     await expect(listingsTile(reader.page, "Workforce listings")).toHaveAccessibleName(/^1 Workforce listings 1 needs confirming$/);
     await reader.page.goto(`/en/org/${s.slug}/workforce-profile`);
     const readerRow = listingRow(reader.page, "Welders and flame cutters, Philippines");
-    await expect(readerRow).toContainText("Not confirmed for 60 days or more");
+    // The workforce profile names a stale listing "Hidden from search".
+    await expect(readerRow).toContainText("Hidden from search");
     await expect(readerRow.getByRole("button")).toHaveCount(0);
 
     const secret = await enrollTotp(admin);
@@ -257,7 +258,7 @@ test.describe("Partner dashboards (FR-R3, FR-R4, release 2a)", () => {
     await page.keyboard.press("Enter");
     await expect(page.getByText("Listing confirmed: Welders and flame cutters from Philippines", { exact: true })).toBeVisible();
     await expect(row).toContainText("Confirmed today.");
-    await expect(row).not.toContainText("Not confirmed for");
+    await expect(row).not.toContainText("Hidden from search");
     const [listing] = query<{ fresh: boolean; available: number; id: string }>(
       `select id, confirmed_at > now() - interval '5 minutes' as fresh, available from public.workforce_availability
        where organization_id = ${literal(s.id)}`,
