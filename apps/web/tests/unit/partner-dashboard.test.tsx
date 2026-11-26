@@ -122,54 +122,27 @@ beforeEach(() => {
 });
 
 describe("the heading and the actions (FR-R3 AC1, FR-R4 AC1, AC6 release gating)", () => {
-  it("asks the question of each partner type and offers the capacity action of its type to managers only", async () => {
+  it("asks the question of each partner type under the company and its kind, without repeating the sidebar links", async () => {
     let html = await render();
     expect(html).toContain(">Which employers need workers I can recruit?</h1>");
-    expect(html).toMatch(/<a[^>]*href="\/en\/org\/manila-skills\/workforce-profile#availability-heading"[^>]*>(?:<svg[\s\S]*?<\/svg>)?Update recruiting capacity/);
+    expect(html).toContain("Recruitment company</p>");
     html = await render({ type: "staffing_company" });
     expect(html).toContain(">Which employers need the workforce I can provide?</h1>");
-    expect(html).toMatch(/href="\/en\/org\/manila-skills\/workforce-profile#availability-heading"[^>]*>(?:<svg[\s\S]*?<\/svg>)?Add workforce/);
-    html = await render({ role: "member" });
-    expect(html).not.toContain("Update recruiting capacity");
+    expect(html).toContain("Staffing company</p>");
+    releasedMock.mockImplementation(async () => true);
+    try {
+      html = await render();
+      expect(html).not.toContain('aria-label="Quick actions"');
+      expect(html).not.toMatch(/>Find job orders<|>Find employers<|>Submit candidates<|>Company profile</);
+    } finally {
+      releasedMock.mockImplementation(async () => false);
+    }
   });
 
   it("shows no block or action of a feature that is not released: job orders, invitations, submissions, messages", async () => {
     const html = await render();
     for (const absent of [/job order/i, /invitation/i, /submission/i, /unread/i, /Find employers/i, /Respond to request/i, /Find companies/i]) {
       expect(html).not.toMatch(absent);
-    }
-  });
-
-  it("offers the recruitment actions of spec §30 in their order while release 2b is on (FR-R3 AC1, AC6)", async () => {
-    releasedMock.mockImplementation(async (name: string) => name === "release_job_orders");
-    try {
-      for (const role of ["owner", "member"] as const) {
-        const html = await render({ role });
-        expect(html).toMatch(/<a[^>]*href="\/en\/org\/manila-skills\/job-orders"[^>]*>(?:<svg[\s\S]*?<\/svg>)?Find job orders<\/a>/);
-        expect(html).toMatch(/<a[^>]*href="\/en\/org\/manila-skills\/find-employers"[^>]*>(?:<svg[\s\S]*?<\/svg>)?Find employers<\/a>/);
-        expect(html, "Submit candidates waits for the submissions release").not.toContain("Submit candidates");
-      }
-      releasedMock.mockImplementation(async () => true);
-      const html = await render();
-      const order = ["Find job orders", "Find employers", "Submit candidates", "Update recruiting capacity"].map((name) => html.indexOf(`>${name}<`));
-      expect(order.every((index, n) => index > 0 && (n === 0 || index > order[n - 1]))).toBe(true);
-      expect(html).toMatch(/<a[^>]*href="\/en\/org\/manila-skills\/responses"[^>]*>(?:<svg[\s\S]*?<\/svg>)?Submit candidates<\/a>/);
-    } finally {
-      releasedMock.mockImplementation(async () => false);
-    }
-  });
-
-  it("offers the staffing actions of spec §30 in their order while release 2b is on (FR-R4 AC1, AC7)", async () => {
-    releasedMock.mockImplementation(async () => true);
-    try {
-      const html = await render({ type: "staffing_company" });
-      const order = ["Add workforce", "Find companies", "Respond to request"].map((name) => html.indexOf(`>${name}<`));
-      expect(order.every((index, n) => index > 0 && (n === 0 || index > order[n - 1]))).toBe(true);
-      expect(html).toMatch(/<a[^>]*href="\/en\/org\/manila-skills\/find-employers"[^>]*>(?:<svg[\s\S]*?<\/svg>)?Find companies<\/a>/);
-      expect(html).toMatch(/<a[^>]*href="\/en\/org\/manila-skills\/invitations"[^>]*>(?:<svg[\s\S]*?<\/svg>)?Respond to request<\/a>/);
-      expect(html).not.toContain(">Find job orders<");
-    } finally {
-      releasedMock.mockImplementation(async () => false);
     }
   });
 });

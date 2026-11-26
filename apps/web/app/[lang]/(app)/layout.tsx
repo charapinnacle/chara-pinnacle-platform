@@ -11,6 +11,7 @@ import { getCurrentUser } from "@/lib/dal/session";
 import type { UnreadMessages } from "@/lib/messaging/thread";
 import { appFooterLinks } from "@/lib/public/navigation";
 import { companyDashboardPath, homePath } from "@/lib/routes";
+import { organizationTypeLabels } from "@/lib/contact-requests/presentation";
 import { roleLabels } from "@/lib/validation/team";
 
 // A failed read of the organisations leaves the header without organisation links instead of replacing the whole page:
@@ -88,7 +89,7 @@ export default async function AppLayout({ children, params }: LayoutProps<"/[lan
             slug,
             displayName,
             role,
-            roleLabel: roleLabels[role],
+            roleLabel: `${organizationTypeLabels[type]} · ${roleLabels[role]}`,
             suspended,
             ...(type === "employer" ? {} : { partnerSegment: partnerSegments[type] }),
             ...(jobOrdersReleased ? { jobOrders: true as const } : {}),

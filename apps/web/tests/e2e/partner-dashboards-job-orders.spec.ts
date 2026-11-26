@@ -77,14 +77,10 @@ async function signedIn(browser: Browser, user: TestUser): Promise<{ page: Page;
   return { page: await context.newPage(), close: () => context.close() };
 }
 
-async function expectInOrder(page: Page, names: readonly string[]): Promise<void> {
-  const header = page.getByRole("main").locator("header").first();
-  // allTextContents does not wait: after a reload the header may not be there yet.
-  await expect(header.getByRole("link").first()).toBeVisible();
-  const links = await header.getByRole("link").allTextContents();
-  const positions = names.map((name) => links.findIndex((text) => text.trim() === name));
-  expect(positions.every((position) => position >= 0), `${names.join(", ")} in ${links.join(", ")}`).toBe(true);
-  expect([...positions].sort((x, y) => x - y)).toEqual(positions);
+// The pages of spec §30's actions are in the sidebar, so the dashboard header repeats none of them.
+async function expectNoHeaderLinks(page: Page): Promise<void> {
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await expect(page.getByRole("main").locator("header").first().getByRole("link")).toHaveCount(0);
 }
 
 test.describe("Partner dashboards, release 2b (V55)", () => {
@@ -131,14 +127,12 @@ test.describe("Partner dashboards, release 2b (V55)", () => {
     await expect(invitations.getByRole("definition")).toHaveText("1");
     await expect(invitations.getByRole("link", { name: "Answer the invitation" })).toHaveAttribute("href", `/en/org/${r.slug}/invitations`);
     await expect(owner.page.getByRole("region", { name: "Responses and decisions" })).toContainText("Shortlisted");
-    await expect(owner.page.getByRole("link", { name: "Submit candidates" })).toHaveCount(0);
     await expect(owner.page.getByRole("region", { name: "Candidate submissions" })).toHaveCount(0);
-    await expectInOrder(owner.page, ["Find job orders", "Find employers", "Update recruiting capacity"]);
+    await expectNoHeaderLinks(owner.page);
 
     setRelease("release_candidate_submissions", true);
     for (const status of ["awaiting_candidate", "submitted", "hired", "rejected"]) seedSubmission(fitting, acme, r, status);
     await owner.page.reload();
-    await expectInOrder(owner.page, ["Find job orders", "Find employers", "Submit candidates", "Update recruiting capacity"]);
     const submissions = owner.page.getByRole("region", { name: "Candidate submissions" });
     const count = (label: string) => submissions.getByRole("term").filter({ hasText: label }).locator("xpath=following-sibling::dd[1]");
     await expect(count("Waiting for the worker's agreement")).toHaveText("1");
@@ -166,8 +160,7 @@ test.describe("Partner dashboards, release 2b (V55)", () => {
       "Employers invite partners whose profile fits their request.",
     );
     await expect(owner.page.getByRole("region", { name: "Responses and decisions" })).toContainText("No responses yet.");
-    await expectInOrder(owner.page, ["Add workforce", "Find companies", "Respond to request"]);
-    await expect(owner.page.getByRole("link", { name: "Respond to request" })).toHaveAttribute("href", `/en/org/${s.slug}/invitations`);
+    await expectNoHeaderLinks(owner.page);
     await expectAccessibleAtBothWidths(owner.page);
     await owner.close();
   });

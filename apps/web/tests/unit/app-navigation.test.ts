@@ -247,6 +247,14 @@ describe("the account links", () => {
     expect(notifications.href).toBe("/en/settings/notifications?org=acme");
     expect(isCurrent("/en/settings/notifications", notifications)).toBe(true);
   });
+
+  it("give an owner or admin the company profile of the organisation, which the sidebar does not hold", () => {
+    expect(accountLinks("en", "company", "acme", "acme").map(({ label, href }) => [label, href])).toEqual([
+      ["Settings", "/en/settings/notifications?org=acme"],
+      ["Company profile", "/en/org/acme/profile"],
+      ["My reports", "/en/reports"],
+    ]);
+  });
 });
 
 describe("the current page", () => {

@@ -197,8 +197,8 @@ describe("the layout of the signed-in area", () => {
     const props = await shell();
     expect(props.homeHref).toBe("/en/dashboard/employer");
     expect(props.headerActions?.props.organizations).toEqual([
-      { slug: "acme", displayName: "Acme Bau", role: "owner", roleLabel: "Owner", suspended: false },
-      { slug: "beta", displayName: "Beta GmbH", role: "admin", roleLabel: "Administrator", suspended: true },
+      { slug: "acme", displayName: "Acme Bau", role: "owner", roleLabel: "Employer · Owner", suspended: false },
+      { slug: "beta", displayName: "Beta GmbH", role: "admin", roleLabel: "Employer · Administrator", suspended: true },
     ]);
     expect(organizationsMock).toHaveBeenCalledWith("u1");
   });
@@ -213,8 +213,8 @@ describe("the layout of the signed-in area", () => {
     ]);
     const props = await shell();
     expect(props.headerActions?.props.organizations).toEqual([
-      { slug: "manila", displayName: "Manila Skills", role: "owner", roleLabel: "Owner", suspended: false, partnerSegment: "recruitment", analytics: true },
-      { slug: "staff", displayName: "Staff Co", role: "member", roleLabel: "Member", suspended: false, partnerSegment: "staffing", analytics: true },
+      { slug: "manila", displayName: "Manila Skills", role: "owner", roleLabel: "Recruitment company · Owner", suspended: false, partnerSegment: "recruitment", analytics: true },
+      { slug: "staff", displayName: "Staff Co", role: "member", roleLabel: "Staffing company · Member", suspended: false, partnerSegment: "staffing", analytics: true },
     ]);
     expect(props.homeHref).toBe("/en/dashboard/recruitment");
     navigation.pathname = "/en/org/manila/members";
