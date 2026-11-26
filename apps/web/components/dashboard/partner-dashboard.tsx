@@ -1,3 +1,4 @@
+import { Building2, Inbox, Search, Send, Settings, UserSearch, UsersRound, type LucideIcon } from "lucide-react";
 import { BlockCard, Figure } from "@/components/dashboard/block-card";
 import { MatchingWorkersCard, PartnerRequestsCard, UnreadMessagesCard } from "@/components/dashboard/connection-blocks";
 import { DateText } from "@/components/dashboard/date-text";
@@ -76,6 +77,17 @@ type Links = Record<NextActionTarget, string>;
 
 // The workforce profile names the reason with the same id, so the next action leads to it.
 const COMMITMENT_REASON_ID = "commitment-reason";
+
+// The quick actions under the title, in the order of spec §30: buttons of one size, the capacity action filled and the
+// others outlined.
+function QuickAction({ href, icon: Icon, primary, children }: { href: string; icon: LucideIcon; primary?: boolean; children: string }) {
+  return (
+    <LinkButton href={href} size="default" variant={primary ? "primary" : "secondary"} className="h-10 min-h-0 gap-2 px-4">
+      <Icon aria-hidden className="size-4 shrink-0" />
+      {children}
+    </LinkButton>
+  );
+}
 
 function NextActionsCard({
   figures,
@@ -408,60 +420,65 @@ export async function PartnerDashboard({ lang, user, organization }: PartnerDash
 
   return (
     <div className="grid gap-section">
-      <PageHeader
-        title={dashboardQuestions[type]}
-        description={organization.displayName}
-        actions={
-          jobOrders || canManage || findWorkers ? (
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-              {type === "recruitment_company" ? (
-                <>
-                  {jobOrders ? (
-                    <>
-                      <TextLink standalone href={jobOrdersPath(lang, slug)}>
-                        Find job orders
-                      </TextLink>
-                      <TextLink standalone href={findEmployersPath(lang, slug)}>
-                        Find employers
-                      </TextLink>
-                    </>
-                  ) : null}
-                  {submissions ? (
-                    <TextLink standalone href={responsesPath(lang, slug)}>
-                      Submit candidates
-                    </TextLink>
-                  ) : null}
-                  {canManage ? <LinkButton href={action.href}>{action.label}</LinkButton> : null}
-                </>
-              ) : (
-                <>
-                  {canManage ? <LinkButton href={action.href}>{action.label}</LinkButton> : null}
-                  {jobOrders ? (
-                    <>
-                      <TextLink standalone href={findEmployersPath(lang, slug)}>
-                        Find companies
-                      </TextLink>
-                      <TextLink standalone href={invitationsPath(lang, slug)}>
-                        Respond to request
-                      </TextLink>
-                    </>
-                  ) : null}
-                </>
-              )}
-              {findWorkers ? (
-                <TextLink standalone href={findWorkersPath(lang, slug)}>
-                  Find workers
-                </TextLink>
-              ) : null}
-              {canManage ? (
-                <TextLink standalone href={organizationProfilePath(lang, slug)}>
-                  Company profile
-                </TextLink>
-              ) : null}
-            </div>
-          ) : null
-        }
-      />
+      <div className="grid gap-6">
+        <PageHeader
+          title={dashboardQuestions[type]}
+          breadcrumb={
+            <p className="text-small font-medium tracking-wide text-muted-foreground uppercase">
+              {organization.displayName} · {recruitment ? "Recruitment company" : "Staffing company"}
+            </p>
+          }
+        />
+        {jobOrders || canManage || findWorkers ? (
+          <nav aria-label="Quick actions" className="flex flex-wrap gap-2">
+            {canManage && !recruitment ? (
+              <QuickAction primary href={action.href} icon={UsersRound}>
+                {action.label}
+              </QuickAction>
+            ) : null}
+            {jobOrders && recruitment ? (
+              <>
+                <QuickAction href={jobOrdersPath(lang, slug)} icon={Search}>
+                  Find job orders
+                </QuickAction>
+                <QuickAction href={findEmployersPath(lang, slug)} icon={Building2}>
+                  Find employers
+                </QuickAction>
+              </>
+            ) : null}
+            {submissions && recruitment ? (
+              <QuickAction href={responsesPath(lang, slug)} icon={Send}>
+                Submit candidates
+              </QuickAction>
+            ) : null}
+            {canManage && recruitment ? (
+              <QuickAction primary href={action.href} icon={UsersRound}>
+                {action.label}
+              </QuickAction>
+            ) : null}
+            {jobOrders && !recruitment ? (
+              <>
+                <QuickAction href={findEmployersPath(lang, slug)} icon={Building2}>
+                  Find companies
+                </QuickAction>
+                <QuickAction href={invitationsPath(lang, slug)} icon={Inbox}>
+                  Respond to request
+                </QuickAction>
+              </>
+            ) : null}
+            {findWorkers ? (
+              <QuickAction href={findWorkersPath(lang, slug)} icon={UserSearch}>
+                Find workers
+              </QuickAction>
+            ) : null}
+            {canManage ? (
+              <QuickAction href={organizationProfilePath(lang, slug)} icon={Settings}>
+                Company profile
+              </QuickAction>
+            ) : null}
+          </nav>
+        ) : null}
+      </div>
 
       <Panel promise={commitment} errorTitle="The employer-pays commitment could not be loaded" quiet>
         {(value) =>
