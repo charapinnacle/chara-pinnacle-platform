@@ -491,7 +491,7 @@ export async function PartnerDashboard({ lang, user, organization }: PartnerDash
 
       {recruitment ? null : workforceSection}
 
-      <Panel promise={figures} errorTitle="The figures of your company could not be loaded">
+      <Panel promise={figures} errorTitle="The figures of your company could not be loaded" quiet>
         {(value) => (
           <DashboardSection id="work-heading" title={recruitment ? "Your recruiting work" : "Your staffing work"}>
             {value.network && recruitment ? (
@@ -537,7 +537,7 @@ export async function PartnerDashboard({ lang, user, organization }: PartnerDash
 
       {recruitment ? workforceSection : null}
 
-      <Panel promise={figures} errorTitle="The figures of your company could not be loaded">
+      <Panel promise={figures} errorTitle="The figures of your company could not be loaded" quiet>
         {(value) => (
           <DashboardSection id="company-heading" title="Your company">
             <ProfileCard figures={value} lang={lang} slug={slug} canManage={canManage} />
