@@ -29,7 +29,7 @@ const decided = {
 } as const;
 
 const decidedIcons = {
-  info_requested: { icon: CircleAlert, tone: "bg-warning-background text-warning-foreground" },
+  info_requested: { icon: CircleAlert, tone: "bg-accent text-brand-ink" },
   listed: { icon: CircleCheck, tone: "bg-success-background text-success-foreground" },
   declined: { icon: CircleX, tone: "bg-muted text-muted-foreground" },
 } as const;
@@ -64,9 +64,9 @@ export function PartnerReviewCard({ lang, organization, status, wasListed, outco
     </TextLink>
   );
   return awaitingReview(status) ? (
-    <Card as="section" padding="lg" aria-labelledby="review-heading" className="gap-5 border-warning-border bg-warning-background">
+    <Card as="section" padding="lg" aria-labelledby="review-heading" className="gap-5 border-s-4 border-s-brand">
       <div className="flex items-start gap-4">
-        <span aria-hidden className="grid size-10 shrink-0 place-items-center rounded-full bg-card text-warning-foreground">
+        <span aria-hidden className="grid size-10 shrink-0 place-items-center rounded-full bg-accent text-brand-ink">
           <Clock className="size-5" />
         </span>
         <div className="grid min-w-0 gap-1">

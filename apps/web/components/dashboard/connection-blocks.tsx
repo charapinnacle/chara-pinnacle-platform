@@ -2,15 +2,13 @@ import { BlockCard, Figure } from "@/components/dashboard/block-card";
 import { TextLink } from "@/components/forms/text-link";
 import {
   matchingWorkersText,
-  partnerRequestLines,
   unavailableTexts,
   type EmployerRequests,
   type MatchingAudience,
   type MatchingWorkers,
-  type PartnerRequests,
 } from "@/lib/dashboard/connections";
 import { formatCount } from "@/lib/i18n/format";
-import { invitationsPath, messagesPath } from "@/lib/routes";
+import { messagesPath } from "@/lib/routes";
 
 type Place = { lang: string; slug: string };
 
@@ -89,47 +87,6 @@ export function MatchingWorkersCard({ value, audience, findWorkersHref, billingH
       <TextLink standalone href={findWorkersHref}>
         Find workers
       </TextLink>
-    </BlockCard>
-  );
-}
-
-// The inquiries and workforce requests employers sent the company that wait for its answer (FR-R4 AC6). A workforce
-// request is answered from its invitation, an inquiry in its conversation.
-export function PartnerRequestsCard({ requests, lang, slug }: Place & { requests: PartnerRequests }) {
-  const lines = partnerRequestLines(requests);
-  const inquiriesHref = messagesPath(lang, slug, { context: "inquiry" });
-  return (
-    <BlockCard id="partner-requests-heading" title="Partner requests">
-      {lines.length === 0 ? (
-        <>
-          <p className="text-body text-muted-foreground">
-            No inquiries or workforce requests wait for your answer. Employers send them from your public profile.
-          </p>
-          <TextLink standalone href={inquiriesHref}>
-            See your inquiries
-          </TextLink>
-        </>
-      ) : (
-        <>
-          <dl className="grid gap-3">
-            {lines.map((line) => (
-              <Figure key={line.key} label={`${line.label} waiting for your answer`}>
-                {formatCount(line.count)}
-              </Figure>
-            ))}
-          </dl>
-          {requests.inquiries > 0 ? (
-            <TextLink standalone href={inquiriesHref}>
-              {requests.inquiries === 1 ? "Answer the inquiry" : "Answer the inquiries"}
-            </TextLink>
-          ) : null}
-          {requests.total > requests.inquiries ? (
-            <TextLink standalone href={invitationsPath(lang, slug)}>
-              Respond to request
-            </TextLink>
-          ) : null}
-        </>
-      )}
     </BlockCard>
   );
 }

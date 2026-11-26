@@ -1,6 +1,6 @@
 import { prerender } from "react-dom/static";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { NetworkFigures, PartnerFigures, SubmissionOutcome } from "@/lib/dashboard/partner-dashboard";
+import type { NetworkFigures, PartnerFigures } from "@/lib/dashboard/partner-dashboard";
 import type { ReviewOutcome } from "@/lib/dal/partner-review";
 import type { WorkforceListing } from "@/lib/dal/workforce-availability";
 import type { CommitmentBlock } from "@/lib/validation/commitment";
@@ -13,7 +13,6 @@ const followersMock = vi.hoisted(() => vi.fn(async () => ({ fewerThan: 5 })));
 const planMock = vi.hoisted(() => vi.fn());
 const usageMock = vi.hoisted(() => vi.fn());
 const listingsMock = vi.hoisted(() => vi.fn<() => Promise<WorkforceListing[]>>(async () => []));
-const outcomesMock = vi.hoisted(() => vi.fn<() => Promise<SubmissionOutcome[]>>(async () => []));
 const twoStepMock = vi.hoisted(() => vi.fn(async () => true));
 const commitmentMock = vi.hoisted(() => vi.fn<() => Promise<CommitmentBlock | null>>(async () => null));
 const releasedMock = vi.hoisted(() => vi.fn<(name: string) => Promise<boolean>>(async () => false));
@@ -22,7 +21,7 @@ const unreadMock = vi.hoisted(() => vi.fn(async () => [{ conversationId: "c1", o
 vi.mock("server-only", () => ({}));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock("@/lib/actions/workforce-availability", () => ({ confirmListing: vi.fn(), deleteListing: vi.fn(), saveListing: vi.fn() }));
-vi.mock("@/lib/dal/partner-dashboard", () => ({ getPartnerFigures: figuresMock, getSubmissionOutcomes: outcomesMock }));
+vi.mock("@/lib/dal/partner-dashboard", () => ({ getPartnerFigures: figuresMock }));
 vi.mock("@/lib/dal/partner-review", () => ({
   getPartnerReview: reviewMock,
   getReviewOutcome: outcomeMock,
@@ -404,68 +403,35 @@ const noStages = {
   withdrawn: 0,
 };
 
+// A number of the activity row: the link to its page, the number, then its label.
+const tile = (href: string, count: string, label: string) =>
+  new RegExp(`<a[^>]*href="${href.replaceAll("/", "\\/")}"[^>]*><span[^>]*>${count}<\\/span> <span[^>]*>${label}<\\/span>`);
+
 describe("the blocks of release 2b (FR-R3 AC4 to AC7, AC9, FR-R4 AC3, AC6 to AC9, FR-O5 AC10)", () => {
-  it("shows fitting job orders, matching employers, invitations and responses by decision as labelled counts", async () => {
-    figuresMock.mockResolvedValue(figures({ network: network() }));
+  it("shows the activity as numbers that open the pages of the sidebar", async () => {
+    figuresMock.mockResolvedValue(figures({ network: network(), submissionStages: { ...noStages, awaiting_candidate: 2, interview: 1, hired: 1 } }));
     let html = await render();
-    expect(html).toMatch(/<h2 id="job-orders-heading"[^>]*>Fitting job orders<\/h2>/);
-    expect(html).toMatch(/Open job orders that fit your profile<\/dt><dd[^>]*><span[^>]*>4</);
-    expect(html).toMatch(/Employers with fitting job orders<\/dt><dd[^>]*>3</);
-    expect(html).toMatch(/Waiting for your answer<\/dt><dd[^>]*><span[^>]*>2</);
-    expect(html).toMatch(/<a[^>]*href="\/en\/org\/manila-skills\/invitations"[^>]*>Answer the invitations/);
-    expect(html).toMatch(/Waiting for the employer&#x27;s decision<\/dt><dd[^>]*>1</);
-    expect(html).toMatch(/>Selected<\/dt><dd[^>]*>2</);
-    expect(html).toMatch(/Not selected<\/dt><dd[^>]*>1</);
-    expect(html, "a decision at 0 is left out").not.toContain(">Shortlisted</dt>");
+    expect(html).toContain(">Your activity</h2>");
+    expect(html).toMatch(tile("/en/org/manila-skills/job-orders", "4", "Fitting job orders"));
+    expect(html).toContain("From 3 employers");
+    expect(html).toMatch(tile("/en/org/manila-skills/invitations", "2", "Invitations waiting"));
+    expect(html).toMatch(tile("/en/org/manila-skills/responses", "4", "Responses"));
+    expect(html).toContain("0 shortlisted, 2 selected");
+    expect(html).toMatch(tile("/en/org/manila-skills/submissions", "4", "Candidates submitted"));
+    expect(html).toContain("1 hired");
+    expect(html, "no card repeats a page of the sidebar").not.toMatch(/Answer the invitation|See your responses|See the job orders/);
     html = await render({ type: "staffing_company" });
-    expect(html).toMatch(/<h2 id="job-orders-heading"[^>]*>Workforce requests<\/h2>/);
-    expect(html).toMatch(/Open requests you can answer<\/dt>/);
-    expect(html).toMatch(/Selected \(projects\)<\/dt><dd[^>]*>2</);
+    expect(html).toMatch(tile("/en/org/manila-skills/job-orders", "4", "Workforce requests"));
   });
 
-  it("guides an empty company in each block instead of a bare zero (FR-R3 AC7, FR-R4 AC7)", async () => {
-    const empty = network({
-      fittingJobOrders: 0,
-      matchingEmployers: 0,
-      invitationsAwaiting: 0,
-      responsesOpen: 0,
-      responsesSelected: 0,
-      responsesDeclined: 0,
-    });
-    figuresMock.mockResolvedValue(figures({ network: empty, submissionStages: noStages }));
+  it("shows a zero as a zero, and no activity while job orders are not released", async () => {
+    figuresMock.mockResolvedValue(figures({ network: network({ fittingJobOrders: 0, matchingEmployers: 0, invitationsAwaiting: 0 }) }));
     let html = await render();
-    expect(html).toContain("Add the countries you serve and the occupations you recruit for to see job orders.");
-    expect(html).toContain("Employers invite partners whose profile fits their request.");
-    expect(html).toContain("No responses yet.");
-    expect(html).toContain("No candidates submitted yet.");
-    expect(html).toMatch(/id="submissions-heading".*<a[^>]*href="\/en\/org\/manila-skills\/job-orders"[^>]*>Find job orders/);
-    expect(outcomesMock, "no outcomes are read without a submission").not.toHaveBeenCalled();
-    html = await render({ type: "staffing_company" });
-    expect(html).toContain("No requests fit your profile yet. Add served countries and occupations to receive more.");
-  });
-
-  it("counts submissions by stage, the unapproved as waiting for the worker's agreement, with the outcomes per job order", async () => {
-    figuresMock.mockResolvedValue(
-      figures({ network: network(), submissionStages: { ...noStages, awaiting_candidate: 2, interview: 1, hired: 1, rejected: 1 } }),
-    );
-    outcomesMock.mockResolvedValue([
-      { requirementId: "req-1", title: "30 welders for Germany", submitted: 3, inProgress: 1, hired: 1, notSelected: 1, withdrawn: 0, lastChangeAt: "2026-11-10T10:00:00Z" },
-    ]);
-    const html = await render({ role: "member" });
-    expect(html).toMatch(/Waiting for the worker&#x27;s agreement<\/dt><dd[^>]*>2</);
-    expect(html).toMatch(/>Hired<\/dt><dd[^>]*>1</);
-    expect(html).toMatch(/>Not selected<\/dt><dd[^>]*>1</);
-    expect(html).toMatch(/<a[^>]*href="\/en\/org\/manila-skills\/requirements\/req-1\/submissions"[^>]*>30 welders for Germany<\/a>/);
-    expect(html).toContain("3 submitted: 1 hired, 1 not selected, 1 in progress");
-    expect(outcomesMock).toHaveBeenCalledWith("org-9");
-  });
-
-  it("keeps the counts when the outcomes fail", async () => {
-    figuresMock.mockResolvedValue(figures({ network: network(), submissionStages: { ...noStages, hired: 1 } }));
-    outcomesMock.mockRejectedValue(new Error("down"));
-    const html = await render();
-    expect(html).toContain("The outcomes of your submissions could not be loaded");
-    expect(html).toMatch(/>Hired<\/dt><dd[^>]*>1</);
+    expect(html).toMatch(tile("/en/org/manila-skills/job-orders", "0", "Fitting job orders"));
+    expect(html).not.toContain("From 0 employers");
+    figuresMock.mockResolvedValue(figures({}));
+    html = await render();
+    expect(html).not.toContain("Your activity");
   });
 
   it("adds the monthly responses and submissions to the plan while released, and says a free plan pauses them (FR-R3 AC9)", async () => {
@@ -505,17 +471,13 @@ describe("the blocks of release 2c (FR-R3 AC6, AC11, FR-R4 AC6, V75)", () => {
   it("adds the partner requests, the unread messages and the matching workers only while their releases are on", async () => {
     expect(await render()).not.toMatch(/Partner requests|Unread messages|Matching workers/);
     expect(unreadMock).not.toHaveBeenCalled();
-    figuresMock.mockResolvedValue(
-      figures({ requests: { total: 3, inquiries: 2 }, matchingWorkers: { kind: "count", count: 12 } }),
-    );
+    figuresMock.mockResolvedValue(figures({ requests: { total: 3, inquiries: 2 }, matchingWorkers: { kind: "count", count: 12 } }));
     releasedMock.mockImplementation(release2c);
     try {
       const html = await render();
-      expect(html).toContain(">Partner requests</h2>");
-      expect(html).toMatch(/href="\/en\/org\/manila-skills\/messages\?context=inquiry"[^>]*>Answer the inquiries/);
-      expect(html).toMatch(/<dt[^>]*>Unread messages<\/dt><dd[^>]*><span[^>]*>3<\/span>/);
-      expect(html).toContain("12 workers who chose to be visible match the occupations and countries you serve.");
-      expect(html).toMatch(/href="\/en\/org\/manila-skills\/find-workers"[^>]*>Find workers<\/a>/);
+      expect(html).toMatch(tile("/en/org/manila-skills/messages\\?context=inquiry", "3", "Partner requests waiting"));
+      expect(html).toMatch(tile("/en/org/manila-skills/messages", "3", "Unread messages"));
+      expect(html).toMatch(tile("/en/org/manila-skills/find-workers", "12", "Matching workers"));
     } finally {
       releasedMock.mockImplementation(async () => false);
     }
@@ -526,20 +488,20 @@ describe("the blocks of release 2c (FR-R3 AC6, AC11, FR-R4 AC6, V75)", () => {
     try {
       const html = await render({ aal: "aal1" });
       expect(unreadMock).not.toHaveBeenCalled();
-      expect(html).toContain("Owners and admins read the messages of the company after the two-step check.");
-      expect(html).toMatch(/href="\/en\/mfa\?next=[^"]*"[^>]*>Complete the two-step check/);
+      expect(html).toMatch(/href="\/en\/mfa\?next=[^"]*"[^>]*><span[^>]*>–<\/span> <span[^>]*>Unread messages<\/span><span[^>]*> Complete the two-step check/);
     } finally {
       releasedMock.mockImplementation(async () => false);
     }
   });
 
-  it("keeps the other blocks when the unread messages fail (FR-R3 AC11)", async () => {
+  it("keeps the other numbers when the unread messages fail (FR-R3 AC11)", async () => {
+    figuresMock.mockResolvedValue(figures({ requests: { total: 1, inquiries: 1 } }));
     releasedMock.mockImplementation(release2c);
     unreadMock.mockRejectedValueOnce(new Error("down"));
     try {
       const html = await render();
-      expect(html).toContain("Your unread messages could not be loaded");
-      expect(html).toContain(">Workforce profile</h2>");
+      expect(html).not.toContain(">Unread messages<");
+      expect(html).toMatch(tile("/en/org/manila-skills/messages\\?context=inquiry", "1", "Partner requests waiting"));
     } finally {
       releasedMock.mockImplementation(async () => false);
     }

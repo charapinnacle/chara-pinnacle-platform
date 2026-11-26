@@ -167,16 +167,13 @@ test.describe("Dashboard blocks of release 2c (V75)", () => {
     test.setTimeout(150_000);
     const { page, close } = await signedIn(browser, partnerMember);
     await page.goto(`/en/dashboard/recruitment?org=${partner.slug}`);
-    const requests = region(page, "Partner requests");
-    await expect(requests.getByRole("term").filter({ hasText: "Inquiries waiting for your answer" }).locator("xpath=following-sibling::dd[1]")).toHaveText("1");
-    await expect(requests.getByRole("link", { name: "Answer the inquiry" })).toHaveAttribute(
+    const activity = region(page, "Your activity");
+    await expect(activity.getByRole("link", { name: /^1 Partner requests waiting/ })).toHaveAttribute(
       "href",
       `/en/org/${partner.slug}/messages?context=inquiry`,
     );
-    const unread = region(page, "Unread messages");
-    await expect(unread.getByRole("term").filter({ hasText: "Unread messages" }).locator("xpath=following-sibling::dd[1]")).toHaveText("1");
-    await expect(unread.getByRole("link", { name: "Read the unread message" })).toHaveAttribute("href", `/en/org/${partner.slug}/messages`);
-    await expect(region(page, "Matching workers")).toBeVisible();
+    await expect(activity.getByRole("link", { name: /^1 Unread messages/ })).toHaveAttribute("href", `/en/org/${partner.slug}/messages`);
+    await expect(activity.getByRole("link", { name: /Matching workers/ })).toBeVisible();
     await expectAccessibleAtBothWidths(page);
     await close();
   });
@@ -185,9 +182,8 @@ test.describe("Dashboard blocks of release 2c (V75)", () => {
     test.setTimeout(120_000);
     const { page, close } = await signedIn(browser, partner.user);
     await page.goto(`/en/dashboard/recruitment?org=${partner.slug}`);
-    const unread = region(page, "Unread messages");
-    await expect(unread).toContainText("Owners and admins read the messages of the company after the two-step check.");
-    await expect(unread.getByRole("link", { name: "Complete the two-step check" })).toBeVisible();
+    const unread = region(page, "Your activity").getByRole("link", { name: /Unread messages Complete the two-step check/ });
+    await expect(unread).toHaveAttribute("href", /^\/en\/mfa\?next=/);
     await close();
   });
 

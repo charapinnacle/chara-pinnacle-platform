@@ -11,8 +11,8 @@ export function ReviewChecks({ id, compact }: { id: string; compact?: boolean })
         </h3>
         <ul className="flex flex-wrap gap-2">
           {REVIEW_CHECKS.map((check) => (
-            <li key={check} className="inline-flex items-center gap-1.5 rounded-full border bg-background px-3 py-1 text-small">
-              <Check aria-hidden className="size-3.5 text-muted-foreground" />
+            <li key={check} className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-small">
+              <Check aria-hidden className="size-3.5 text-brand-ink" />
               {check}
             </li>
           ))}

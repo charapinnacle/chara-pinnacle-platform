@@ -1,8 +1,7 @@
 import { BlockCard, Figure } from "@/components/dashboard/block-card";
-import { MatchingWorkersCard, PartnerRequestsCard, UnreadMessagesCard } from "@/components/dashboard/connection-blocks";
 import { DateText } from "@/components/dashboard/date-text";
 import { Panel } from "@/components/dashboard/panel";
-import { InvitationsCard, JobOrdersCard, ResponsesCard, SubmissionsCard } from "@/components/dashboard/partner-network-blocks";
+import { PartnerActivity } from "@/components/dashboard/partner-activity";
 import { PartnerReviewCard } from "@/components/dashboard/partner-review-card";
 import { PartnerWorkforceListings } from "@/components/dashboard/partner-workforce-listings";
 import { StatusBadge } from "@/components/feedback/status-badge";
@@ -438,45 +437,17 @@ export async function PartnerDashboard({ lang, user, organization }: PartnerDash
 
       <Panel promise={figures} errorTitle="The figures of your company could not be loaded" quiet>
         {(value) => (
-          <DashboardSection id="work-heading" title={recruitment ? "Your recruiting work" : "Your staffing work"}>
-            {value.network && recruitment ? (
-              <>
-                <JobOrdersCard figures={value.network} type={type} lang={lang} slug={slug} />
-                <ResponsesCard figures={value.network} type={type} lang={lang} slug={slug} />
-              </>
-            ) : null}
-            {value.submissionStages && recruitment ? (
-              <SubmissionsCard stages={value.submissionStages} organizationId={id} lang={lang} slug={slug} />
-            ) : null}
-            {value.network ? <InvitationsCard figures={value.network} lang={lang} slug={slug} /> : null}
-            {value.network && !recruitment ? (
-              <>
-                <JobOrdersCard figures={value.network} type={type} lang={lang} slug={slug} />
-                <ResponsesCard figures={value.network} type={type} lang={lang} slug={slug} />
-              </>
-            ) : null}
-            {value.requests ? <PartnerRequestsCard requests={value.requests} lang={lang} slug={slug} /> : null}
-            {value.submissionStages && !recruitment ? (
-              <SubmissionsCard stages={value.submissionStages} organizationId={id} lang={lang} slug={slug} />
-            ) : null}
-            {messaging ? (
-              unread ? (
-                <Panel promise={unread} errorTitle="Your unread messages could not be loaded">
-                  {(count) => <UnreadMessagesCard unread={count} lang={lang} slug={slug} lockedHref={null} />}
-                </Panel>
-              ) : (
-                <UnreadMessagesCard unread={0} lang={lang} slug={slug} lockedHref={mfaPath(lang, dashboardHref)} />
-              )
-            ) : null}
-            {value.matchingWorkers ? (
-              <MatchingWorkersCard
-                value={value.matchingWorkers}
-                audience="partner"
-                findWorkersHref={findWorkersPath(lang, slug)}
-                billingHref={billingHref}
-              />
-            ) : null}
-          </DashboardSection>
+          <PartnerActivity
+            lang={lang}
+            slug={slug}
+            recruitment={recruitment}
+            network={value.network}
+            submissionStages={value.submissionStages}
+            requests={value.requests}
+            matchingWorkers={value.matchingWorkers}
+            findWorkersHref={findWorkersPath(lang, slug)}
+            unread={messaging ? (unread ? { count: unread } : { lockedHref: mfaPath(lang, dashboardHref) }) : null}
+          />
         )}
       </Panel>
 
