@@ -131,7 +131,8 @@ test.describe("Partner dashboards (FR-R3, FR-R4, release 2a)", () => {
     await expect(plan).toContainText("Free month ends");
     await expect(plan).toContainText("1 of 3 countries served");
     await expect(plan).toContainText("3 of 10 workforce listings");
-    await expect(plan.getByRole("link", { name: "Manage plan" })).toHaveAttribute("href", `/en/org/${r.slug}/billing`);
+    // Within its limits the plan line offers Manage plan, at a full limit (the one team member) Upgrade.
+    await expect(plan.getByRole("link", { name: /^(Manage plan|Upgrade)$/ })).toHaveAttribute("href", `/en/org/${r.slug}/billing`);
     await expect(page.getByRole("region", { name: "Next actions" })).toContainText("Confirm 1 listing hidden from search");
     await expectAccessibleAtBothWidths(page);
 

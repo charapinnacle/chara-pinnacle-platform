@@ -258,7 +258,7 @@ test.describe("Save partner and follow company (FR-L4)", () => {
     };
     owner.page.on("requestfinished", collect);
     await owner.page.goto("/en/dashboard/employer");
-    await expect(owner.page.getByText("Followers: fewer than 5")).toBeVisible();
+    await expect(owner.page.getByRole("region", { name: "Your activity" }).getByRole("link", { name: /^<5 Followers/ })).toBeVisible();
     await expectAccessibleAtBothWidths(owner.page);
     await owner.page.goto(profileUrl(gamma.slug));
     await expect(owner.page.getByRole("button", { name: /^Follow/ }), "no Follow of its own company").toHaveCount(0);
@@ -277,7 +277,7 @@ test.describe("Save partner and follow company (FR-L4)", () => {
          and id not in (select user_id from public.follows where organization_id = ${literal(gamma.id)}) limit 2`,
     );
     await owner.page.goto("/en/dashboard/employer");
-    await expect(owner.page.getByText("Followers: 5")).toBeVisible();
+    await expect(owner.page.getByRole("region", { name: "Your activity" }).getByRole("link", { name: /^5 Followers/ })).toBeVisible();
     await owner.close();
   });
 });
