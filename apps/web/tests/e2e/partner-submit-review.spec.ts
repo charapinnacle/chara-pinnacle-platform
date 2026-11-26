@@ -38,6 +38,16 @@ async function partnerAtCommitments(type: PartnerType, { accepted = false } = {}
     p_service_types: type === "staffing_company" ? ["temporary"] : [],
   });
   if (accepted) await callAs(partner.user, "accept_employer_pays_commitment", { p_org: partner.id, p_version: 0 });
+  // A recruitment company holds a current licence, which it needs before review; a staffing company's licence and
+  // listing are tested step by step below.
+  if (type === "recruitment_company") {
+    execute(
+      `insert into public.partner_licences (organization_id, country_code, issuing_authority, licence_number, valid_until,
+         confirmed_at, partner_terms_version)
+       values (${literal(partner.id)}, 'PH', 'Department of Migrant Workers', 'DMW-' || left(${literal(partner.id)}, 8),
+         current_date + 365, now(), 1)`,
+    );
+  }
   return { ...partner, type };
 }
 
@@ -136,9 +146,9 @@ test.describe("submission for review (FR-J1 AC8 to AC11)", () => {
     await expect(currentStep(page)).toContainText("Step 6 of 6: Ready");
     await expect(page.getByText(/A review usually takes one working day\.$/)).toBeVisible();
     await expectChecks(page);
-    // The licences are added in their own section of Ready, optional for a recruitment company.
-    const licences = page.getByRole("region", { name: "Your licences (optional)" });
-    await expect(licences.getByRole("button", { name: "Add a licence" })).toBeVisible();
+    // The licences are added in their own section of Ready; a recruitment company needs one, and holds it here.
+    const licences = page.getByRole("region", { name: "Your recruitment licence" });
+    await expect(licences.getByText("Department of Migrant Workers")).toBeVisible();
     await expectAccessibleAtBothWidths(page);
     await page.setViewportSize({ width: 1280, height: 900 });
     expect(reviewRow(id)).toEqual({ review_status: "onboarding", submitted: false, info_step: null });
@@ -207,7 +217,7 @@ test.describe("submission for review (FR-J1 AC8 to AC11)", () => {
     await expect(page.getByText("A staffing company needs at least one current agency licence before it submits")).toBeVisible();
     // A staffing company names a current agency licence and lists available workers before review.
     await page.getByRole("button", { name: "Submit for review" }).click();
-    const licenceMessage = "Add a current agency licence, such as a temporary agency work permit, then submit again.";
+    const licenceMessage = "Add a current licence for your recruitment or staffing work, then submit again.";
     await expect(page.getByRole("alert").filter({ hasText: licenceMessage }).first()).toBeVisible();
     execute(
       `insert into public.partner_licences (organization_id, country_code, issuing_authority, licence_number, valid_until,

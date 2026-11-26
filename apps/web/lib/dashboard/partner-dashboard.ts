@@ -110,7 +110,7 @@ export const missingPartLabels: Readonly<Record<string, string>> = {
   recruitment_type: "your recruitment type",
   staffing_types: "your staffing types",
   employer_pays_commitment: "the employer-pays commitment",
-  agency_licence: "a current agency licence",
+  agency_licence: "a current licence",
   workforce_listing: "the workers you can supply",
 };
 
@@ -132,7 +132,7 @@ function missingTarget(part: string): NextActionTarget {
 // What the owner or an admin should do next, most urgent first (SOP P2-37 purpose, NFR-U4); empty when nothing waits.
 // Every action is one a member cannot take (the profile, listings, licences and the review are changed by the owner or
 // an admin), so a member is shown none.
-export function nextActions(figures: PartnerFigures, canManage: boolean): NextAction[] {
+export function nextActions(figures: PartnerFigures, canManage: boolean, type: PartnerType = "staffing_company"): NextAction[] {
   if (!canManage) return [];
   const actions: NextAction[] = [];
   if (figures.reviewStatus === "info_requested") {
@@ -157,7 +157,14 @@ export function nextActions(figures: PartnerFigures, canManage: boolean): NextAc
     });
   }
   if (figures.listingsTotal === 0) {
-    actions.push({ id: "listings", text: "Add the workers you can supply, by country and occupation", target: "availability" });
+    actions.push({
+      id: "listings",
+      text:
+        type === "recruitment_company"
+          ? "Add your recruiting capacity, by country and occupation"
+          : "Add the workers you can supply, by country and occupation",
+      target: "availability",
+    });
   }
   if (figures.licencesExpired > 0) {
     actions.push({

@@ -77,8 +77,18 @@ type Links = Record<NextActionTarget, string>;
 // The workforce profile names the reason with the same id, so the next action leads to it.
 const COMMITMENT_REASON_ID = "commitment-reason";
 
-function NextActionsCard({ figures, canManage, links }: { figures: PartnerFigures; canManage: boolean; links: Links }) {
-  const actions = nextActions(figures, canManage);
+function NextActionsCard({
+  figures,
+  canManage,
+  links,
+  type,
+}: {
+  figures: PartnerFigures;
+  canManage: boolean;
+  links: Links;
+  type: PartnerType;
+}) {
+  const actions = nextActions(figures, canManage, type);
   return (
     <BlockCard id="next-actions-heading" title="Next actions">
       {actions.length > 0 ? (
@@ -438,7 +448,7 @@ export async function PartnerDashboard({ lang, user, organization }: PartnerDash
       <Panel promise={figures} errorTitle="The figures of your company could not be loaded">
         {(value) => (
           <div className="animate-stagger grid items-start gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <NextActionsCard figures={value} canManage={canManage} links={links} />
+            <NextActionsCard figures={value} canManage={canManage} links={links} type={organization.type} />
             {value.network ? (
               <>
                 <JobOrdersCard figures={value.network} type={type} lang={lang} slug={slug} />
@@ -481,7 +491,7 @@ export async function PartnerDashboard({ lang, user, organization }: PartnerDash
 
       <section aria-labelledby="workforce-heading" className="grid gap-4">
         <h2 id="workforce-heading" className="text-h2">
-          Available workforce
+          {organization.type === "recruitment_company" ? "Recruiting capacity" : "Available workforce"}
         </h2>
         <Panel promise={listings} errorTitle="The available workforce could not be loaded">
           {([rows, rules, occupations, countries]) => (
@@ -496,6 +506,7 @@ export async function PartnerDashboard({ lang, user, organization }: PartnerDash
               rules={rules}
               action={action}
               now={now}
+              recruiter={organization.type === "recruitment_company"}
             />
           )}
         </Panel>

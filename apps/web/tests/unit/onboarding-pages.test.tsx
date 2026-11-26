@@ -646,7 +646,7 @@ describe("the partner journey of onboarding (FR-J1)", () => {
     expect(licences).not.toContain("(more information requested)");
   });
 
-  it("FR-J1 AC11: Ready has a licences section, optional for a recruitment company, that asks for the code first at aal1", async () => {
+  it("FR-J1 AC11: Ready has a licences section, required for a recruitment company, that asks for the code first at aal1", async () => {
     requireUserMock.mockResolvedValue(partner("recruitment_company"));
     organizationMock.mockResolvedValue({ ...owner, type: "recruitment_company" });
     geographiesMock.mockResolvedValue({ sourcesFrom: ["AT"], servesMarket: ["DE"] });
@@ -656,7 +656,8 @@ describe("the partner journey of onboarding (FR-J1)", () => {
     const html = await render(OnboardingPage);
     expect(currentStep(html)).toBe("Ready");
     expect(html).toContain("The licences you declare");
-    expect(html).toContain(">Your licences (optional)</h2>");
+    expect(html).toContain(">Your recruitment licence</h2>");
+    expect(html).toContain("A recruitment company needs at least one current licence before it submits");
     expect(html).toContain("Enter your two-step code to add your licences");
     requireUserMock.mockResolvedValue({ ...partner("recruitment_company"), aal: "aal2" });
     const atAal2 = await render(OnboardingPage);
@@ -675,7 +676,7 @@ describe("the partner journey of onboarding (FR-J1)", () => {
     expect(currentStep(html)).toBe("Ready");
     expect(html).toContain(">Your agency licence</h2>");
     expect(html).toContain("A staffing company needs at least one current agency licence before it submits");
-    expect(html).not.toContain("Your licences (optional)");
+    expect(html).not.toContain("Your recruitment licence");
   });
 
   it("reopens the company details for the owner at aal2, and asks for the code first at aal1", async () => {

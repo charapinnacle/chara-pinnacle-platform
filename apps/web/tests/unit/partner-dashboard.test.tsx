@@ -288,8 +288,17 @@ describe("available workforce (FR-R3 AC7, AC8, FR-R4 AC5, AC7)", () => {
     let html = await render({ type: "staffing_company" });
     expect(html).toContain("Add the workers you can supply, by country and occupation.");
     expect(html).toMatch(/<a[^>]*href="\/en\/org\/manila-skills\/workforce-profile#availability-heading"[^>]*>Add workforce/);
-    html = await render({ role: "member" });
+    html = await render({ role: "member", type: "staffing_company" });
     expect(html).toContain("Your owner or an administrator lists the workers your company can supply");
+  });
+
+  it("calls a recruitment company's listings its recruiting capacity", async () => {
+    listingsMock.mockResolvedValue([]);
+    const html = await render({ type: "recruitment_company" });
+    expect(html).toMatch(/<h2 id="workforce-heading"[^>]*>Recruiting capacity<\/h2>/);
+    expect(html).toContain("No recruiting capacity listed yet");
+    expect(html).toContain("Add how many candidates you can put forward and recruit each month, by country and occupation.");
+    expect(html).not.toContain("Add the workers you can supply");
   });
 });
 
