@@ -12,7 +12,7 @@ import { beginSetup, enterCode } from "./support/mfa";
 import { expect, test } from "./support/test";
 
 const WORKER_LINKS = ["Dashboard", "Find jobs", "Saved", "Applications", "Passport"];
-const MANAGER_LINKS = ["Organisation", "Vacancies", "Applicants", "Team", "Billing"];
+const MANAGER_LINKS = ["Dashboard", "Vacancies", "Applicants", "Team", "Billing"];
 
 const current = (page: Parameters<typeof mainNavigation>[0]) => mainNavigation(page).locator('[aria-current="page"]');
 
@@ -65,9 +65,9 @@ test.describe("the header of the signed-in area (UX-01, UX-08)", () => {
       await expect(ownerPage).toHaveURL(path);
       await expect(current(ownerPage)).toHaveText(label);
     }
-    await mainNavigation(ownerPage).getByRole("link", { name: "Organisation" }).click();
+    await mainNavigation(ownerPage).getByRole("link", { name: "Dashboard" }).click();
     await expect(ownerPage).toHaveURL(`/en/dashboard/employer?org=${team.slug}`);
-    await expect(current(ownerPage)).toHaveText("Organisation");
+    await expect(current(ownerPage)).toHaveText("Dashboard");
 
     await ownerPage.goto(`/en/org/${team.slug}`);
     await expect(ownerPage).toHaveURL(`/en/dashboard/employer?org=${team.slug}`);
@@ -86,7 +86,7 @@ test.describe("the header of the signed-in area (UX-01, UX-08)", () => {
 
     const memberSession = await signedInPage(browser, member.user);
     await memberSession.page.goto("/en/dashboard/employer");
-    expect(await linkLabels(mainNavigation(memberSession.page))).toEqual(["Organisation", "Vacancies", "Applicants", "Team"]);
+    expect(await linkLabels(mainNavigation(memberSession.page))).toEqual(["Dashboard", "Vacancies", "Applicants", "Team"]);
     await expect(mainNavigation(memberSession.page).getByRole("link", { name: "Billing" })).toHaveCount(0);
     await memberSession.context.close();
   });

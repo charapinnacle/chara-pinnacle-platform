@@ -166,10 +166,10 @@ export function organizationLinks(
   const links: NavLink[] = partnerSegment
     ? [
         {
-          label: "Organisation",
+          label: "Dashboard",
           href: companyDashboardPath(lang, partnerSegment, slug),
           match: `/${lang}/dashboard/${partnerSegment}`,
-          icon: "organisation",
+          icon: "dashboard",
         },
         { label: "Workforce profile", href: workforceProfilePath(lang, slug), match: workforceProfilePath(lang, slug), icon: "workforce" },
         ...(jobOrders
@@ -196,7 +196,7 @@ export function organizationLinks(
         team,
       ]
     : [
-        { label: "Organisation", href: employerDashboardPath(lang, slug), match: `/${lang}/dashboard/employer`, icon: "organisation" },
+        { label: "Dashboard", href: employerDashboardPath(lang, slug), match: `/${lang}/dashboard/employer`, icon: "dashboard" },
         { label: "Vacancies", href: jobsPath(lang, slug), match: `/${lang}/org/${slug}/jobs`, icon: "vacancies" },
         { label: "Applicants", href: applicantsPath(lang, slug), match: `/${lang}/org/${slug}/applicants`, icon: "applicants" },
         ...(jobOrders
