@@ -17,7 +17,8 @@ import { signInAtAal2 } from "./support/team";
 import { expect, test } from "./support/test";
 import type { TestUser } from "./support/test-user";
 
-const OCCUPATIONS = "Which occupations do you recruit or supply?";
+const OCCUPATIONS = "Which occupations do you recruit for?";
+const STAFF_OCCUPATIONS = "Which occupations do you supply?";
 const INDUSTRIES = "Which industries do you serve? (optional)";
 const LANGUAGES = "Which languages do your candidates speak? (optional)";
 const STAFFING_SERVICE = "We also supply staff (staffing)";
@@ -208,7 +209,7 @@ test.describe("What you offer (FR-K2)", () => {
     await signInAtAal2(page, user, secret, path);
 
     await expect(page.getByRole("heading", { name: "What you offer", level: 2 })).toBeVisible();
-    await expect(chips(page, OCCUPATIONS)).toHaveCount(10);
+    await expect(chips(page, STAFF_OCCUPATIONS)).toHaveCount(10);
     await expect(page.getByText("10 of 10 occupations")).toBeVisible();
     // AC7: a staffing company has no staffing checkbox; its staffing types are a group with a legend.
     await expect(page.getByRole("checkbox", { name: STAFFING_SERVICE })).toHaveCount(0);
@@ -222,8 +223,8 @@ test.describe("What you offer (FR-K2)", () => {
 
     // AC10: an eleventh occupation is not added; the limit is announced with the way to upgrade.
     const [{ label }] = query<{ label: string }>(`select label from public.occupations where code = ${literal(codes[10])}`);
-    await pickWithKeys(page, OCCUPATIONS, label, label);
-    await expect(chips(page, OCCUPATIONS)).toHaveCount(10);
+    await pickWithKeys(page, STAFF_OCCUPATIONS, label, label);
+    await expect(chips(page, STAFF_OCCUPATIONS)).toHaveCount(10);
     const notice = page.getByRole("status").filter({ hasText: LIMIT_MESSAGE });
     await expect(notice).toBeVisible();
     // The prompt compares the higher plans and links to the billing page that sells them (V15).
@@ -246,8 +247,8 @@ test.describe("What you offer (FR-K2)", () => {
     // Removing one makes room; the staffing types change and the recruitment type too.
     const [{ first }] = query<{ first: string }>(`select label as first from public.occupations where code = ${literal(codes[0])}`);
     await page.getByRole("button", { name: `Remove ${first}` }).click();
-    await pickWithKeys(page, OCCUPATIONS, label, label);
-    await expect(chips(page, OCCUPATIONS)).toHaveCount(10);
+    await pickWithKeys(page, STAFF_OCCUPATIONS, label, label);
+    await expect(chips(page, STAFF_OCCUPATIONS)).toHaveCount(10);
     await staffingTypes.getByRole("checkbox", { name: "Temporary" }).uncheck();
     await page.getByRole("button", { name: "Save what you offer" }).click();
     await expect(page.getByText("Choose at least one staffing type.").first()).toBeVisible();

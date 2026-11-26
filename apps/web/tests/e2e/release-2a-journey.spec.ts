@@ -14,7 +14,7 @@ import { newVisitor } from "./support/team";
 import { expect, test } from "./support/test";
 import { pickDate } from "./support/date-picker";
 
-const OCCUPATIONS = "Which occupations do you recruit or supply?";
+const OCCUPATIONS = "Which occupations do you recruit for?";
 const COMMITMENT = "We charge workers no recruitment fees or related costs";
 const FORBIDDEN_WORDS = /\b(approved|verified)\b/i;
 

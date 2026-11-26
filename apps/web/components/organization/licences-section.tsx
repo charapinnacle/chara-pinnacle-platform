@@ -95,10 +95,11 @@ export function LicencesSection({
     <>
       {licences.length === 0 ? (
         <EmptyState
+          flat
           title="No licences added yet"
           description={
             canManage
-              ? "Add the licence or registration you hold for each country where you recruit or supply workers."
+              ? "Add one for each country you work in."
               : "Your owner or an administrator adds the licences of your company."
           }
         >

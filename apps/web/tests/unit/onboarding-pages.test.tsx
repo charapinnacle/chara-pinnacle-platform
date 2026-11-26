@@ -341,9 +341,9 @@ describe("the partner journey of onboarding (FR-J1)", () => {
     expect(html).toMatch(/<p aria-hidden="true"[^>]*>Step 3 of 6: What you offer<\/p>/);
     expect(html).toMatch(/Step 2 of 6: <\/span><a[^>]*>Where you serve<\/a><span class="sr-only"> \(done\)<\/span>/);
     expect(html).toContain(">What you offer</h1>");
-    expect(html).toContain("Which occupations do you recruit or supply?");
+    expect(html).toContain("Which occupations do you supply?");
     expect(html).toContain(">0 of 10 occupations</p>");
-    expect(html).toMatch(/<legend[^>]*>Recruitment type<\/legend>/);
+    expect(html).toMatch(/<legend[^>]*>Supply type<\/legend>/);
     expect(html).toMatch(/<legend[^>]*>Staffing types \(choose at least one\)<\/legend>/);
     expect(html).not.toContain("We also supply staff (staffing)");
     expect(html).toMatch(/<button[^>]*type="submit"[^>]*>Continue<\/button>/);

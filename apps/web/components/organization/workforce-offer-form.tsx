@@ -133,8 +133,8 @@ export function WorkforceOfferForm({
       control={control}
       name="occupations"
       id={ids.occupations}
-      label="Which occupations do you recruit or supply?"
-      description="Search the ISCO-08 list by name, for example welder. Only occupations from the list can be saved."
+      label={partnerType === "recruitment_company" ? "Which occupations do you recruit for?" : "Which occupations do you supply?"}
+      description="Search by job name, for example welder. Only occupations from the list can be saved."
       options={occupationOptions}
       placeholder="Type an occupation"
       emptyText="No matching occupation"
@@ -173,7 +173,7 @@ export function WorkforceOfferForm({
       control={control}
       name="languages"
       id={ids.languages}
-      label="Which languages do your candidates speak? (optional)"
+      label={`Which languages do your ${partnerType === "recruitment_company" ? "candidates" : "workers"} speak? (optional)`}
       options={toOptions(languages)}
       placeholder="Type a language"
       emptyText="No matching language"
@@ -188,7 +188,7 @@ export function WorkforceOfferForm({
         control={control}
         name="recruitmentType"
         id={ids.recruitmentType}
-        legend="Recruitment type"
+        legend={partnerType === "recruitment_company" ? "Recruitment type" : "Supply type"}
         options={recruitmentTypeOptions}
         threeColumns={onboarding}
       />
@@ -251,11 +251,15 @@ export function WorkforceOfferForm({
       ) : (
         <>
           {occupationsField}
-          {industriesField}
-          {languagesField}
+          <div className="grid gap-8 md:grid-cols-2 md:items-start">
+            {industriesField}
+            {languagesField}
+          </div>
           {recruitmentFields}
-          {sizeField}
-          {foundedField}
+          <div className="grid gap-8 md:grid-cols-2 md:items-start">
+            {sizeField}
+            {foundedField}
+          </div>
         </>
       )}
       {listingCounts ? (

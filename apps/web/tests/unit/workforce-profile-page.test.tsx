@@ -382,7 +382,7 @@ describe("the availability of the workforce profile page (FR-K3)", () => {
   it("AC1: shows the owner the empty state with the button that adds the first listing, and the staleness period", async () => {
     const html = await render();
     expect(html).toContain(">Available workforce</h2>");
-    expect(html).toContain("signed-in users see each listing confirmed within the last 60 days");
+    expect(html).toContain("Signed-in users see each listing confirmed within the last 60 days");
     expect(html).toContain("No availability listed yet");
     expect(html).toMatch(/<button[^>]*>Add a listing<\/button>/);
     expect(listingsMock).toHaveBeenCalledWith("org-1");
