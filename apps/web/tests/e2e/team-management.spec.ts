@@ -246,7 +246,7 @@ test.describe("team membership: ownership transfer", () => {
     await visitor.page.getByRole("button", { name: "Become the owner" }).click();
     await expect(visitor.page.getByText("You are now the owner", { exact: true })).toBeVisible();
     await openAccountMenu(visitor.page);
-    await expect(accountButton(visitor.page).locator("xpath=..").getByText("Owner", { exact: true })).toBeVisible();
+    await expect(accountButton(visitor.page).locator("xpath=..").getByText("Employer · Owner", { exact: true })).toBeVisible();
     expect(memberRows(team).map((entry) => [entry.user_id, entry.role]).sort()).toEqual(
       [
         [team.owner.id, "admin"],

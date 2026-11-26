@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
 import { callAs } from "./support/accounts";
+import { openAccountMenu } from "./support/app-shell";
 import { expectAccessibleAtBothWidths } from "./support/applications";
 import { execute, literal, query } from "./support/db";
 import { enrollTotp, sessionClaims } from "./support/login";
@@ -350,6 +351,7 @@ test.describe("submission for review (FR-J1 AC8 to AC11)", () => {
     ]);
 
     await page.goto(`/en/dashboard/staffing`);
+    await openAccountMenu(page);
     await expect(page.getByRole("link", { name: "Company profile" })).toHaveAttribute("href", `/en/org/${partner.slug}/profile`);
   });
 

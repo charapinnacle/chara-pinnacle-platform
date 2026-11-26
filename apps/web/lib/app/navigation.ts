@@ -23,6 +23,7 @@ import {
   settingsPath,
   submissionsPath,
   workforceProfilePath,
+  organizationProfilePath,
 } from "@/lib/routes";
 import type { OrganizationType } from "@/lib/billing/limits";
 import { segmentOf } from "@/lib/dashboard/segments";
@@ -214,7 +215,8 @@ export function organizationLinks(
 // settings (account deletion, with the way to the notification settings); an employer has Settings, which are the
 // notification settings (an employer is sent away from the account settings page, which is for candidates). orgSlug is
 // given to a person in several organisations, so that the page keeps the header of the one they work in.
-export function accountLinks(lang: string, accountKind: "worker" | "company", orgSlug?: string): NavLink[] {
+// profileSlug is the organisation whose company profile the person may edit: an owner or admin of the current one.
+export function accountLinks(lang: string, accountKind: "worker" | "company", orgSlug?: string, profileSlug?: string): NavLink[] {
   const reports: NavLink = { label: "My reports", href: myReportsPath(lang), match: myReportsPath(lang), icon: "reports" };
   if (accountKind === "worker") {
     return [
@@ -223,7 +225,11 @@ export function accountLinks(lang: string, accountKind: "worker" | "company", or
       reports,
     ];
   }
-  return [{ label: "Settings", href: notificationSettingsPath(lang, orgSlug), match: notificationSettingsPath(lang), icon: "settings" }, reports];
+  const settings: NavLink = { label: "Settings", href: notificationSettingsPath(lang, orgSlug), match: notificationSettingsPath(lang), icon: "settings" };
+  if (!profileSlug) return [settings, reports];
+  // The company's legal details and identifiers are not in the sidebar, so the account menu holds them.
+  const profile = organizationProfilePath(lang, profileSlug);
+  return [settings, { label: "Company profile", href: profile, match: profile, icon: "organisation", exact: true }, reports];
 }
 
 // The consent page exists to finish a step that every other page waits for, so the header offers no links there (onboarding

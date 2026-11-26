@@ -39,7 +39,7 @@ export function useAppNavigation({ lang, email, accountKind, organizations, subm
   const links = isGatePage(lang, pathname) ? [] : offered;
   const roleLabel = accountKind === "worker" ? "Worker" : accountKind === "company" ? (organization?.roleLabel ?? "Company account") : undefined;
   const switcher = organizations.length > 1 ? organization : undefined;
-  const account = { email, roleLabel, links: accountKind ? accountLinks(lang, accountKind, switcher?.slug) : [] };
+  const account = { email, roleLabel, links: accountKind ? accountLinks(lang, accountKind, switcher?.slug, organization && organization.role !== "member" ? organization.slug : undefined) : [] };
   return { pathname, organization, links, switcher, account };
 }
 

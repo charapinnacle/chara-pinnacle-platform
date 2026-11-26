@@ -72,13 +72,6 @@ export function organizationUnread(counts: readonly UnreadMessages[], organizati
 // Requests addressed to a recruitment or staffing company that wait for its answer (FR-R4 AC6).
 export type PartnerRequests = { total: number; inquiries: number };
 
-export function partnerRequestLines(requests: PartnerRequests): { key: "inquiries" | "workforce"; label: string; count: number }[] {
-  return [
-    { key: "inquiries" as const, label: "Inquiries", count: requests.inquiries },
-    { key: "workforce" as const, label: "Workforce requests", count: requests.total - requests.inquiries },
-  ].filter((line) => line.count > 0);
-}
-
 // The employer's own inquiries and workforce requests (FR-P2 step Track).
 export type EmployerRequests = { waiting: number; answered: number };
 

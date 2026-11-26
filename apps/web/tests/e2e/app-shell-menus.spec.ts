@@ -62,7 +62,7 @@ test.describe("the menus of the header (UX-01, UX-08)", () => {
     await expect(page.getByText("Your organisations")).toBeVisible();
     const organisations = page.locator("div", { has: page.getByText("Your organisations") }).last();
     await expect(organisations.getByRole("link", { name: first, exact: true })).toHaveAttribute("aria-current", "true");
-    await expect(page.getByText("Owner", { exact: true }).filter({ visible: true })).toBeVisible();
+    await expect(page.getByText("Employer · Owner", { exact: true }).filter({ visible: true })).toBeVisible();
     await expectNoAxeViolations(page);
 
     await organisations.getByRole("link", { name: second, exact: true }).click();
@@ -185,8 +185,8 @@ test.describe("the menus of the header (UX-01, UX-08)", () => {
     await page.goto("/en/dashboard/employer");
     await openAccountMenu(page);
     const panel = await panelOf(page);
-    expect(await linkLabels(panel)).toEqual(["Settings", "My reports"]);
-    await expect(panel).toContainText("Member");
+    expect(await linkLabels(panel), "the company profile is for the owner and admins").toEqual(["Settings", "My reports"]);
+    await expect(panel).toContainText("Employer · Member");
     await expect(panel).toContainText(member.user.email);
     await logOut(page);
     await expect(page).toHaveURL(/\/en\/login$/);
