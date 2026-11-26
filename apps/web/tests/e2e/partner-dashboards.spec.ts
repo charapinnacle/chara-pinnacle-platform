@@ -304,10 +304,12 @@ test.describe("Partner dashboards (FR-R3, FR-R4, release 2a)", () => {
           : "Add how many candidates you can put forward and recruit each month, by country and occupation.",
       );
       await expect(workforce.getByRole("link", { name: action })).toBeVisible();
-      await expect(owner.page.getByRole("region", { name: "Profile views" })).toContainText(
-        "Views appear here once employers open your profile.",
+      const activity = owner.page.getByRole("region", { name: "Your activity" });
+      await expect(activity.getByRole("link", { name: /^0 Profile views, 30 days/ })).toBeVisible();
+      await expect(activity.getByRole("link", { name: /^0 Current licences/ })).toHaveAttribute(
+        "href",
+        `/en/org/${partner.slug}/workforce-profile#licences-heading`,
       );
-      await expect(owner.page.getByRole("region", { name: "Licences" })).toContainText("No licences recorded yet.");
       const next = owner.page.getByRole("region", { name: "Next actions" });
       await expect(next.getByRole("link", { name: /^Add the countries you source workers from/ })).toBeVisible();
       await expect(owner.page.getByText("once two-step verification is set up")).toBeVisible();
@@ -331,14 +333,12 @@ test.describe("Partner dashboards (FR-R3, FR-R4, release 2a)", () => {
     );
     const quietOwner = await signedIn(browser, quiet.user);
     await quietOwner.page.goto(dashboardUrl("recruitment", quiet.slug));
-    const quietViews = quietOwner.page.getByRole("region", { name: "Profile views" });
-    await expect(quietViews.getByRole("definition")).toHaveText("fewer than 5");
-    await expect(quietViews.getByRole("term")).toHaveText("Profile views in the last 30 days");
+    await expect(quietOwner.page.getByRole("region", { name: "Your activity" }).getByRole("link", { name: /^<5 Profile views, 30 days/ })).toBeVisible();
     await quietOwner.close();
 
     const busyOwner = await signedIn(browser, busy.user);
     await busyOwner.page.goto(dashboardUrl("staffing", busy.slug));
-    await expect(busyOwner.page.getByRole("region", { name: "Profile views" }).getByRole("definition")).toHaveText("12");
+    await expect(busyOwner.page.getByRole("region", { name: "Your activity" }).getByRole("link", { name: /^12 Profile views, 30 days/ })).toBeVisible();
     await busyOwner.close();
   });
 

@@ -167,7 +167,7 @@ describe("the review and listing state (FR-J1 AC11, FR-J4 AC7, AC10, NFR-C7)", (
     expect(html).toContain(">Message from our team</h3>");
     expect(html).toContain("Please add the countries you source from.");
     expect(html).toMatch(/<a[^>]*href="\/en\/onboarding"[^>]*>Review and submit again/);
-    expect(html, "no follower count before the company is listed").not.toContain("Followers:");
+    expect(html, "no follower count before the company is listed").not.toContain(">Followers<");
     expect(await render({ role: "member" }), "a member does not resubmit").not.toContain("Review and submit again");
 
     reviewMock.mockResolvedValue({ status: "declined", submittedAt: null, infoStep: null, listedAt: null });
@@ -185,59 +185,55 @@ describe("the review and listing state (FR-J1 AC11, FR-J4 AC7, AC10, NFR-C7)", (
     expect(html).toMatch(/<a[^>]*href="\/en\/org\/manila-skills\/workforce-profile"[^>]*>Update your workforce profile/);
     expect(html).not.toMatch(/approved|verified/i);
     // FR-L4 AC11: a listed company reads its follower count, never who follows it.
-    expect(html).toContain("Followers: fewer than 5");
-    expect(html).toMatch(/<a[^>]*href="\/en\/following"[^>]*>Companies you follow/);
+    expect(html).toMatch(tile("/en/org/manila-skills/workforce-profile/preview", "&lt;5", "Followers"));
     expect(followersMock).toHaveBeenCalledWith("org-9");
 
     reviewMock.mockResolvedValue({ status: "re_review", submittedAt: "2026-11-23T10:00:00Z", infoStep: null, listedAt: "2026-11-22T10:00:00Z" });
     html = await render();
     expect(html).toContain("Your company stays listed while our team reviews the change.");
-    expect(html).toContain("Followers: fewer than 5");
+    expect(html).toContain(">Followers<");
   });
 
-  it("states the listing, the missing part of the profile and a profile hidden by moderation", async () => {
+  it("names the missing part of the profile as a next action, and says a profile hidden by moderation", async () => {
     figuresMock.mockResolvedValue(figures({ listed: false, profileMissing: "serves_market" }));
     let html = await render();
-    expect(html).toContain("Not listed yet");
-    expect(html).toContain("Missing the countries you serve");
+    expect(html).not.toContain("hidden your profile");
     expect(html).toMatch(/href="\/en\/org\/manila-skills\/workforce-profile"[^>]*>Add the countries you serve to complete your workforce profile/);
     figuresMock.mockResolvedValue(figures({ profileHidden: true }));
     html = await render();
-    expect(html).toContain("Hidden from the partner directories by our team");
+    expect(html).toContain("Our team has hidden your profile from the partner directories.");
   });
 });
 
-describe("profile views (FR-R3 AC7, AC10, FR-R4 AC9)", () => {
-  it("shows a small count as fewer than 5, a count from 5 as the number, no view as guidance and no count outside the plan", async () => {
+describe("profile views and licences as numbers (FR-R3 AC7, AC10, FR-R4 AC9)", () => {
+  const preview = "/en/org/manila-skills/workforce-profile/preview";
+  const licences = "/en/org/manila-skills/workforce-profile#licences-heading";
+
+  it("shows a small view count as fewer than 5, a count as the number and no count outside the plan", async () => {
     figuresMock.mockResolvedValue(figures({ profileViews: null, profileViewsFewerThan: 5 }));
-    expect(await render()).toMatch(/<dt[^>]*>Profile views in the last 30 days<\/dt><dd[^>]*><span[^>]*>fewer than 5</);
+    expect(await render()).toMatch(tile(preview, "&lt;5", "Profile views, 30 days"));
     figuresMock.mockResolvedValue(figures({ profileViews: 12 }));
-    expect(await render()).toMatch(/Profile views in the last 30 days<\/dt><dd[^>]*><span[^>]*>12</);
-    figuresMock.mockResolvedValue(figures({ profileViews: 0 }));
-    const empty = await render();
-    expect(empty).toContain("Views appear here once employers open your profile.");
-    expect(empty).not.toContain("Profile views in the last 30 days");
+    expect(await render()).toMatch(tile(preview, "12", "Profile views, 30 days"));
     figuresMock.mockResolvedValue(figures({ profileViews: null, profileViewsInPlan: false }));
     const free = await render();
-    expect(free).toContain("Your plan does not include profile view counts.");
-    expect(free).toMatch(/href="\/en\/org\/manila-skills\/billing"[^>]*>Compare plans/);
-    expect(await render({ role: "member" })).not.toContain("Compare plans");
+    expect(free).toMatch(tile(preview, "–", "Profile views, 30 days"));
+    expect(free).toContain("Not in your plan");
   });
-});
 
-describe("licences", () => {
-  it("shows the current count, the next expiry, expiring and expired licences in words, and guidance without any", async () => {
+  it("counts the current licences and says the expired or expiring ones, with the renewal as a next action", async () => {
     figuresMock.mockResolvedValue(figures({ licencesCurrent: 2, licencesExpiring: 1, licencesExpired: 1, nextLicenceExpiry: "2026-11-05" }));
     let html = await render();
-    expect(html).toMatch(/Current licences<\/dt><dd[^>]*>2</);
-    expect(html).toContain("5 November 2026");
-    expect(html).toContain("1 licence expires soon");
-    expect(html).toContain("1 licence has expired");
+    expect(html).toMatch(tile(licences, "2", "Current licences"));
+    expect(html).toContain("1 expired");
     expect(html).toContain("Renew 1 expired licence");
-    figuresMock.mockResolvedValue(figures({ licencesCurrent: 0, nextLicenceExpiry: null }));
+    figuresMock.mockResolvedValue(figures({ licencesCurrent: 0, licencesExpired: 0, licencesExpiring: 0, nextLicenceExpiry: null }));
     html = await render();
-    expect(html).toContain("No licences recorded yet.");
-    expect(html).toMatch(/href="\/en\/org\/manila-skills\/workforce-profile#licences-heading"[^>]*>Add a licence/);
+    expect(html).toMatch(tile(licences, "0", "Current licences"));
+  });
+
+  it("repeats no page of the sidebar: no workforce profile, team or network card", async () => {
+    const html = await render();
+    expect(html).not.toMatch(/Your company<\/h2>|Your team<\/h2>|Your network<\/h2>|Invite your team|Companies you follow/);
   });
 });
 
@@ -271,19 +267,6 @@ describe("available workforce (FR-R3 AC7, AC8, FR-R4 AC5, AC7)", () => {
     expect(html).toContain("No recruiting capacity listed yet");
     expect(html).toContain("Add how many candidates you can put forward and recruit each month, by country and occupation.");
     expect(html).not.toContain("Add the workers you can supply");
-  });
-});
-
-describe("the team (FR-J1 AC11)", () => {
-  it("offers Invite your team to the owner and admins, and the team to a member", async () => {
-    for (const role of ["owner", "admin"] as const) {
-      const html = await render({ role });
-      expect(html).toMatch(/<h2 id="team-heading"[^>]*>Your team<\/h2>/);
-      expect(html).toMatch(/<a[^>]*href="\/en\/org\/manila-skills\/members"[^>]*>Invite your team/);
-    }
-    const html = await render({ role: "member", aal: "aal1" });
-    expect(html).toMatch(/<a[^>]*href="\/en\/org\/manila-skills\/members"[^>]*>See your team/);
-    expect(html).not.toContain("Invite your team");
   });
 });
 
@@ -424,14 +407,14 @@ describe("the blocks of release 2b (FR-R3 AC4 to AC7, AC9, FR-R4 AC3, AC6 to AC9
     expect(html).toMatch(tile("/en/org/manila-skills/job-orders", "4", "Workforce requests"));
   });
 
-  it("shows a zero as a zero, and no activity while job orders are not released", async () => {
+  it("shows a zero as a zero, and no job-order numbers while job orders are not released", async () => {
     figuresMock.mockResolvedValue(figures({ network: network({ fittingJobOrders: 0, matchingEmployers: 0, invitationsAwaiting: 0 }) }));
     let html = await render();
     expect(html).toMatch(tile("/en/org/manila-skills/job-orders", "0", "Fitting job orders"));
     expect(html).not.toContain("From 0 employers");
     figuresMock.mockResolvedValue(figures({}));
     html = await render();
-    expect(html).not.toContain("Your activity");
+    expect(html, "no job-order numbers while job orders are not released").not.toContain("Fitting job orders");
   });
 
   it("adds the monthly responses and submissions to the plan while released, and says a free plan pauses them (FR-R3 AC9)", async () => {
@@ -455,7 +438,7 @@ describe("the blocks of release 2b (FR-R3 AC4 to AC7, AC9, FR-R4 AC3, AC6 to AC9
         subscriptionEnded: true,
       });
       const html = await render();
-      expect(html).toContain("Free plan: responses and submissions are paused.");
+      expect(html).toContain("Responses and submissions are paused");
       expect(html).toMatch(/href="\/en\/org\/manila-skills\/billing"[^>]*>Choose a plan/);
     } finally {
       releasedMock.mockImplementation(async () => false);
