@@ -9,6 +9,7 @@ import { PartnerSubmissionList } from "@/components/submissions/partner-submissi
 import { organizationCrumb } from "@/lib/app/navigation";
 import { requireOrgRole } from "@/lib/dal/session";
 import { submissionsReleased } from "@/lib/dal/submissions";
+import { ResponseTabs } from "@/components/layout/section-tabs";
 
 export const metadata: Metadata = { title: "Submissions", robots: { index: false } };
 
@@ -30,6 +31,7 @@ export default async function PartnerSubmissionsPage({ params, searchParams }: P
         description="The candidates your company asked to submit to employers, newest first. A candidate is submitted only once they approve."
         breadcrumb={<Breadcrumbs items={[organizationCrumb(lang, organization), { label: "Submissions" }]} />}
       />
+      <ResponseTabs lang={lang} slug={slug} current="submissions" submissions />
       <Suspense key={cursor ?? "first"} fallback={<LoadingSkeleton rows={4} />}>
         <PartnerSubmissionList lang={lang} slug={slug} organizationId={organization.id} requirementId={null} cursor={cursor} />
       </Suspense>

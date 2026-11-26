@@ -7,10 +7,11 @@ import { HeaderMenu } from "@/components/layout/header-menu";
 import { NavLink } from "@/components/layout/nav-link";
 import { MessagesBadge } from "@/components/messaging/messages-badge";
 import { NotificationBell } from "@/components/notifications/notification-bell";
-import { accountLinks, currentOrganization, isGatePage, organizationLinks, workerLinks, type NavOrganization } from "@/lib/app/navigation";
+import { accountLinks, currentOrganization, groupLinks, isGatePage, organizationLinks, workerLinks, type NavOrganization } from "@/lib/app/navigation";
 import type { UnreadMessages } from "@/lib/messaging/thread";
 import { companyDashboardPath } from "@/lib/routes";
 import { cn } from "@/lib/utils";
+import { messagesPath } from "@/lib/routes";
 
 export type AppNavProps = {
   lang: string;
@@ -70,11 +71,13 @@ export function OrganizationList({ lang, organizations, current }: { lang: strin
 export function AppNav(props: AppNavProps) {
   const { lang, organizations, notifications, unreadMessages } = props;
   const { organization, links, switcher, account } = useAppNavigation(props);
-  const messagesLink = unreadMessages ? links.find((link) => link.icon === "messages") : undefined;
+  // A candidate's Messages is in the menu; an organisation's conversations are only behind this button, not in the sidebar.
+  const messagesHref =
+    links.find((link) => link.icon === "messages")?.href ?? (organization?.messaging ? messagesPath(lang, organization.slug) : undefined);
   const badge =
-    unreadMessages && messagesLink ? (
+    unreadMessages && messagesHref ? (
       <MessagesBadge
-        href={messagesLink.href}
+        href={messagesHref}
         userId={unreadMessages.userId}
         initial={unreadMessages.initial}
         organizationId={organization ? (unreadMessages.organizationIds[organization.slug] ?? null) : null}
@@ -95,14 +98,19 @@ export function AppNav(props: AppNavProps) {
     >
       <div className="grid gap-2 lg:flex lg:items-center lg:gap-1">
         {links.length > 0 ? (
-          <nav aria-label="Main" className="lg:hidden">
-            <ul className="grid">
-              {links.map((link) => (
-                <li key={link.href}>
-                  <NavLink link={link} />
-                </li>
-              ))}
-            </ul>
+          <nav aria-label="Main" className="grid gap-3 lg:hidden">
+            {groupLinks(links).map(({ group, links: grouped }) => (
+              <div key={group ?? "links"} className="grid">
+                {group ? <p className="px-3 text-xs font-medium tracking-wide text-muted-foreground uppercase">{group}</p> : null}
+                <ul className="grid">
+                  {grouped.map((link) => (
+                    <li key={link.href}>
+                      <NavLink link={link} />
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
           </nav>
         ) : null}
         {switcher ? (

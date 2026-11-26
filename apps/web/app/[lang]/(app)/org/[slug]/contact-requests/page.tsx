@@ -30,6 +30,7 @@ import { requireOrgRole } from "@/lib/dal/session";
 import { getPublicSettings } from "@/lib/dal/settings";
 import { formatDate } from "@/lib/i18n/format";
 import { appealPath, conversationPath, findWorkersPath, orgContactRequestsPath } from "@/lib/routes";
+import { WorkerTabs } from "@/components/layout/section-tabs";
 
 // Nothing about a worker who has not accepted is in the title or the metadata (NFR-S9).
 export const metadata: Metadata = { title: "Contact requests", robots: { index: false } };
@@ -158,6 +159,7 @@ export default async function OrganizationContactRequestsPage({ params, searchPa
         description="Requests your organisation sent to workers in Find Workers. A worker's name is shown only after they accept."
         breadcrumb={<Breadcrumbs items={[organizationCrumb(lang, organization), { label: "Contact requests" }]} />}
       />
+      <WorkerTabs lang={lang} slug={slug} current="contact-requests" />
       <TabLinks
         label="Filter by status"
         items={filters.map((value) => ({
