@@ -220,6 +220,14 @@ describe("the workforce profile page (FR-K1, FR-K2)", () => {
     expect(html).toMatch(/<button[^>]*type="submit"[^>]*>Save what you offer<\/button>/);
   });
 
+  it("shows one section at a time, chosen from tabs that say each section's state", async () => {
+    const html = await render();
+    expect(html).toContain('role="tablist" aria-label="Sections of the workforce profile"');
+    expect(html.match(/role="tabpanel"/g)).toHaveLength(6);
+    expect(html.match(/role="tabpanel"[^>]*hidden=""/g), "only the first section is open").toHaveLength(5);
+    expect(html).toMatch(/role="tab"[^>]*aria-selected="true"[^>]*>.*?Where you serve<span class="sr-only">, done<\/span>/);
+  });
+
   it("lets the owner state the standard terms and the track record, next to the hires counted on the platform", async () => {
     requireOrgRoleMock.mockResolvedValue(organization("owner", "recruitment_company"));
     const html = await render();

@@ -13,6 +13,7 @@ import { fillPartnerCompany, fillPartnerSignup, pickWithKeys, setPartnerRelease 
 import { newVisitor } from "./support/team";
 import { expect, test } from "./support/test";
 import { pickDate } from "./support/date-picker";
+import { openProfileSection } from "./support/workforce-profile";
 
 const OCCUPATIONS = "Which occupations do you recruit for?";
 const COMMITMENT = "We charge workers no recruitment fees or related costs";
@@ -99,6 +100,7 @@ test.describe("release 2a journey (NFR-O4)", () => {
 
     // The workforce profile: a licence and an availability listing before the submission.
     await page.goto(`/en/org/${organization.slug}/workforce-profile`);
+    await openProfileSection(page, "Licences");
     const licences = page.getByRole("region", { name: "Licences" });
     await licences.getByRole("button", { name: "Add a licence" }).click();
     const licence = page.getByRole("dialog", { name: "Add a licence" });
@@ -111,6 +113,7 @@ test.describe("release 2a journey (NFR-O4)", () => {
     await expect(page.getByText("Licence saved", { exact: true })).toBeVisible();
     await expect(licences.getByRole("listitem").filter({ hasText: "Philippines" })).toContainText(`DMW-${token}`);
 
+    await openProfileSection(page, "Recruiting capacity");
     const availability = page.getByRole("region", { name: "Recruiting capacity" });
     await availability.getByRole("button", { name: "Add a listing" }).click();
     const listing = page.getByRole("dialog", { name: "Add a listing" });

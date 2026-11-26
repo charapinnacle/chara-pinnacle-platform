@@ -8,6 +8,7 @@ import { signInAtAal1, signInAtAal2 } from "./support/team";
 import { expect, test } from "./support/test";
 import { createTestUser } from "./support/test-user";
 import { pickDate } from "./support/date-picker";
+import { openProfileSection } from "./support/workforce-profile";
 
 const STAFF_ONLY = "Seen only by Chara Pinnacle staff until verification is available";
 const ADD_GRANT = "public.add_partner_licence(uuid, text, text, text, date, boolean)";
@@ -95,6 +96,7 @@ test.describe("Licences (FR-J2)", () => {
     const path = `/en/org/${slug}/workforce-profile`;
     await signInAtAal2(page, user, secret, path);
 
+    await openProfileSection(page, "Licences");
     const section = page.getByRole("region", { name: "Licences" });
     await expect(section.getByRole("heading", { name: "No licences added yet" })).toBeVisible();
     await expectAccessibleAtBothWidths(page);
@@ -204,6 +206,7 @@ test.describe("Licences (FR-J2)", () => {
     const secret = await enrollTotp(user);
     await signInAtAal2(page, user, secret, `/en/org/${slug}/workforce-profile`);
 
+    await openProfileSection(page, "Licences");
     const section = page.getByRole("region", { name: "Licences" });
     const items = section.getByRole("listitem");
     await expect(items).toHaveCount(3);
@@ -290,6 +293,7 @@ test.describe("Licences (FR-J2)", () => {
     const path = `/en/org/${slug}/workforce-profile`;
     await signInAtAal1(page, member, path);
 
+    await openProfileSection(page, "Licences");
     const section = page.getByRole("region", { name: "Licences" });
     await expect(section.getByRole("listitem")).toContainText("DMW-777-LB-R");
     await expect(section.getByRole("button")).toHaveCount(0);

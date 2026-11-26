@@ -16,6 +16,7 @@ import {
 import { signInAtAal2 } from "./support/team";
 import { expect, test } from "./support/test";
 import type { TestUser } from "./support/test-user";
+import { openProfileSection } from "./support/workforce-profile";
 
 const OCCUPATIONS = "Which occupations do you recruit for?";
 const STAFF_OCCUPATIONS = "Which occupations do you supply?";
@@ -208,6 +209,7 @@ test.describe("What you offer (FR-K2)", () => {
     const path = `/en/org/${slug}/workforce-profile`;
     await signInAtAal2(page, user, secret, path);
 
+    await openProfileSection(page, "What you offer");
     await expect(page.getByRole("heading", { name: "What you offer", level: 2 })).toBeVisible();
     await expect(chips(page, STAFF_OCCUPATIONS)).toHaveCount(10);
     await expect(page.getByText("10 of 10 occupations")).toBeVisible();
