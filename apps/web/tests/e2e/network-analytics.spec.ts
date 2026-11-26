@@ -95,7 +95,7 @@ test.describe("Network analytics (FR-R6, release 2a and 2b)", () => {
     await expect(owner.page.getByRole("heading", { name: "By country" })).toHaveCount(0);
     await expect(owner.page.getByRole("button", { name: "Download CSV" })).toHaveCount(0);
 
-    const periods = owner.page.getByRole("group", { name: "Period" });
+    const periods = owner.page.getByRole("navigation", { name: "Period" });
     await expect(periods.getByRole("link", { name: "Last 30 days" })).toHaveAttribute("aria-current", "page");
     await periods.getByRole("link", { name: "Last 12 months" }).focus();
     await owner.page.keyboard.press("Enter");

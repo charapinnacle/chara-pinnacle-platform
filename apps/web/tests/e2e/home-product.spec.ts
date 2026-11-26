@@ -3,7 +3,7 @@ import type { Page } from "@playwright/test";
 import { expectNoAxeViolations } from "./support/axe";
 import { newCompany, seedJob } from "./support/jobs";
 import { uniqueToken } from "./support/organizations";
-import { FOOTER_ALL_LABELS, HEADER_SHOWN, HOME_SECTION_HEADINGS } from "./support/public-pages";
+import { FOOTER_ALL_LABELS, HEADER_LABELS, HOME_SECTION_HEADINGS } from "./support/public-pages";
 import { waitForHydration } from "./support/hydration";
 import { expect, test } from "./support/test";
 
@@ -43,7 +43,7 @@ test.describe("the home page (U73)", () => {
     await expect(search(page).getByRole("combobox")).toHaveCount(3);
     await expect(search(page).getByRole("button", { name: "Search jobs" })).toBeVisible();
     await expect(hero.getByRole("link")).toHaveCount(1);
-    await expect(hero.getByRole("link", { name: "Post a Job" })).toHaveAttribute("href", "/en/employers");
+    await expect(hero.getByRole("link", { name: "Post a job" })).toHaveAttribute("href", "/en/employers");
 
     await expect(main.locator("h2:not(#platform-statistics-heading)")).toHaveText(HOME_SECTION_HEADINGS);
     const order = await main.locator(":scope > section").evaluateAll((sections) =>
@@ -187,7 +187,7 @@ test.describe("the home page (U73)", () => {
 
     const band = region(page, "For employers");
     await expect(band).toContainText("Hiring? Publish a vacancy and manage every applicant in one pipeline.");
-    await expect(band.getByRole("link", { name: "Post a Job" })).toHaveAttribute("href", "/en/post-job");
+    await expect(band.getByRole("link", { name: "Post a job" })).toHaveAttribute("href", "/en/post-job");
     await band.getByRole("link", { name: "For employers" }).click();
     await expect(page).toHaveURL("/en/employers");
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Hire from the Global Workforce Network.");
@@ -232,17 +232,17 @@ test.describe("the home page (U73)", () => {
         return `${element.closest("main") ? "main" : element.closest("header") ? "header" : "other"}:${element.getAttribute("placeholder") ?? element.innerText.trim()}`;
       });
       stops.push(stop);
-      if (stop === "main:Post a Job") break;
+      if (stop === "main:Post a job") break;
     }
     expect(stops).toEqual([
       "other:Skip to main content",
       "header:Chara Pinnacle\nCHARA\nPINNACLE",
-      ...HEADER_SHOWN.map((label) => `header:${label}`),
+      ...HEADER_LABELS.map((label) => `header:${label}`),
       "main:Job title, skill or occupation",
       "main:Any country",
       "main:Any city",
-      "main:Search Jobs",
-      "main:Post a Job",
+      "main:Search jobs",
+      "main:Post a job",
     ]);
     // Back to Country: typing narrows the list, Enter picks the first match, and Enter again sends the search.
     await page.keyboard.press("Shift+Tab");

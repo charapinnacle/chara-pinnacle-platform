@@ -14,13 +14,13 @@ import { expect, test } from "./support/test";
 const region = (page: Page, name: string) => page.getByRole("region", { name, exact: true });
 
 test.describe("the For employers page (U73)", () => {
-  test("one promise and Post a Job, then the steps, what you get, pricing and the last call, in that order", async ({ page }) => {
+  test("one promise and Post a job, then the steps, what you get, pricing and the last call, in that order", async ({ page }) => {
     await page.goto("/en/employers");
     const main = page.getByRole("main");
     await expect(main.getByRole("heading", { level: 1 })).toHaveText("Hire from the Global Workforce Network.");
     await expect(main.getByRole("heading", { level: 2 })).toHaveText(EMPLOYERS_SECTION_HEADINGS);
     const hero = region(page, "Hire from the Global Workforce Network.");
-    await expect(hero.getByRole("link")).toHaveText(SHOW_PRICING ? ["Post a Job", "See pricing"] : ["Post a Job"]);
+    await expect(hero.getByRole("link")).toHaveText(SHOW_PRICING ? ["Post a job", "See pricing"] : ["Post a job"]);
 
     await expect(region(page, "From vacancy to hire in three steps.").getByRole("heading", { level: 3 })).toHaveText([
       "Publish a vacancy",
@@ -38,7 +38,7 @@ test.describe("the For employers page (U73)", () => {
       await expect(region(page, "Pricing")).toBeInViewport();
     }
 
-    await hero.getByRole("link", { name: "Post a Job" }).click();
+    await hero.getByRole("link", { name: "Post a job" }).click();
     await expect(page).toHaveURL("/en/login?next=%2Fen%2Fpost-job");
     await page.getByRole("link", { name: "Create an account" }).click();
     await expect(page.getByRole("radio", { name: "Employer" })).toBeChecked();
@@ -58,11 +58,11 @@ test.describe("the For employers page (U73)", () => {
     await expect(page.getByRole("list", { name: "Employer plans" })).toContainText(priceText(priced.price_minor, priced.currency));
   });
 
-  test("the last call offers Post a Job to the employer sign-up, and the page passes axe at 1280 and 360 px", async ({ page }) => {
+  test("the last call offers Post a job to the employer sign-up, and the page passes axe at 1280 and 360 px", async ({ page }) => {
     await page.goto("/en/employers");
     const closing = region(page, "Ready to hire?");
-    await expect(closing.getByRole("link")).toHaveText(["Post a Job"]);
-    await expect(closing.getByRole("link", { name: "Post a Job" })).toHaveAttribute("href", "/en/post-job");
+    await expect(closing.getByRole("link")).toHaveText(["Post a job"]);
+    await expect(closing.getByRole("link", { name: "Post a job" })).toHaveAttribute("href", "/en/post-job");
     for (const width of [1280, 360]) {
       await page.setViewportSize({ width, height: 800 });
       await expectNoAxeViolations(page);
@@ -82,14 +82,14 @@ test.describe("the For employers page (U73)", () => {
     await context.close();
   });
 
-  test("a signed-in owner is sent by Post a Job to the new-vacancy page, and a candidate is sent home with no employer line", async ({ browser }) => {
+  test("a signed-in owner is sent by Post a job to the new-vacancy page, and a candidate is sent home with no employer line", async ({ browser }) => {
     const company = await newCompany();
     const owner = await signedInPage(browser, company.owner);
     await owner.page.goto("/en/employers");
     const hero = region(owner.page, "Hire from the Global Workforce Network.");
-    await expect(hero.getByRole("link", { name: "Post a Job" })).toHaveAttribute("href", "/en/post-job");
-    await expect(region(owner.page, "Ready to hire?").getByRole("link", { name: "Post a Job" })).toHaveAttribute("href", "/en/post-job");
-    await hero.getByRole("link", { name: "Post a Job" }).click();
+    await expect(hero.getByRole("link", { name: "Post a job" })).toHaveAttribute("href", "/en/post-job");
+    await expect(region(owner.page, "Ready to hire?").getByRole("link", { name: "Post a job" })).toHaveAttribute("href", "/en/post-job");
+    await hero.getByRole("link", { name: "Post a job" }).click();
     await expect(owner.page).toHaveURL(`/en/org/${company.slug}/jobs/new`);
     await owner.context.close();
 

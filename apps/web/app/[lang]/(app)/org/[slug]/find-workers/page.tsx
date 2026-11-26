@@ -69,7 +69,7 @@ export default async function FindWorkersPage({ params, searchParams }: PageProp
   };
 
   return (
-    <div className="grid w-full max-w-5xl gap-section">
+    <div className="grid w-full gap-section">
       <PageHeader title="Find workers" breadcrumb={<Breadcrumbs items={[organizationCrumb(lang, organization), { label: "Find workers" }]} />}>
         <p className="max-w-[65ch] text-body leading-relaxed text-muted-foreground">
           Workers who chose to be found by companies. Cards show what a worker does, where they live and want to work, and when

@@ -20,7 +20,7 @@ export default async function MyReportsPage({ params, searchParams }: PageProps<
   const { reports, next } = await listMyReports(cursor.success ? cursor.data : null);
 
   return (
-    <div className="grid w-full max-w-3xl gap-section">
+    <div className="grid w-full gap-section">
       <PageHeader title="My reports" description="What you reported, and what Trust & Safety decided." />
       {reports.length === 0 ? (
         <EmptyState icon={Flag} title="You have not made a report" description="Report a vacancy, a company or a page from Trust & Safety.">

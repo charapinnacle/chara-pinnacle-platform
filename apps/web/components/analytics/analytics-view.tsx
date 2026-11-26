@@ -1,5 +1,5 @@
+import { TabLinks } from "@/components/layout/tab-links";
 import { ChartColumn } from "lucide-react";
-import Link from "next/link";
 import { ExportButton } from "@/components/applicants/export-button";
 import { StageBar } from "@/components/dashboard/stage-bar";
 import { EmptyState } from "@/components/feedback/empty-state";
@@ -21,7 +21,6 @@ import {
 import type { OrganizationType } from "@/lib/billing/limits";
 import { formatCount, formatDate } from "@/lib/i18n/format";
 import { analyticsExportPath, analyticsPath, billingPath, organizationProfilePath, workforceProfilePath } from "@/lib/routes";
-import { cn } from "@/lib/utils";
 import type { MemberRole } from "@/lib/validation/team";
 
 export type AnalyticsViewProps = {
@@ -128,29 +127,15 @@ export function AnalyticsView(props: AnalyticsViewProps) {
 
 function PeriodControl({ lang, slug, period }: { lang: string; slug: string; period: AnalyticsPeriod }) {
   return (
-    <div role="group" aria-labelledby="period-label" className="grid gap-2">
-      <span id="period-label" className="text-small font-medium">
-        Period
-      </span>
-      <div className="flex flex-wrap gap-2">
-        {analyticsPeriods.map((option) => {
-          const current = option === period;
-          return (
-            <Link
-              key={option}
-              href={analyticsPath(lang, slug, option)}
-              aria-current={current ? "page" : undefined}
-              className={cn(
-                "inline-flex min-h-11 items-center rounded-lg border px-4 text-small font-medium transition-colors",
-                current ? "border-primary bg-primary text-primary-foreground" : "bg-card hover:bg-secondary",
-              )}
-            >
-              {periodLabels[option]}
-            </Link>
-          );
-        })}
-      </div>
-    </div>
+    <TabLinks
+      label="Period"
+      items={analyticsPeriods.map((option) => ({
+        key: option,
+        href: analyticsPath(lang, slug, option),
+        label: periodLabels[option],
+        current: option === period,
+      }))}
+    />
   );
 }
 

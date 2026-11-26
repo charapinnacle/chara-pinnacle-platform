@@ -1,17 +1,15 @@
 import { cva, type VariantProps } from "class-variance-authority";
 import { Spinner } from "@/components/feedback/spinner";
 import { Button } from "@/components/ui/button";
-import { titleText } from "@/components/forms/title-text";
 import { cn } from "@/lib/utils";
 
-// Labels are written in sentence case and shown in Title Case (the client's choice, 21 Oct 2026); screen readers and tests
-// read the written text.
 export const formButtonVariants = cva(
-  "capitalize font-semibold shadow-xs transition-[background-color,box-shadow] hover:shadow-sm focus-visible:ring-0",
+  "font-semibold shadow-xs transition-[background-color,box-shadow] hover:shadow-sm focus-visible:ring-0",
   {
     variants: {
       variant: {
-        primary: "min-h-12 w-full hover:bg-primary-hover active:bg-primary-active",
+        // Full width on a phone, its own width from sm up; a form of the auth pages keeps the full width (fullWidth).
+        primary: "w-full sm:w-auto sm:min-w-40 sm:justify-self-start hover:bg-primary-hover active:bg-primary-active",
         secondary:
           "border-input bg-card text-secondary-foreground hover:bg-secondary active:bg-muted",
         destructive:
@@ -34,11 +32,13 @@ export const formButtonVariants = cva(
 type FormButtonProps = Omit<React.ComponentProps<typeof Button>, "size"> &
   Pick<VariantProps<typeof formButtonVariants>, "variant"> & {
     busy?: boolean;
+    fullWidth?: boolean;
   };
 
 export function FormButton({
   variant,
   busy = false,
+  fullWidth = false,
   disabled,
   className,
   children,
@@ -50,12 +50,12 @@ export function FormButton({
       disabled={disabled || busy}
       aria-busy={busy || undefined}
       // A long label ("Save experience and availability") wraps instead of making its card, and so the page, wider than
-      // a 320 or 360 px screen; min-h-11 keeps the 44 px target of a one-line button; the primary button is 48 px.
-      className={cn("h-auto min-h-11 rounded-control py-2.5 text-center whitespace-normal", formButtonVariants({ variant, busy }), className)}
+      // a 320 or 360 px screen; min-h-11 keeps the 44 px target of a one-line button.
+      className={cn("h-auto min-h-11 rounded-control py-2.5 text-center whitespace-normal", formButtonVariants({ variant, busy }), fullWidth && "sm:w-full sm:justify-self-stretch", className)}
       {...props}
     >
       {busy ? <Spinner /> : null}
-      {titleText(children)}
+      {children}
     </Button>
   );
 }

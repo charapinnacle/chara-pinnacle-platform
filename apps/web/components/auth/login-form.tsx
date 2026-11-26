@@ -66,7 +66,7 @@ export function LoginForm({ next }: { next?: string }) {
         label="Password"
         autoComplete="current-password"
       />
-      <FormButton type="submit" busy={formState.isSubmitting}>
+      <FormButton fullWidth type="submit" busy={formState.isSubmitting}>
         {formState.isSubmitting ? "Logging in..." : "Log in"}
       </FormButton>
       <TextLink standalone="flush" href={`/${defaultLocale}/forgot-password`}>

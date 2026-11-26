@@ -38,7 +38,7 @@ export default async function SavedPartnersPage({ params, searchParams }: PagePr
       : null;
 
   return (
-    <div className="grid w-full max-w-3xl gap-section">
+    <div className="grid w-full gap-section">
       <PageHeader
         title="Saved partners"
         titleProps={{ id: SAVED_PARTNERS_HEADING_ID, tabIndex: -1 }}

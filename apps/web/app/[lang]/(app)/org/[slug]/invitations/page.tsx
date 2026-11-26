@@ -1,5 +1,5 @@
+import { TabLinks } from "@/components/layout/tab-links";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { LoadingSkeleton } from "@/components/feedback/loading-skeleton";
@@ -13,7 +13,6 @@ import { isReleased } from "@/lib/dal/release";
 import { requireOrgRole } from "@/lib/dal/session";
 import { inboxQuery, invitationStatuses, parseInboxParams, partnerStatusLabels } from "@/lib/invitations/presentation";
 import { invitationsPath } from "@/lib/routes";
-import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Invitations", robots: { index: false } };
 
@@ -30,33 +29,21 @@ export default async function InvitationsPage({ params, searchParams }: PageProp
   const filters = [null, ...invitationStatuses] as const;
 
   return (
-    <div className="grid w-full max-w-3xl gap-section">
+    <div className="grid w-full gap-section">
       <PageHeader
         title="Invitations"
         description="Workforce requirements employers invited your company to, newest first. Open one to read it and accept or decline."
         breadcrumb={<Breadcrumbs items={[organizationCrumb(lang, organization), { label: "Invitations" }]} />}
       />
-      <nav aria-label="Filter by status">
-        <ul className="flex flex-wrap gap-2">
-          {filters.map((status) => {
-            const current = status === inbox.status;
-            return (
-              <li key={status ?? "all"}>
-                <Link
-                  href={invitationsPath(lang, slug, inboxQuery({ status, cursor: null }))}
-                  aria-current={current ? "page" : undefined}
-                  className={cn(
-                    "inline-flex min-h-11 items-center rounded-full border px-4 text-small font-medium transition-colors duration-150 hover:bg-secondary",
-                    current && "border-primary bg-primary text-primary-foreground hover:bg-primary",
-                  )}
-                >
-                  {status ? partnerStatusLabels[status] : "All"}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
+      <TabLinks
+        label="Filter by status"
+        items={filters.map((status) => ({
+          key: status ?? "all",
+          href: invitationsPath(lang, slug, inboxQuery({ status, cursor: null })),
+          label: status ? partnerStatusLabels[status] : "All",
+          current: status === inbox.status,
+        }))}
+      />
       <Suspense key={inboxQuery(inbox)} fallback={<LoadingSkeleton rows={4} />}>
         <InvitationInbox
           lang={lang}

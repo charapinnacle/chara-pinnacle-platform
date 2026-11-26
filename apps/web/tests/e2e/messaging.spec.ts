@@ -348,7 +348,7 @@ test.describe("Conversations and messages (FR-P1)", () => {
         await expect(page.getByRole("heading", { name: "Page not found" }), address).toBeVisible();
       }
       await page.goto(`/en/dashboard/employer?org=${outsider.slug}`);
-      await expect(page.getByRole("link", { name: "Organisation" }).first()).toBeVisible();
+      await expect(page.getByRole("link", { name: "Dashboard" }).first()).toBeVisible();
       await expect(page.getByRole("link", { name: "Messages" })).toHaveCount(0);
     } finally {
       setRelease("release_messaging", true);
