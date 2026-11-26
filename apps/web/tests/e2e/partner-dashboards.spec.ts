@@ -81,8 +81,11 @@ async function expectFocusVisible(control: Locator): Promise<void> {
   expect(outline).not.toBe("none none");
 }
 
+// The listings are on the workforce profile; the dashboard counts them in one tile of Your activity.
 const listingRow = (page: Page, name: string) =>
-  page.getByRole("list", { name: "Available workforce listings" }).getByRole("listitem").filter({ hasText: name });
+  page.getByRole("list", { name: "Availability listings" }).getByRole("listitem").filter({ hasText: name });
+const listingsTile = (page: Page, label: "Capacity listings" | "Workforce listings") =>
+  page.getByRole("region", { name: "Your activity" }).getByRole("link", { name: new RegExp(`^\\d+ ${label}`) });
 
 // The release switch is set for the whole database and the dashboard function is withdrawn for a moment, so this file
 // is a project of its own after the data export spec (playwright.config.ts), and its tests run one after the other.
@@ -110,7 +113,7 @@ test.describe("Partner dashboards (FR-R3, FR-R4, release 2a)", () => {
     await signInAdmin(page, admin, secret, r.slug, "recruitment");
 
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(RECRUITMENT_QUESTION);
-    const capacity = page.getByRole("main").getByRole("link", { name: "Update recruiting capacity" });
+    const capacity = listingsTile(page, "Capacity listings");
     await expect(capacity).toHaveAttribute("href", `/en/org/${r.slug}/workforce-profile#availability-heading`);
     await tabTo(page, capacity);
     await expectFocusVisible(capacity);
@@ -119,14 +122,8 @@ test.describe("Partner dashboards (FR-R3, FR-R4, release 2a)", () => {
       await expect(page.getByRole("link", { name: absent })).toHaveCount(0);
     }
 
-    // AC8: three listings with their confirmation, the 61-day one warned in words, Confirm for the owner and admins.
-    const rows = page.getByRole("list", { name: "Available workforce listings" }).getByRole("listitem");
-    await expect(rows).toHaveCount(3);
-    await expect(rows.nth(0)).toContainText("Confirmed 61 days ago, on");
-    await expect(rows.filter({ hasText: "Not confirmed for 60 days or more" })).toHaveCount(1);
-    await expect(rows.nth(0)).toContainText("Not confirmed for 60 days or more");
-    await expect(rows.nth(2)).toContainText("Confirmed 2 days ago, on");
-    await expect(rows.getByRole("button", { name: /^Confirm/ })).toHaveCount(2);
+    // AC8: the three listings as one number with the ones that need a confirmation; the listings are on the profile.
+    await expect(capacity).toHaveAccessibleName(/^3 Capacity listings \d need confirming$/);
 
     // AC9: the plan, its free month and the usage of org_usage, with Manage plan for the admin.
     const plan = page.getByRole("region", { name: "Plan and usage" });
@@ -142,7 +139,7 @@ test.describe("Partner dashboards (FR-R3, FR-R4, release 2a)", () => {
     const reader = await signedIn(browser, member);
     await reader.page.goto(dashboardUrl("recruitment", r.slug));
     await expect(reader.page.getByRole("heading", { level: 1 })).toHaveText(RECRUITMENT_QUESTION);
-    await expect(listingRow(reader.page, "Not confirmed for 60 days or more")).toHaveCount(1);
+    await expect(listingsTile(reader.page, "Capacity listings")).toHaveAccessibleName(/^3 Capacity listings/);
     await expect(reader.page.getByRole("button", { name: /^Confirm/ })).toHaveCount(0);
     await expect(reader.page.getByRole("link", { name: "Update recruiting capacity" })).toHaveCount(0);
     const readerPlan = reader.page.getByRole("region", { name: "Plan and usage" });
@@ -230,7 +227,7 @@ test.describe("Partner dashboards (FR-R3, FR-R4, release 2a)", () => {
     }
   });
 
-  test("FR-R4 AC1, AC5: the staffing admin confirms a stale listing by keyboard and a member sees it without Confirm", async ({ page, browser }) => {
+  test("FR-R4 AC1, AC5: the dashboard counts a stale listing, the admin confirms it by keyboard on the profile, a member sees it without Confirm", async ({ page, browser }) => {
     test.setTimeout(150_000);
     const s = await listedPartner("staffing_company");
     seedListing(s.id, "7212", 75);
@@ -239,6 +236,8 @@ test.describe("Partner dashboards (FR-R3, FR-R4, release 2a)", () => {
 
     const reader = await signedIn(browser, member);
     await reader.page.goto(dashboardUrl("staffing", s.slug));
+    await expect(listingsTile(reader.page, "Workforce listings")).toHaveAccessibleName(/^1 Workforce listings 1 needs confirming$/);
+    await reader.page.goto(`/en/org/${s.slug}/workforce-profile`);
     const readerRow = listingRow(reader.page, "Welders and flame cutters, Philippines");
     await expect(readerRow).toContainText("Not confirmed for 60 days or more");
     await expect(readerRow.getByRole("button")).toHaveCount(0);
@@ -246,15 +245,12 @@ test.describe("Partner dashboards (FR-R3, FR-R4, release 2a)", () => {
     const secret = await enrollTotp(admin);
     await signInAdmin(page, admin, secret, s.slug, "staffing");
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(STAFFING_QUESTION);
-    const add = page.getByRole("main").getByRole("link", { name: "Add workforce" });
-    await expect(add).toHaveAttribute("href", `/en/org/${s.slug}/workforce-profile#availability-heading`);
-    await tabTo(page, add);
-    await expectFocusVisible(add);
+    const tile = listingsTile(page, "Workforce listings");
+    await expect(tile).toHaveAttribute("href", `/en/org/${s.slug}/workforce-profile#availability-heading`);
+    await tabTo(page, tile);
+    await expectFocusVisible(tile);
+    await tile.click();
     const row = listingRow(page, "Welders and flame cutters, Philippines");
-    // The listing starts in ten days, so none of its workers is available now, as the available workforce search counts.
-    const startsOn = new Intl.DateTimeFormat("en-GB", { dateStyle: "long", timeZone: "UTC" }).format(new Date(Date.now() + 10 * 86_400_000));
-    await expect(row).toContainText(`25 available from ${startsOn}, 5 per month`);
-    await expect(row).not.toContainText("available now");
     const confirm = row.getByRole("button", { name: "Confirm the listing for Welders and flame cutters from Philippines" });
     await confirm.focus();
     await page.keyboard.press("Enter");
@@ -280,9 +276,9 @@ test.describe("Partner dashboards (FR-R3, FR-R4, release 2a)", () => {
 
   test("FR-R3 AC6, AC7, FR-R4 AC7: a newly approved company sees only released blocks, each with guidance", async ({ browser }) => {
     test.setTimeout(120_000);
-    for (const [type, question, action] of [
-      ["staffing_company", STAFFING_QUESTION, "Add workforce"],
-      ["recruitment_company", RECRUITMENT_QUESTION, "Update recruiting capacity"],
+    for (const [type, question] of [
+      ["staffing_company", STAFFING_QUESTION],
+      ["recruitment_company", RECRUITMENT_QUESTION],
     ] as const) {
       const partner = await partnerWithCompany(type);
       execute(
@@ -294,16 +290,10 @@ test.describe("Partner dashboards (FR-R3, FR-R4, release 2a)", () => {
       const segment = type === "staffing_company" ? "staffing" : "recruitment";
       await expect(owner.page).toHaveURL(dashboardUrl(segment, partner.slug));
       await expect(owner.page.getByRole("heading", { level: 1 })).toHaveText(question);
-      // A recruitment company's listings are its recruiting capacity, a staffing company's its available workforce.
-      const workforce = owner.page.getByRole("region", {
-        name: type === "staffing_company" ? "Available workforce" : "Recruiting capacity",
-      });
-      await expect(workforce).toContainText(
-        type === "staffing_company"
-          ? "Add the workers you can supply, by country and occupation."
-          : "Add how many candidates you can put forward and recruit each month, by country and occupation.",
+      // A recruitment company's listings are its recruiting capacity, a staffing company's its workforce; none yet.
+      await expect(listingsTile(owner.page, type === "staffing_company" ? "Workforce listings" : "Capacity listings")).toHaveAccessibleName(
+        /^0 /,
       );
-      await expect(workforce.getByRole("link", { name: action })).toBeVisible();
       const activity = owner.page.getByRole("region", { name: "Your activity" });
       await expect(activity.getByRole("link", { name: /^0 Profile views, 30 days/ })).toBeVisible();
       await expect(activity.getByRole("link", { name: /^0 Current licences/ })).toHaveAttribute(
@@ -354,7 +344,6 @@ test.describe("Partner dashboards (FR-R3, FR-R4, release 2a)", () => {
     await reader.page.goto(dashboardUrl("recruitment", r.slug), { waitUntil: "commit" });
     await expect(reader.page.getByRole("status", { name: "Loading" }).first()).toBeVisible();
     await expect(reader.page.getByRole("heading", { name: "Your company is listed", level: 2 })).toBeVisible();
-    await expect(listingRow(reader.page, "Welders and flame cutters, Philippines")).toBeVisible();
     await expect(reader.page.getByRole("region", { name: "Next actions" })).toHaveCount(0);
     await expect(reader.page.getByRole("region", { name: "Next actions" })).toBeVisible({ timeout: 15_000 });
     await held;
@@ -365,7 +354,6 @@ test.describe("Partner dashboards (FR-R3, FR-R4, release 2a)", () => {
       await expect(reader.page.getByRole("heading", { name: "The figures of your company could not be loaded", level: 2 })).toBeVisible();
       await expect(reader.page.getByText("Check your connection and try again.").first()).toBeVisible();
       await expect(reader.page.getByRole("heading", { name: "Your company is listed", level: 2 })).toBeVisible();
-      await expect(listingRow(reader.page, "Welders and flame cutters, Philippines")).toBeVisible();
       await expect(reader.page.getByText(/permission denied|get_partner_dashboard/)).toHaveCount(0);
       await expectAccessibleAtBothWidths(reader.page);
     } finally {

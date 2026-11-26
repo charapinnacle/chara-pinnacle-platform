@@ -237,36 +237,25 @@ describe("profile views and licences as numbers (FR-R3 AC7, AC10, FR-R4 AC9)", (
   });
 });
 
-describe("available workforce (FR-R3 AC7, AC8, FR-R4 AC5, AC7)", () => {
-  it("lists every listing with its confirmation, warns in words on a stale one and offers Confirm to managers only", async () => {
+describe("the listings as one number (FR-R3 AC7, AC8, FR-R4 AC5, AC7)", () => {
+  const availability = "/en/org/manila-skills/workforce-profile#availability-heading";
+
+  it("counts the listings and those that need a confirmation, and leads to them on the workforce profile", async () => {
     listingsMock.mockResolvedValue([listing("l61", 61), listing("l59", 59), listing("l2", 2)]);
     let html = await render();
-    expect(html.match(/<li class="grid gap-2 rounded-xl/g)).toHaveLength(3);
-    expect(html.match(/Not confirmed for 60 days or more/g)).toHaveLength(1);
-    expect(html).toContain("Confirmed 61 days ago, on");
-    expect(html).toContain("Confirmed 2 days ago, on");
-    expect(html.match(/>Confirm<span class="sr-only normal-case"> the listing for Welders and flame cutters from Philippines/g)).toHaveLength(2);
-    html = await render({ role: "member" });
-    expect(html).toContain("Not confirmed for 60 days or more");
-    expect(html).not.toContain(">Confirm<span");
+    expect(html).toMatch(tile(availability, "3", "Capacity listings"));
+    expect(html).toContain("2 need confirming");
+    expect(html, "the listings themselves are on the workforce profile").not.toContain("Confirmed 2 days ago");
+    html = await render({ type: "staffing_company" });
+    expect(html).toMatch(tile(availability, "3", "Workforce listings"));
   });
 
-  it("guides an empty company to add its workforce", async () => {
+  it("says a plan without listings instead of asking for them", async () => {
     listingsMock.mockResolvedValue([]);
-    let html = await render({ type: "staffing_company" });
-    expect(html).toContain("Add the workers you can supply, by country and occupation.");
-    expect(html).toMatch(/<a[^>]*href="\/en\/org\/manila-skills\/workforce-profile#availability-heading"[^>]*>(?:<svg[\s\S]*?<\/svg>)?Add workforce/);
-    html = await render({ role: "member", type: "staffing_company" });
-    expect(html).toContain("Your owner or an administrator lists the workers your company can supply");
-  });
-
-  it("calls a recruitment company's listings its recruiting capacity", async () => {
-    listingsMock.mockResolvedValue([]);
-    const html = await render({ type: "recruitment_company" });
-    expect(html).toMatch(/<h2 id="workforce-heading"[^>]*>Recruiting capacity<\/h2>/);
-    expect(html).toContain("No recruiting capacity listed yet");
-    expect(html).toContain("Add how many candidates you can put forward and recruit each month, by country and occupation.");
-    expect(html).not.toContain("Add the workers you can supply");
+    usageMock.mockResolvedValue({ planName: "Free", items: { workforce_listings: { used: 0, limit: 0, applies: true, resetsAt: null } } });
+    const html = await render({ type: "staffing_company" });
+    expect(html).toMatch(tile(availability, "0", "Workforce listings"));
+    expect(html).toContain("Not in your plan");
   });
 });
 
@@ -308,7 +297,7 @@ describe("loading and partial failure (FR-R3 AC11, FR-R4 AC10)", () => {
     figuresMock.mockResolvedValue(figures());
     listingsMock.mockRejectedValue(new Error("down"));
     html = await render();
-    expect(html).toContain("The available workforce could not be loaded");
+    expect(html, "a failed listings read leaves its tile out and keeps the rest").not.toContain("Capacity listings");
     expect(html).toContain("Next actions");
     listingsMock.mockResolvedValue([listing("l1", 2)]);
     reviewMock.mockRejectedValue(new Error("down"));

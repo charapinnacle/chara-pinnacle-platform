@@ -3,7 +3,6 @@ import { DateText } from "@/components/dashboard/date-text";
 import { Panel } from "@/components/dashboard/panel";
 import { PartnerActivity } from "@/components/dashboard/partner-activity";
 import { PartnerReviewCard } from "@/components/dashboard/partner-review-card";
-import { PartnerWorkforceListings } from "@/components/dashboard/partner-workforce-listings";
 import { StatusBadge } from "@/components/feedback/status-badge";
 import { Notice } from "@/components/forms/notice";
 import { TextLink } from "@/components/forms/text-link";
@@ -29,10 +28,10 @@ import { getUnreadMessageCounts } from "@/lib/dal/messaging";
 import { hasVerifiedTotpFactor } from "@/lib/dal/mfa";
 import { getPartnerFigures } from "@/lib/dal/partner-dashboard";
 import { getPartnerReview, getReviewOutcome, getReviewTargetDays } from "@/lib/dal/partner-review";
-import { getCountries, getOccupations } from "@/lib/dal/reference";
 import { isReleased } from "@/lib/dal/release";
 import { getOrgUsage } from "@/lib/dal/usage";
 import { getAvailabilityRules, getWorkforceListings } from "@/lib/dal/workforce-availability";
+import { listingFreshness } from "@/lib/workforce/freshness";
 import {
   billingPath,
   companyDashboardPath,
@@ -51,13 +50,6 @@ type PartnerDashboardProps = {
   user: { aal: string };
   organization: { id: string; slug: string; displayName: string; role: MemberRole; type: PartnerType };
 };
-
-// The way each partner type adds to its capacity (spec §30): Update Workforce Capacity for a recruitment company, Add
-// Workforce for a staffing company. Both open the availability of the workforce profile, where listings are added.
-const capacityAction = {
-  recruitment_company: "Update recruiting capacity",
-  staffing_company: "Add workforce",
-} as const satisfies Record<PartnerType, string>;
 
 type Links = Record<NextActionTarget, string>;
 
@@ -194,7 +186,6 @@ export async function PartnerDashboard({ lang, user, organization }: PartnerDash
     company: partnerStepPath(lang, "company"),
     commitment: `${workforceProfilePath(lang, slug)}#${COMMITMENT_REASON_ID}`,
   };
-  const action = { label: capacityAction[type], href: availabilityHref };
 
   const figures = getPartnerFigures(id);
   const jobOrdersReleased = isReleased("release_job_orders");
@@ -206,7 +197,12 @@ export async function PartnerDashboard({ lang, user, organization }: PartnerDash
     ([state]) => (state && state.listedAt !== null && state.status !== "declined" ? getFollowerCount(id) : null),
     () => null,
   );
-  const listings = Promise.all([getWorkforceListings(id), getAvailabilityRules(), getOccupations(), getCountries()]);
+  // The listings as one number: how many, and how many need a confirmation to stay in search (FR-K3); the listings
+  // themselves are on the workforce profile.
+  const listings = Promise.all([getWorkforceListings(id), getAvailabilityRules()]).then(([rows, rules]) => {
+    const at = new Date();
+    return { count: rows.length, needConfirming: rows.filter((row) => listingFreshness(row.confirmedAt, at, rules).state !== "fresh").length };
+  });
   const [twoStepDone, jobOrders, submissionsOn, messaging] = await Promise.all([
     planLocked ? hasVerifiedTotpFactor(lang) : false,
     jobOrdersReleased,
@@ -221,36 +217,8 @@ export async function PartnerDashboard({ lang, user, organization }: PartnerDash
   const submissions = jobOrders && submissionsOn;
   const usageKeys = planUsageKeys({ jobOrders, submissions });
   const plan = planLocked ? null : Promise.all([getDashboardPlan(id), getOrgUsage(id, usageKeys)]);
-  const now = new Date().toISOString();
 
   const recruitment = type === "recruitment_company";
-  // The listings: a staffing company's available workforce leads its work, a recruitment company's recruiting capacity
-  // follows its job orders.
-  const workforceSection = (
-    <section aria-labelledby="workforce-heading" className="grid gap-4">
-      <h2 id="workforce-heading" className="text-h2">
-        {organization.type === "recruitment_company" ? "Recruiting capacity" : "Available workforce"}
-      </h2>
-      <Panel promise={listings} errorTitle="The available workforce could not be loaded">
-        {([rows, rules, occupations, countries]) => (
-          <PartnerWorkforceListings
-            slug={slug}
-            canManage={canManage}
-            listings={rows}
-            names={{
-              occupations: Object.fromEntries(occupations.map((item) => [item.code, item.label])),
-              countries: Object.fromEntries(countries.map((item) => [item.code, item.name])),
-            }}
-            rules={rules}
-            action={action}
-            now={now}
-            recruiter={organization.type === "recruitment_company"}
-          />
-        )}
-      </Panel>
-    </section>
-  );
-
   return (
     <div className="grid gap-section">
       <PageHeader
@@ -319,8 +287,6 @@ export async function PartnerDashboard({ lang, user, organization }: PartnerDash
         )}
       </Panel>
 
-      {recruitment ? null : workforceSection}
-
       <Panel promise={figures} errorTitle="The figures of your company could not be loaded" quiet>
         {(value) => (
           <PartnerActivity
@@ -346,11 +312,16 @@ export async function PartnerDashboard({ lang, user, organization }: PartnerDash
               viewsHref: workforceProfilePreviewPath(lang, slug),
               followers,
             }}
+            listings={{
+              summary: listings,
+              href: availabilityHref,
+              label: recruitment ? "Capacity listings" : "Workforce listings",
+              notInPlan: plan ? plan.then(([, usage]) => usage.items.workforce_listings?.limit === 0, () => false) : Promise.resolve(false),
+            }}
           />
         )}
       </Panel>
 
-      {recruitment ? workforceSection : null}
     </div>
   );
 }

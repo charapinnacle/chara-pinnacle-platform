@@ -29,6 +29,14 @@ type PartnerActivityProps = {
     viewsHref: string;
     followers: Promise<FollowerCount | null>;
   };
+  // The available workforce (staffing) or recruiting capacity (recruitment) as one number; notInPlan when the plan has
+  // no listings, so the tile says so instead of asking for them.
+  listings: {
+    summary: Promise<{ count: number; needConfirming: number }>;
+    href: string;
+    label: string;
+    notInPlan: Promise<boolean>;
+  };
 };
 
 function Tile({ href, count, label, hint }: { href: string; count: number | string | null; label: string; hint?: string }) {
@@ -60,6 +68,7 @@ export function PartnerActivity({
   findWorkersHref,
   unread,
   company,
+  listings,
 }: PartnerActivityProps) {
   const responses = network
     ? network.responsesOpen + network.responsesShortlisted + network.responsesSelected + network.responsesDeclined
@@ -128,6 +137,22 @@ export function PartnerActivity({
             }
           />
         ) : null}
+        <Panel promise={Promise.all([listings.summary, listings.notInPlan])} errorTitle="The listings could not be loaded" quiet>
+          {([summary, notInPlan]) => (
+            <Tile
+              href={listings.href}
+              count={summary.count}
+              label={listings.label}
+              hint={
+                summary.needConfirming > 0
+                  ? `${formatCount(summary.needConfirming)} ${summary.needConfirming === 1 ? "needs" : "need"} confirming`
+                  : summary.count === 0 && notInPlan
+                    ? "Not in your plan"
+                    : undefined
+              }
+            />
+          )}
+        </Panel>
         <Tile
           href={company.licencesHref}
           count={company.licencesCurrent}
