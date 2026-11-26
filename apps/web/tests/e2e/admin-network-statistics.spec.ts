@@ -182,6 +182,8 @@ test.describe("Network statistics for administrators (FR-S2, release 2a)", () =>
     } finally {
       execute(`grant execute on function ${FUNCTION} to authenticated`);
     }
+    // An error toast stays until dismissed and may cover the button, as it would for a person.
+    for (const dismiss of await page.getByRole("button", { name: "Dismiss notification" }).all()) await dismiss.click();
     await network.getByRole("button", { name: "Try again" }).click();
     await expect(network.getByText("Every count of this period is below the privacy threshold of 5, so the counts are hidden")).toBeVisible();
   });

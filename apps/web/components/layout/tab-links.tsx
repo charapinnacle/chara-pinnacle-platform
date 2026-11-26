@@ -4,10 +4,11 @@ import { cn } from "@/lib/utils";
 export type TabLink = { key: string; href: string; label: React.ReactNode; current: boolean };
 
 // Links that switch the view of one page (a status filter, a source, a period): one underlined row, the current one in
-// ink, that scrolls sideways on a phone instead of wrapping.
+// ink, that scrolls sideways on a phone instead of wrapping. Inline-size containment keeps the row's width out of its
+// parents' sizing, so a flex or grid parent never grows to fit the whole row.
 export function TabLinks({ label, items, className }: { label: string; items: readonly TabLink[]; className?: string }) {
   return (
-    <nav aria-label={label} className={cn("-mx-4 min-w-0 overflow-x-auto px-4 sm:mx-0 sm:px-0", className)}>
+    <nav aria-label={label} className={cn("-mx-4 w-[calc(100%+2rem)] overflow-x-auto px-4 [contain:inline-size] sm:mx-0 sm:w-full sm:px-0", className)}>
       <ul className="flex min-w-max gap-1 border-b">
         {items.map((item) => (
           <li key={item.key}>
