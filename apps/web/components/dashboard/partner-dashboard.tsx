@@ -212,6 +212,18 @@ function LicencesCard({ figures, href, canManage }: { figures: PartnerFigures; h
   );
 }
 
+// A titled group of dashboard cards in an even grid: every card of a row has the height of the tallest.
+function DashboardSection({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
+  return (
+    <section aria-labelledby={id} className="grid gap-4">
+      <h2 id={id} className="text-h2">
+        {title}
+      </h2>
+      <div className="animate-stagger grid gap-4 md:grid-cols-2 xl:grid-cols-3">{children}</div>
+    </section>
+  );
+}
+
 function NetworkCard({ followers, lang }: { followers: FollowerCount; lang: string }) {
   return (
     <BlockCard id="network-heading" title="Your network">
@@ -366,6 +378,34 @@ export async function PartnerDashboard({ lang, user, organization }: PartnerDash
   const plan = planLocked ? null : Promise.all([getDashboardPlan(id), getOrgUsage(id, usageKeys)]);
   const now = new Date().toISOString();
 
+  const recruitment = type === "recruitment_company";
+  // The listings: a staffing company's available workforce leads its work, a recruitment company's recruiting capacity
+  // follows its job orders.
+  const workforceSection = (
+    <section aria-labelledby="workforce-heading" className="grid gap-4">
+      <h2 id="workforce-heading" className="text-h2">
+        {organization.type === "recruitment_company" ? "Recruiting capacity" : "Available workforce"}
+      </h2>
+      <Panel promise={listings} errorTitle="The available workforce could not be loaded">
+        {([rows, rules, occupations, countries]) => (
+          <PartnerWorkforceListings
+            slug={slug}
+            canManage={canManage}
+            listings={rows}
+            names={{
+              occupations: Object.fromEntries(occupations.map((item) => [item.code, item.label])),
+              countries: Object.fromEntries(countries.map((item) => [item.code, item.name])),
+            }}
+            rules={rules}
+            action={action}
+            now={now}
+            recruiter={organization.type === "recruitment_company"}
+          />
+        )}
+      </Panel>
+    </section>
+  );
+
   return (
     <div className="grid gap-section">
       <PageHeader
@@ -446,20 +486,34 @@ export async function PartnerDashboard({ lang, user, organization }: PartnerDash
       </Panel>
 
       <Panel promise={figures} errorTitle="The figures of your company could not be loaded">
+        {(value) => <NextActionsCard figures={value} canManage={canManage} links={links} type={organization.type} />}
+      </Panel>
+
+      {recruitment ? null : workforceSection}
+
+      <Panel promise={figures} errorTitle="The figures of your company could not be loaded">
         {(value) => (
-          <div className="animate-stagger grid items-start gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <NextActionsCard figures={value} canManage={canManage} links={links} type={organization.type} />
-            {value.network ? (
+          <DashboardSection id="work-heading" title={recruitment ? "Your recruiting work" : "Your staffing work"}>
+            {value.network && recruitment ? (
               <>
                 <JobOrdersCard figures={value.network} type={type} lang={lang} slug={slug} />
-                <InvitationsCard figures={value.network} lang={lang} slug={slug} />
                 <ResponsesCard figures={value.network} type={type} lang={lang} slug={slug} />
               </>
             ) : null}
-            {value.submissionStages ? (
+            {value.submissionStages && recruitment ? (
               <SubmissionsCard stages={value.submissionStages} organizationId={id} lang={lang} slug={slug} />
             ) : null}
+            {value.network ? <InvitationsCard figures={value.network} lang={lang} slug={slug} /> : null}
+            {value.network && !recruitment ? (
+              <>
+                <JobOrdersCard figures={value.network} type={type} lang={lang} slug={slug} />
+                <ResponsesCard figures={value.network} type={type} lang={lang} slug={slug} />
+              </>
+            ) : null}
             {value.requests ? <PartnerRequestsCard requests={value.requests} lang={lang} slug={slug} /> : null}
+            {value.submissionStages && !recruitment ? (
+              <SubmissionsCard stages={value.submissionStages} organizationId={id} lang={lang} slug={slug} />
+            ) : null}
             {messaging ? (
               unread ? (
                 <Panel promise={unread} errorTitle="Your unread messages could not be loaded">
@@ -477,40 +531,25 @@ export async function PartnerDashboard({ lang, user, organization }: PartnerDash
                 billingHref={billingHref}
               />
             ) : null}
-            <ProfileCard figures={value} lang={lang} slug={slug} canManage={canManage} />
-            <ViewsCard figures={value} billingHref={billingHref} />
-            <LicencesCard figures={value} href={licencesHref} canManage={canManage} />
-            <TeamCard href={membersPath(lang, slug)} canManage={canManage} />
-          </div>
+          </DashboardSection>
         )}
       </Panel>
 
-      <Panel promise={followers} errorTitle="The follower count could not be loaded">
-        {(value) => (value ? <NetworkCard followers={value} lang={lang} /> : null)}
-      </Panel>
+      {recruitment ? workforceSection : null}
 
-      <section aria-labelledby="workforce-heading" className="grid gap-4">
-        <h2 id="workforce-heading" className="text-h2">
-          {organization.type === "recruitment_company" ? "Recruiting capacity" : "Available workforce"}
-        </h2>
-        <Panel promise={listings} errorTitle="The available workforce could not be loaded">
-          {([rows, rules, occupations, countries]) => (
-            <PartnerWorkforceListings
-              slug={slug}
-              canManage={canManage}
-              listings={rows}
-              names={{
-                occupations: Object.fromEntries(occupations.map((item) => [item.code, item.label])),
-                countries: Object.fromEntries(countries.map((item) => [item.code, item.name])),
-              }}
-              rules={rules}
-              action={action}
-              now={now}
-              recruiter={organization.type === "recruitment_company"}
-            />
-          )}
-        </Panel>
-      </section>
+      <Panel promise={figures} errorTitle="The figures of your company could not be loaded">
+        {(value) => (
+          <DashboardSection id="company-heading" title="Your company">
+            <ProfileCard figures={value} lang={lang} slug={slug} canManage={canManage} />
+            <LicencesCard figures={value} href={licencesHref} canManage={canManage} />
+            <ViewsCard figures={value} billingHref={billingHref} />
+            <TeamCard href={membersPath(lang, slug)} canManage={canManage} />
+            <Panel promise={followers} errorTitle="The follower count could not be loaded">
+              {(followerCount) => (followerCount ? <NetworkCard followers={followerCount} lang={lang} /> : null)}
+            </Panel>
+          </DashboardSection>
+        )}
+      </Panel>
 
       {plan ? (
         <Panel promise={plan} errorTitle="The plan and its usage could not be loaded">
