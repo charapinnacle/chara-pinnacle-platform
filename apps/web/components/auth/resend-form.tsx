@@ -50,7 +50,7 @@ export function ResendForm() {
         type="email"
         autoComplete="email"
       />
-      <FormButton type="submit" busy={formState.isSubmitting}>
+      <FormButton fullWidth type="submit" busy={formState.isSubmitting}>
         {formState.isSubmitting ? "Sending..." : "Send a new link"}
       </FormButton>
     </form>

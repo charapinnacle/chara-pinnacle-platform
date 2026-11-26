@@ -45,14 +45,15 @@ describe("the analytics page (FR-R6 AC8)", () => {
     expect(html).toMatch(/>Responses sent<\/th>.*>6<\/span>/);
   });
 
-  it("offers the four periods as a labelled group of links, the current one marked", async () => {
+  it("offers the four periods as a labelled row of links, the current one marked", async () => {
     const html = await render({ period: "90d" });
-    expect(html).toContain('role="group" aria-labelledby="period-label"');
-    expect(html).toContain('id="period-label"');
+    expect(html).toContain('<nav aria-label="Period"');
     for (const [period, label] of [["7d", "Last 7 days"], ["30d", "Last 30 days"], ["12m", "Last 12 months"]]) {
       expect(html).toMatch(new RegExp(`href="/en/org/manila-skills/analytics\\?period=${period}"[^>]*>${label}</a>`));
     }
-    expect(html).toMatch(/<a aria-current="page"[^>]*href="\/en\/org\/manila-skills\/analytics\?period=90d">Last 90 days<\/a>/);
+    const current = /<a [^>]*>Last 90 days<\/a>/.exec(html)?.[0] ?? "";
+    expect(current).toContain('aria-current="page"');
+    expect(current).toContain('href="/en/org/manila-skills/analytics?period=90d"');
     expect(html.match(/aria-current/g)).toHaveLength(1);
   });
 

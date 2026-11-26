@@ -47,7 +47,7 @@ export default async function RequirementInvitationsPage({ params }: PageProps<"
   const kind = requirement.partnerNeed === "staffing" ? "staffing" : "recruitment";
 
   return (
-    <div className="grid w-full max-w-3xl gap-section">
+    <div className="grid w-full gap-section">
       <PageHeader
         title="Invitations"
         titleProps={{ id: HEADING_ID, tabIndex: -1 }}

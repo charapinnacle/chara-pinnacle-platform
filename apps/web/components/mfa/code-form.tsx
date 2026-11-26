@@ -79,7 +79,7 @@ export function CodeForm<TResult extends ServerResult>({
         inputMode="numeric"
         autoComplete="one-time-code"
       />
-      <FormButton type="submit" busy={formState.isSubmitting}>
+      <FormButton fullWidth type="submit" busy={formState.isSubmitting}>
         {formState.isSubmitting ? busyLabel : submitLabel}
       </FormButton>
     </form>

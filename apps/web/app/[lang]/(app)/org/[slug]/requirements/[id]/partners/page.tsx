@@ -46,7 +46,7 @@ export default async function RequirementPartnersPage({ params }: PageProps<"/[l
       : null;
 
   return (
-    <div className="grid w-full max-w-3xl gap-section">
+    <div className="grid w-full gap-section">
       <PageHeader
         title="Find partners for this requirement"
         breadcrumb={

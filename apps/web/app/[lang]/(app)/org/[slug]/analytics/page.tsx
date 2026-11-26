@@ -37,7 +37,7 @@ export default async function AnalyticsPage({ params, searchParams }: PageProps<
   ]);
 
   return (
-    <div className="grid w-full max-w-5xl gap-section">
+    <div className="grid w-full gap-section">
       <PageHeader
         title="Analytics"
         description="How your company does on the partner network: counts only, never who viewed your profile or acted."

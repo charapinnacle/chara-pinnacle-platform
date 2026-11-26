@@ -3,7 +3,6 @@ import Link from "next/link";
 import { FormButton } from "@/components/forms/form-button";
 import { AudienceLinks } from "@/components/layout/audience-links";
 import { LinkButton } from "@/components/layout/link-button";
-import { PostJobLabel } from "@/components/layout/post-job-label";
 import { SiteMenu } from "@/components/layout/site-menu";
 import { signOut } from "@/lib/actions/login";
 import { getPostJobHref } from "@/lib/dal/organizations";
@@ -14,7 +13,7 @@ import { homePath } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
 const linkClassName =
-  "inline-flex min-h-11 items-center rounded-lg px-3 text-small capitalize font-medium text-foreground transition-colors duration-150 hover:bg-secondary";
+  "inline-flex min-h-11 items-center rounded-lg px-3 text-small font-medium text-foreground transition-colors duration-150 hover:bg-secondary";
 
 const groupTitleClassName = "mb-1.5 text-eyebrow text-muted-foreground uppercase";
 
@@ -71,7 +70,7 @@ function MenuActions({ lang, area, postJobHref }: { lang: string; area: string |
     <div className="sticky bottom-0 -mx-5 mt-auto grid grid-cols-2 gap-2.5 border-t bg-background px-5 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
       {postJobHref ? (
         <LinkButton href={postJobHref} prefetch={false} className="col-span-2 xs:hidden">
-          <PostJobLabel />
+          Post a job
         </LinkButton>
       ) : null}
       {area ? (
@@ -115,7 +114,7 @@ export async function PublicNav({ lang }: { lang: string }) {
           {postJobHref ? (
             <li className="max-xs:hidden">
               <LinkButton href={postJobHref} prefetch={false} size="default" className="min-h-11 px-4 md:mx-1">
-                <PostJobLabel />
+                Post a job
               </LinkButton>
             </li>
           ) : null}
@@ -132,7 +131,7 @@ export async function PublicNav({ lang }: { lang: string }) {
               <li key={label}>
                 <Link
                   href={path ? `/${lang}/${path}` : `/${lang}`}
-                  className="flex min-h-13 items-center justify-between gap-3 text-lead capitalize font-medium transition-colors duration-150 hover:text-brand-ink"
+                  className="flex min-h-13 items-center justify-between gap-3 text-lead font-medium transition-colors duration-150 hover:text-brand-ink"
                 >
                   {label}
                   <ChevronRight aria-hidden className="size-4 shrink-0 text-muted-foreground" />
@@ -150,7 +149,7 @@ export async function PublicNav({ lang }: { lang: string }) {
           </div>
           <ul aria-labelledby="menu-later" className="flex flex-wrap gap-2">
             {network.later.map((feature) => (
-              <li key={feature} className="rounded-lg bg-secondary px-3 py-1.5 text-small capitalize text-muted-foreground">
+              <li key={feature} className="rounded-lg bg-secondary px-3 py-1.5 text-small text-muted-foreground">
                 {feature}
               </li>
             ))}

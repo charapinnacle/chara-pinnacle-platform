@@ -26,7 +26,7 @@ export default async function FollowingPage({ params, searchParams }: PageProps<
   const worker = user.accountKind === "worker";
 
   return (
-    <div className="grid w-full max-w-3xl gap-section">
+    <div className="grid w-full gap-section">
       <PageHeader
         title="Followed companies"
         titleProps={{ id: FOLLOWING_HEADING_ID, tabIndex: -1 }}

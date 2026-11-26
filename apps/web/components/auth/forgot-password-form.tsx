@@ -36,7 +36,7 @@ export function ForgotPasswordForm({ defaultEmail }: { defaultEmail?: string }) 
         type="email"
         autoComplete="username"
       />
-      <FormButton type="submit" busy={formState.isSubmitting}>
+      <FormButton fullWidth type="submit" busy={formState.isSubmitting}>
         {formState.isSubmitting ? "Sending..." : "Send reset link"}
       </FormButton>
     </form>

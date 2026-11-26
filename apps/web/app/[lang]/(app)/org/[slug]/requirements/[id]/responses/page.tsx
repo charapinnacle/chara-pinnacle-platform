@@ -31,7 +31,7 @@ export default async function RequirementResponsesPage({ params }: PageProps<"/[
   const responses = await listRequirementResponses(organization.id, requirement.id);
 
   return (
-    <div className="grid w-full max-w-3xl gap-section">
+    <div className="grid w-full gap-section">
       <PageHeader
         title="Responses"
         breadcrumb={

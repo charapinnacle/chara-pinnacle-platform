@@ -1,3 +1,4 @@
+import { TabLinks } from "@/components/layout/tab-links";
 import { Users } from "lucide-react";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
@@ -76,19 +77,15 @@ export default async function ApplicantsPage({ params, searchParams }: PageProps
     <ReadOnlyPlanNotice ended={ended} billingHref={organization.role === "member" ? null : billingPath(lang, slug)} otherwise={frozenText} />
   ) : null;
   const sourceNav = pipeline && !parsed.job ? (
-    <nav aria-label="Source" className="flex flex-wrap gap-x-6">
-      {(["direct", "submissions"] as const).map((source) => (
-        <TextLink
-          key={source}
-          standalone
-          href={source === "direct" ? applicantsPath(lang, slug) : submissionPipelinePath(lang, slug)}
-          aria-current={pipeline.source === source && !pipeline.requirement ? "page" : undefined}
-          className={pipeline.source === source && !pipeline.requirement ? "no-underline" : undefined}
-        >
-          {source === "direct" ? "Direct applications" : "Partner submissions"}
-        </TextLink>
-      ))}
-    </nav>
+    <TabLinks
+      label="Source"
+      items={(["direct", "submissions"] as const).map((source) => ({
+        key: source,
+        href: source === "direct" ? applicantsPath(lang, slug) : submissionPipelinePath(lang, slug),
+        label: source === "direct" ? "Direct applications" : "Partner submissions",
+        current: pipeline.source === source && !pipeline.requirement,
+      }))}
+    />
   ) : null;
 
   if (pipeline?.source === "submissions" && !parsed.job) {
@@ -123,19 +120,15 @@ export default async function ApplicantsPage({ params, searchParams }: PageProps
         {frozenNotice}
         {sourceNav}
         {requirement ? (
-          <nav aria-label="View" className="flex flex-wrap gap-x-6">
-            {(["list", "board"] as const).map((view) => (
-              <TextLink
-                key={view}
-                standalone
-                href={submissionPipelinePath(lang, slug, { requirement: requirement.id, view, stage: view === "list" ? pipeline.stage : null })}
-                aria-current={pipeline.view === view ? "page" : undefined}
-                className={pipeline.view === view ? "no-underline" : undefined}
-              >
-                {view === "list" ? "List" : "Board"}
-              </TextLink>
-            ))}
-          </nav>
+          <TabLinks
+            label="View"
+            items={(["list", "board"] as const).map((view) => ({
+              key: view,
+              href: submissionPipelinePath(lang, slug, { requirement: requirement.id, view, stage: view === "list" ? pipeline.stage : null }),
+              label: view === "list" ? "List" : "Board",
+              current: pipeline.view === view,
+            }))}
+          />
         ) : null}
         <SubmissionPipelineView
           lang={lang}
@@ -187,19 +180,15 @@ export default async function ApplicantsPage({ params, searchParams }: PageProps
       ) : null}
 
       {parsed.job ? (
-        <nav aria-label="View" className="flex flex-wrap gap-x-6">
-          {(["list", "board"] as const).map((view) => (
-            <TextLink
-              key={view}
-              standalone
-              href={applicantsPath(lang, slug, { job: parsed.job, view, stage: view === "list" ? parsed.stage : null })}
-              aria-current={parsed.view === view ? "page" : undefined}
-              className={parsed.view === view ? "no-underline" : undefined}
-            >
-              {view === "list" ? "List" : "Board"}
-            </TextLink>
-          ))}
-        </nav>
+        <TabLinks
+          label="View"
+          items={(["list", "board"] as const).map((view) => ({
+            key: view,
+            href: applicantsPath(lang, slug, { job: parsed.job, view, stage: view === "list" ? parsed.stage : null }),
+            label: view === "list" ? "List" : "Board",
+            current: parsed.view === view,
+          }))}
+        />
       ) : null}
 
       <BulkSelection key={JSON.stringify(parsed)} rows={bulkRows}>

@@ -1,10 +1,9 @@
 import { Band } from "@/components/public/band";
 import { TextLink } from "@/components/forms/text-link";
 import { LinkButton } from "@/components/layout/link-button";
-import { PostJobLabel } from "@/components/layout/post-job-label";
 import { EMPLOYERS_PATH } from "@/lib/public/navigation";
 
-// One calm line for an employer who arrived on the job seekers' page. Post a Job leads where the header's does and is left
+// One calm line for an employer who arrived on the job seekers' page. Post a job leads where the header's does and is left
 // out for whom the header offers none.
 export function EmployerBand({ lang, postJobHref }: { lang: string; postJobHref: string | null }) {
   return (
@@ -13,7 +12,7 @@ export function EmployerBand({ lang, postJobHref }: { lang: string; postJobHref:
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
         {postJobHref ? (
           <LinkButton href={postJobHref} prefetch={false}>
-            <PostJobLabel />
+            Post a job
           </LinkButton>
         ) : null}
         <TextLink href={`/${lang}/${EMPLOYERS_PATH}`} prefetch={false} standalone>

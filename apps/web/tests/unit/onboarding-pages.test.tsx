@@ -432,7 +432,7 @@ describe("the partner journey of onboarding (FR-J1)", () => {
     offerMock.mockResolvedValue(savedOffer);
     const html = await render(OnboardingPage);
     expect(html).toContain(">Commitments</h1>");
-    expect(html).toMatch(/<div[^>]*role="status"[^>]*>Only the owner of Manila Skills can accept the commitment\./);
+    expect(html).toMatch(/<div[^>]*role="status"[^>]*>.*?<div class="min-w-0 flex-1">Only the owner of Manila Skills can accept the commitment\./);
     expect(html).toContain("What this document will cover");
     expect(html).not.toContain("<form");
     expect(html).toMatch(/<a[^>]*href="\/en\/onboarding\?step=what-you-offer"[^>]*>What you offer<\/a>/);
