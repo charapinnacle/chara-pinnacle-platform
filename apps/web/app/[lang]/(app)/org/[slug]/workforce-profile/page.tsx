@@ -9,6 +9,7 @@ import { SuspendedOrganization } from "@/components/layout/suspended-organizatio
 import { AvailabilitySection } from "@/components/organization/availability-section";
 import { CommitmentGate } from "@/components/organization/commitment-gate";
 import { LicencesSection } from "@/components/organization/licences-section";
+import { StandardTermsForm, TrackRecordForm } from "@/components/organization/terms-and-record-forms";
 import { ModerationNotice } from "@/components/organization/moderation-notice";
 import { WhereYouServeForm } from "@/components/organization/where-you-serve-form";
 import { WorkforceOfferForm } from "@/components/organization/workforce-offer-form";
@@ -19,12 +20,14 @@ import { getOrganizationProfile } from "@/lib/dal/organizations";
 import { listMyAppeals } from "@/lib/dal/appeals";
 import { getPartnerProfileModeration } from "@/lib/dal/partner-profile";
 import { formatCount } from "@/lib/i18n/format";
-import { getCountries, getIndustries, getLanguages, getOccupations, type ReferenceItem } from "@/lib/dal/reference";
+import { getCountries, getCurrencies, getIndustries, getLanguages, getOccupations, type ReferenceItem } from "@/lib/dal/reference";
 import { isReleased } from "@/lib/dal/release";
 import { requireOrgRole } from "@/lib/dal/session";
 import { getUnenforcedAllowances, getUsagePrompts } from "@/lib/dal/usage";
 import { getAvailabilityRules, getListingCounts, getWorkforceListings } from "@/lib/dal/workforce-availability";
-import { getWorkforceOffer, workforceOfferDefaults } from "@/lib/dal/workforce-offer";
+import { getPartnerKind, getWorkforceOffer, workforceOfferDefaults } from "@/lib/dal/workforce-offer";
+import { getOwnStandardTerms, getOwnTrackRecord, getPublicTermsAndRecord } from "@/lib/dal/partner-terms";
+import { standardTermsLines, trackRecordLines } from "@/lib/partners/terms-and-record";
 import { billingPath, workforceProfilePath, workforceProfilePreviewPath } from "@/lib/routes";
 import { servedQuestion } from "@/lib/validation/geographies";
 import { LICENCE_STAFF_ONLY } from "@/lib/validation/licences";
@@ -63,6 +66,67 @@ async function Licences({
       profilePath={profilePath}
       key={initialCountry ?? ""}
     />
+  );
+}
+
+function Lines({ lines, empty }: { lines: string[]; empty: string }) {
+  if (lines.length === 0) return <p className="text-body text-muted-foreground">{empty}</p>;
+  return (
+    <ul className="grid gap-1 text-body">
+      {lines.map((line) => (
+        <li key={line} className="break-words">
+          {line}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// The standard terms, read in their own boundary with the currencies and the fee models of the company's kind; a member
+// reads them without the form.
+async function StandardTerms({
+  organization,
+  slug,
+  canManage,
+}: {
+  organization: { id: string; type: string };
+  slug: string;
+  canManage: boolean;
+}) {
+  const [terms, currencies, kind] = await Promise.all([
+    getOwnStandardTerms(organization.id),
+    getCurrencies(),
+    getPartnerKind(organization),
+  ]);
+  if (!canManage) return <Lines lines={terms ? standardTermsLines(terms) : []} empty="No standard terms stated" />;
+  return <StandardTermsForm slug={slug} kind={kind} terms={terms} currencies={currencies} />;
+}
+
+// The stated track record, with the hires counted on the platform, which the company cannot change.
+async function TrackRecord({
+  organizationId,
+  slug,
+  countries,
+  canManage,
+}: {
+  organizationId: string;
+  slug: string;
+  countries: ReferenceItem[];
+  canManage: boolean;
+}) {
+  const [record, counted] = await Promise.all([getOwnTrackRecord(organizationId), getPublicTermsAndRecord(slug)]);
+  return (
+    <div className="grid gap-4">
+      <p className="text-body">
+        <span className="font-semibold">Hires through Chara Pinnacle: {formatCount(counted?.record.platformHires ?? 0)}</span>{" "}
+        <span className="text-muted-foreground">(counted by Chara Pinnacle from the responses employers selected)</span>
+      </p>
+      {canManage ? (
+        <TrackRecordForm slug={slug} placementsLastYear={record.placementsLastYear} countriesPlaced={record.countriesPlaced} countries={countries} />
+      ) : (
+        <Lines lines={counted ? trackRecordLines(counted.record) : []} empty="No track record stated" />
+      )}
+    </div>
   );
 }
 
@@ -279,6 +343,34 @@ export default async function WorkforceProfilePage({ params, searchParams }: Pag
             rules={availabilityRules}
             billingHref={billingHref}
           />
+        </Suspense>
+      </section>
+      <section aria-labelledby="terms-heading" className="grid gap-6">
+        <div className="grid gap-2">
+          <h2 id="terms-heading" className="text-h2">
+            Standard terms
+          </h2>
+          <p className="text-body text-muted-foreground">
+            The fee you usually charge, shown on your public profile so employers can compare. Your response to a job order still
+            states the fee for that job order.
+          </p>
+        </div>
+        <Suspense fallback={<LoadingSkeleton rows={2} />}>
+          <StandardTerms organization={organization} slug={slug} canManage={organization.role !== "member"} />
+        </Suspense>
+      </section>
+      <section aria-labelledby="track-record-heading" className="grid gap-6">
+        <div className="grid gap-2">
+          <h2 id="track-record-heading" className="text-h2">
+            Track record
+          </h2>
+          <p className="text-body text-muted-foreground">
+            What your company has done so far. Your public profile shows these as stated by your company, next to the hires
+            counted by Chara Pinnacle.
+          </p>
+        </div>
+        <Suspense fallback={<LoadingSkeleton rows={2} />}>
+          <TrackRecord organizationId={organization.id} slug={slug} countries={countries} canManage={organization.role !== "member"} />
         </Suspense>
       </section>
       <section aria-labelledby="licences-heading" className="grid gap-6">

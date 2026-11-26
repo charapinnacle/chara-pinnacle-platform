@@ -113,10 +113,14 @@ test.describe("Public partner profile (FR-K4)", () => {
       "Where we serve",
       "Industries and occupations",
       "Workforce capacity",
+      "Standard terms",
+      "Track record",
       "Languages",
       "Commitment",
     ]);
     await expect(page.getByText("Operating since 2012")).toBeVisible();
+    await expect(page.getByRole("region", { name: "Standard terms" })).toContainText("No standard terms stated");
+    await expect(page.getByRole("region", { name: "Track record" })).toContainText("0 hires through Chara Pinnacle");
     await expect(page.getByText("We recruit skilled welders and electricians")).toBeVisible();
     await expect(page.getByText("International", { exact: true })).toBeVisible();
 

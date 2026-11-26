@@ -1313,6 +1313,62 @@ isOneToOne: false
       referencedColumns: ["organization_id"]
     }
                   ]
+                },"partner_standard_terms": {
+                  Row: {
+                    "fee_amount": number | null,"fee_currency": string | null,"fee_model": Database["public"]['Enums']["fee_model"],"guarantee_days": number | null,"min_assignment_weeks": number | null,"note": string | null,"organization_id": string,"updated_at": string
+                  }
+                  Insert: {
+                    "fee_amount"?: number | null,"fee_currency"?: string | null,"fee_model": Database["public"]['Enums']["fee_model"],"guarantee_days"?: number | null,"min_assignment_weeks"?: number | null,"note"?: string | null,"organization_id": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "fee_amount"?: number | null,"fee_currency"?: string | null,"fee_model"?: Database["public"]['Enums']["fee_model"],"guarantee_days"?: number | null,"min_assignment_weeks"?: number | null,"note"?: string | null,"organization_id"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "partner_standard_terms_fee_currency_fkey"
+      columns: ["fee_currency"]
+isOneToOne: false
+      referencedRelation: "currencies"
+      referencedColumns: ["code"]
+    },{
+      foreignKeyName: "partner_standard_terms_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: true
+      referencedRelation: "organizations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "partner_standard_terms_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: true
+      referencedRelation: "v_org_limits"
+      referencedColumns: ["organization_id"]
+    }
+                  ]
+                },"partner_track_records": {
+                  Row: {
+                    "countries_placed": (string)[],"organization_id": string,"placements_last_year": number | null,"updated_at": string
+                  }
+                  Insert: {
+                    "countries_placed"?: (string)[],"organization_id": string,"placements_last_year"?: number | null,"updated_at"?: string
+                  }
+                  Update: {
+                    "countries_placed"?: (string)[],"organization_id"?: string,"placements_last_year"?: number | null,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "partner_track_records_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: true
+      referencedRelation: "organizations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "partner_track_records_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: true
+      referencedRelation: "v_org_limits"
+      referencedColumns: ["organization_id"]
+    }
+                  ]
                 },"passport_shares": {
                   Row: {
                     "application_id": string | null,"consent_id": number,"created_at": string,"expires_at": string | null,"id": string,"organization_id": string,"revoked_at": string | null,"scope": NonNullable<Json>,"submission_id": string | null,"worker_user_id": string
@@ -2832,6 +2888,9 @@ isOneToOne: false
               "based_in_country": string,"based_in_country_name": string,"commitment_current": boolean,"description": string,"display_name": string,"founded_year": number,"industries": Json,"languages": Json,"listings": Json,"occupations": Json,"organization_type": Database["public"]['Enums']["organization_type"],"profile_updated_at": string,"recruitment_type": Database["public"]['Enums']["recruitment_preference"],"served_countries": Json,"service_types": (Database["public"]['Enums']["partner_service_type"])[],"slug": string,"source_countries": Json,"viewer_is_member": boolean,"website": string,"workforce_size_band": Database["public"]['Enums']["workforce_size_band"]
             }[]
                            },
+"get_partner_terms_and_record":
+{ Args: { "p_slug": string }; Returns: Json
+                           },
 "get_public_job":
 { Args: { "p_id": string }; Returns: {
               "accommodation": boolean,"city": string,"country": string,"country_code": string,"created_at": string,"description": string,"employer_company_slug": string,"employer_country": string,"employer_description": string,"employer_display_name": string,"employer_industry": string,"employer_website": string,"employment_type": Database["public"]['Enums']["employment_type"],"id": string,"industry": string,"occupation": string,"published_at": string,"recruitment_preference": Database["public"]['Enums']["recruitment_preference"],"required_experience_years": number,"salary_currency": string,"salary_max": number,"salary_min": number,"salary_period": Database["public"]['Enums']["salary_period"],"title": string,"visa_support": boolean
@@ -3346,6 +3405,12 @@ isOneToOne: false
                            },
 "set_organization_workforce_offer":
 { Args: { "p_founded_year"?: number,"p_industries": (string)[],"p_languages": (string)[],"p_occupations": (string)[],"p_org": string,"p_recruitment_type": Database["public"]['Enums']["recruitment_preference"],"p_service_types": (Database["public"]['Enums']["partner_service_type"])[],"p_workforce_size_band"?: Database["public"]['Enums']["workforce_size_band"] }; Returns: Json
+                           },
+"set_partner_standard_terms":
+{ Args: { "p_fee_amount"?: number,"p_fee_currency"?: string,"p_fee_model": Database["public"]['Enums']["fee_model"],"p_guarantee_days"?: number,"p_min_assignment_weeks"?: number,"p_note"?: string,"p_org": string }; Returns: undefined
+                           },
+"set_partner_track_record":
+{ Args: { "p_countries_placed"?: (string)[],"p_org": string,"p_placements_last_year"?: number }; Returns: undefined
                            },
 "set_requirement_capacity_tolerance":
 { Args: { "p_org": string,"p_percent": number,"p_requirement": string }; Returns: boolean
