@@ -18,7 +18,7 @@ import { isReleased } from "@/lib/dal/release";
 import { getInvitationPreview } from "@/lib/dal/team";
 import { logFault } from "@/lib/fault";
 import { defaultLocale } from "@/lib/i18n/locale";
-import { rememberInvitation } from "@/lib/invitation-cookie";
+import { INVITATION_METADATA, rememberInvitation } from "@/lib/invitation-cookie";
 import {
   forgetPendingEmail,
   offerPendingEmailAgain,
@@ -62,6 +62,7 @@ export async function signUp(
   const token = invitationTokenSchema.safeParse(invitation);
   const preview = token.success ? await getInvitationPreview(token.data) : null;
   if (preview && parsed.data.kind !== invitationAccounts[preview.organizationType].choice) return { message: GENERIC_FAILURE };
+  const invitationToKeep = token.success && kind === "company" && (preview !== null || !organizationType) ? token.data : null;
 
   const documents = await getSignupDocuments(kind, organizationType);
   const missing = unacceptedDocuments(documents, consents);
@@ -88,6 +89,7 @@ export async function signUp(
       data: {
         intended_account_kind: kind,
         ...(organizationType ? { intended_organization_type: organizationType } : {}),
+        ...(invitationToKeep ? { [INVITATION_METADATA]: invitationToKeep } : {}),
         pending_consents: documents.map((document) => ({
           purpose: document.slug,
           version: document.version,
@@ -104,7 +106,7 @@ export async function signUp(
     return refusal(error);
   }
   if (existing) await tellExistingAccount(email);
-  if (token.success && kind === "company" && (preview !== null || !organizationType)) await rememberInvitation(token.data);
+  if (invitationToKeep) await rememberInvitation(invitationToKeep);
   await rememberPendingEmail("signup", email);
   redirect(`/${defaultLocale}/verify-email`);
 }

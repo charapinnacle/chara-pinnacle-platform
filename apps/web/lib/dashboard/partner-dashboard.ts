@@ -214,11 +214,6 @@ export function usageAttention(usage: OrgUsage, key: string): "at_limit" | "over
   return state === "at_limit" || state === "over_limit" ? state : null;
 }
 
-// The 30-day view count as the page says it (FR-R3 AC10): a hidden small count is "fewer than 5", never the number.
-export function profileViewsText(figures: Pick<PartnerFigures, "profileViews" | "profileViewsFewerThan">): string {
-  if (figures.profileViewsFewerThan !== null) return `fewer than ${formatCount(figures.profileViewsFewerThan)}`;
-  return formatCount(figures.profileViews ?? 0);
-}
 
 
 

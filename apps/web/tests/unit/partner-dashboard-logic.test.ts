@@ -4,7 +4,6 @@ import {
   dashboardTarget,
   nextActions,
   planUsageKeys,
-  profileViewsText,
   usageAttention,
   usageLine,
   type PartnerFigures,
@@ -174,14 +173,6 @@ describe("usageAttention (FR-R1 AC2, AC8)", () => {
     };
     expect(usageAttention(free, "job_order_responses_per_month")).toBeNull();
     expect(usageAttention(free, "workforce_listings")).toBe("over_limit");
-  });
-});
-
-describe("profileViewsText (FR-R3 AC10)", () => {
-  it("never shows a hidden count", () => {
-    expect(profileViewsText({ profileViews: null, profileViewsFewerThan: 5 })).toBe("fewer than 5");
-    expect(profileViewsText({ profileViews: 7, profileViewsFewerThan: null })).toBe("7");
-    expect(profileViewsText({ profileViews: 1200, profileViewsFewerThan: null })).toBe("1,200");
   });
 });
 
