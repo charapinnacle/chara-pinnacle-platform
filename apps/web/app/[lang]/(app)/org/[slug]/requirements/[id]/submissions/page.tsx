@@ -81,7 +81,14 @@ export default async function RequirementSubmissionsPage({
         )}
       </PageHeader>
       <Suspense key={cursor ?? "first"} fallback={<LoadingSkeleton rows={4} />}>
-        <PartnerSubmissionList lang={lang} slug={slug} organizationId={organization.id} requirementId={target.requirementId} cursor={cursor} />
+        <PartnerSubmissionList
+          lang={lang}
+          slug={slug}
+          organizationId={organization.id}
+          requirementId={target.requirementId}
+          cursor={cursor}
+          canSubmit={target.open}
+        />
       </Suspense>
     </div>
   );

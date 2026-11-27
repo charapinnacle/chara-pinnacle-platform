@@ -93,7 +93,7 @@ type InputFieldProps<T extends FieldValues, N extends FieldPath<T>> = Omit<
   FormFieldProps<T, N>,
   "children"
 > &
-  Pick<React.ComponentProps<"input">, "type" | "autoComplete" | "inputMode" | "readOnly" | "maxLength" | "placeholder">;
+  Pick<React.ComponentProps<"input">, "type" | "autoComplete" | "inputMode" | "readOnly" | "maxLength" | "placeholder"> & { min?: string };
 
 export function InputField<T extends FieldValues, N extends FieldPath<T>>({
   type,
@@ -102,6 +102,7 @@ export function InputField<T extends FieldValues, N extends FieldPath<T>>({
   readOnly,
   maxLength,
   placeholder,
+  min,
   ...fieldProps
 }: InputFieldProps<T, N>) {
   return (
@@ -115,6 +116,7 @@ export function InputField<T extends FieldValues, N extends FieldPath<T>>({
             onChange={controlProps.onChange}
             onBlur={controlProps.onBlur}
             inputRef={controlProps.ref}
+            min={min}
             aria-invalid={controlProps["aria-invalid"]}
             aria-describedby={controlProps["aria-describedby"]}
           />

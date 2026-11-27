@@ -141,9 +141,11 @@ export function NotificationList({ lang, accountKind, items, renderedAt, nextHre
         <p className="text-small text-muted-foreground" aria-live="polite">
           {unread > 0 ? `${unread} unread on this page` : "Everything on this page is read"}
         </p>
-        <FormButton type="button" variant="secondary" className="w-auto" busy={pending} onClick={markAll}>
-          Mark all as read
-        </FormButton>
+        {unread > 0 ? (
+          <FormButton type="button" variant="secondary" className="w-auto" busy={pending} onClick={markAll}>
+            Mark all as read
+          </FormButton>
+        ) : null}
       </div>
       <ul className="grid gap-3" aria-label="Notifications">
         {items.map((item) => (

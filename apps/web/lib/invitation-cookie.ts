@@ -1,6 +1,7 @@
 import "server-only";
 import { cookies } from "next/headers";
 import { env } from "@/lib/env";
+import { createClient } from "@/lib/supabase/server";
 import { invitationTokenSchema } from "@/lib/validation/team";
 
 const NAME = "chara_invitation";
@@ -18,11 +19,19 @@ export async function rememberInvitation(token: string): Promise<void> {
   });
 }
 
+// The cookie of this browser, else the invitation the account was registered with (its user metadata): a person who
+// confirms the address on another device or in a mail app's browser still reaches the invitation, not a company form.
+// The token only ever joins the address it was sent to, which accept_invitation checks.
 export async function pendingInvitationToken(): Promise<string | null> {
-  const value = (await cookies()).get(NAME)?.value;
-  const parsed = invitationTokenSchema.safeParse(value);
-  return parsed.success ? parsed.data : null;
+  const fromCookie = invitationTokenSchema.safeParse((await cookies()).get(NAME)?.value);
+  if (fromCookie.success) return fromCookie.data;
+  const { data } = await (await createClient()).auth.getClaims();
+  const fromAccount = invitationTokenSchema.safeParse(data?.claims.user_metadata?.[INVITATION_METADATA]);
+  return fromAccount.success ? fromAccount.data : null;
 }
+
+// The key of the invitation in the user metadata of an account registered from an invitation link.
+export const INVITATION_METADATA = "invitation";
 
 export async function forgetInvitation(): Promise<void> {
   (await cookies()).delete(NAME);
