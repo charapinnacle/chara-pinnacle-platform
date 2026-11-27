@@ -16,6 +16,7 @@ import { requireOrgRole } from "@/lib/dal/session";
 import { jobOrderQuery, parseJobOrderParams } from "@/lib/job-orders/search-params";
 import { RANKING_PATH } from "@/lib/public/navigation";
 import { notificationSettingsPath } from "@/lib/routes";
+import { JobOrderTabs } from "@/components/layout/section-tabs";
 
 // No employer is named in the title or anywhere in the metadata of the marketplace (NFR-S11).
 export const metadata: Metadata = { title: "Job orders", robots: { index: false } };
@@ -56,6 +57,7 @@ export default async function JobOrdersPage({ params, searchParams }: PageProps<
           <TextLink href={notificationSettingsPath(lang, slug)}>switch on New job orders that fit</TextLink>.
         </p>
       </PageHeader>
+      <JobOrderTabs lang={lang} slug={slug} current="job-orders" />
 
       {ignored.length > 0 ? (
         <Notice tone="warning" role="alert">

@@ -56,7 +56,8 @@ export type NavIcon =
 
 // match is the address the link stands for: the page and everything below it, or only the page when exact is set. icon
 // names the picture the sidebar draws next to the label.
-export type NavLink = { label: string; href: string; match: string; icon: NavIcon; exact?: true };
+// also lists further pages the link stands for (a tab of its page, such as Invitations under Job orders).
+export type NavLink = { label: string; href: string; match: string; icon: NavIcon; exact?: true; also?: readonly string[] };
 
 export type Crumb = { label: string; href?: string };
 
@@ -121,14 +122,13 @@ function messagesLink(href: string): NavLink {
   return { label: "Messages", href, match: href, icon: "messages" };
 }
 
-// The pages of one organisation. Billing is for owners and administrators, as the page itself requires, and a suspended
-// organisation has none of them: each answers with a notice that it is suspended. A recruitment or staffing company has
-// its dashboard, its workforce profile and its team instead of vacancies and applicants (FR-J1, FR-K1). While release 2b
-// is on, an employer has its workforce requirements, where it follows its invitations and the responses, and a partner the
-// job order marketplace, Find employers, the invitations it received and the responses it sent (FR-N1, FR-L3, FR-O1,
-// FR-O2). While release 2a is on, both have their analytics (FR-R6). While release 2c is on, every organisation has its
-// conversations before the team (FR-P1). While Find Workers is released, both have it and its contact requests before the
-// analytics (FR-Q2, FR-Q3).
+// The pages of one organisation, one list. Billing is for owners and administrators,
+// as the page itself requires, and a suspended organisation has none of them: each answers with a notice that it is
+// suspended. A recruitment or staffing company has its dashboard, its workforce profile and its team instead of vacancies
+// and applicants (FR-J1, FR-K1). While release 2b is on, an employer has its workforce requirements and a partner Job orders
+// (with the invitations it received as a tab), Find employers and its Responses (with its candidate submissions as a tab)
+// (FR-N1, FR-L3, FR-O1, FR-O2). While release 2a is on, both have their analytics (FR-R6). While Find Workers is released,
+// both have it, its contact requests as a tab (FR-Q2, FR-Q3). The conversations (FR-P1) are the header's messages button.
 export function organizationLinks(
   lang: string,
   {
@@ -139,7 +139,6 @@ export function organizationLinks(
     jobOrders,
     candidateSubmissions,
     analytics,
-    messaging,
     findWorkers,
   }: Pick<
     NavOrganization,
@@ -147,18 +146,19 @@ export function organizationLinks(
   >,
 ): NavLink[] {
   if (suspended) return [];
+  // Contact requests are a tab of Find workers, and the conversations are behind the header's messages button, so neither
+  // has a sidebar item of its own.
   const workers: NavLink[] = findWorkers
     ? [
-        { label: "Find workers", href: findWorkersPath(lang, slug), match: findWorkersPath(lang, slug), icon: "workers" },
         {
-          label: "Contact requests",
-          href: orgContactRequestsPath(lang, slug),
-          match: orgContactRequestsPath(lang, slug),
-          icon: "contactRequests",
+          label: "Find workers",
+          href: findWorkersPath(lang, slug),
+          match: findWorkersPath(lang, slug),
+          also: [orgContactRequestsPath(lang, slug)],
+          icon: "workers",
         },
       ]
     : [];
-  const messages = messaging ? [messagesLink(messagesPath(lang, slug))] : [];
   const team: NavLink = { label: "Team", href: membersPath(lang, slug), match: membersPath(lang, slug), icon: "team" };
   const analyticsLinks: NavLink[] = analytics
     ? [{ label: "Analytics", href: analyticsPath(lang, slug), match: analyticsPath(lang, slug), icon: "analytics" }]
@@ -171,28 +171,33 @@ export function organizationLinks(
           match: `/${lang}/dashboard/${partnerSegment}`,
           icon: "dashboard",
         },
-        { label: "Workforce profile", href: workforceProfilePath(lang, slug), match: workforceProfilePath(lang, slug), icon: "workforce" },
         ...(jobOrders
           ? ([
-              { label: "Job orders", href: jobOrdersPath(lang, slug), match: jobOrdersPath(lang, slug), icon: "jobOrders" },
-              { label: "Find employers", href: findEmployersPath(lang, slug), match: findEmployersPath(lang, slug), icon: "employers" },
-              { label: "Invitations", href: invitationsPath(lang, slug), match: invitationsPath(lang, slug), icon: "invitations" },
-              { label: "Responses", href: responsesPath(lang, slug), match: responsesPath(lang, slug), icon: "responses" },
-            ] as const)
-          : []),
-        ...(jobOrders && candidateSubmissions
-          ? [
               {
-                label: "Submissions",
-                href: partnerSubmissionsPath(lang, slug),
-                match: partnerSubmissionsPath(lang, slug),
-                icon: "submissions",
-              } as const,
-            ]
+                label: "Job orders",
+                href: jobOrdersPath(lang, slug),
+                match: jobOrdersPath(lang, slug),
+                also: [invitationsPath(lang, slug)],
+                icon: "jobOrders",
+              },
+              { label: "Find employers", href: findEmployersPath(lang, slug), match: findEmployersPath(lang, slug), icon: "employers" },
+              {
+                label: "Responses",
+                href: responsesPath(lang, slug),
+                match: responsesPath(lang, slug),
+                also: candidateSubmissions ? [partnerSubmissionsPath(lang, slug)] : [],
+                icon: "responses",
+              },
+            ] satisfies NavLink[])
           : []),
         ...workers,
+        {
+          label: "Workforce profile",
+          href: workforceProfilePath(lang, slug),
+          match: workforceProfilePath(lang, slug),
+          icon: "workforce",
+        },
         ...analyticsLinks,
-        ...messages,
         team,
       ]
     : [
@@ -200,11 +205,17 @@ export function organizationLinks(
         { label: "Vacancies", href: jobsPath(lang, slug), match: `/${lang}/org/${slug}/jobs`, icon: "vacancies" },
         { label: "Applicants", href: applicantsPath(lang, slug), match: `/${lang}/org/${slug}/applicants`, icon: "applicants" },
         ...(jobOrders
-          ? [{ label: "Requirements", href: requirementsPath(lang, slug), match: requirementsPath(lang, slug), icon: "requirements" } as const]
+          ? [
+              {
+                label: "Requirements",
+                href: requirementsPath(lang, slug),
+                match: requirementsPath(lang, slug),
+                icon: "requirements",
+              } satisfies NavLink,
+            ]
           : []),
         ...workers,
         ...analyticsLinks,
-        ...messages,
         team,
       ];
   if (role !== "member") links.push({ label: "Billing", href: billingPath(lang, slug), match: billingPath(lang, slug), icon: "billing" });
@@ -238,8 +249,8 @@ export function isGatePage(lang: string, pathname: string): boolean {
   return pathname === `/${lang}/consent`;
 }
 
-export function isCurrent(pathname: string, { match, exact }: Pick<NavLink, "match" | "exact">): boolean {
-  return pathname === match || (!exact && pathname.startsWith(`${match}/`));
+export function isCurrent(pathname: string, { match, exact, also = [] }: Pick<NavLink, "match" | "exact" | "also">): boolean {
+  return [match, ...also].some((path) => pathname === path || (!exact && pathname.startsWith(`${path}/`)));
 }
 
 // The organisation a person is working in: the one named by the address (/org/<slug>/... or ?org=<slug>), else the first.

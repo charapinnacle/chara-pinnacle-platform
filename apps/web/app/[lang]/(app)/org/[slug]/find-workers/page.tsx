@@ -20,6 +20,7 @@ import { getCurrentUser, requireOrgRole } from "@/lib/dal/session";
 import { findWorkersQuery, parseFindWorkersParams } from "@/lib/find-workers/search-params";
 import { RANKING_PATH } from "@/lib/public/navigation";
 import { billingPath, requirementPath } from "@/lib/routes";
+import { WorkerTabs } from "@/components/layout/section-tabs";
 
 // No worker is named in the title or anywhere in the metadata (NFR-S9).
 export const metadata: Metadata = { title: "Find workers", robots: { index: false } };
@@ -82,6 +83,7 @@ export default async function FindWorkersPage({ params, searchParams }: PageProp
           ) : null}
         </p>
       </PageHeader>
+      <WorkerTabs lang={lang} slug={slug} current="find-workers" />
 
       {access.state === "refused" ? (
         <FindWorkersRefusalNotice reason={access.reason} context={context} />

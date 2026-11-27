@@ -13,6 +13,7 @@ import { isReleased } from "@/lib/dal/release";
 import { requireOrgRole } from "@/lib/dal/session";
 import { inboxQuery, invitationStatuses, parseInboxParams, partnerStatusLabels } from "@/lib/invitations/presentation";
 import { invitationsPath } from "@/lib/routes";
+import { JobOrderTabs } from "@/components/layout/section-tabs";
 
 export const metadata: Metadata = { title: "Invitations", robots: { index: false } };
 
@@ -35,6 +36,7 @@ export default async function InvitationsPage({ params, searchParams }: PageProp
         description="Workforce requirements employers invited your company to, newest first. Open one to read it and accept or decline."
         breadcrumb={<Breadcrumbs items={[organizationCrumb(lang, organization), { label: "Invitations" }]} />}
       />
+      <JobOrderTabs lang={lang} slug={slug} current="invitations" />
       <TabLinks
         label="Filter by status"
         items={filters.map((status) => ({

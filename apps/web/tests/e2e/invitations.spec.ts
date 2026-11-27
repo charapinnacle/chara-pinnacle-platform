@@ -511,12 +511,14 @@ test.describe("The invited partner (FR-O1 AC8, AC11, NFR-S11)", () => {
     expect(await competitor.page.content()).not.toContain(employer);
     await competitor.page.goto(inboxUrl(p2.slug));
     await expect(competitor.page.getByRole("heading", { name: "No invitations yet" })).toBeVisible();
-    await expect(competitor.page.getByRole("navigation", { name: "Main" }).first().getByRole("link", { name: "Invitations" })).toHaveAttribute(
+    // Invitations is a tab of Job orders, whose sidebar item stays current on it.
+    await expect(competitor.page.getByRole("navigation", { name: "Job orders" }).getByRole("link", { name: "Invitations" })).toHaveAttribute(
       "href",
       inboxUrl(p2.slug),
     );
     const partnerNavigation = competitor.page.getByRole("navigation", { name: "Main" }).first();
     await expect(partnerNavigation.getByRole("link", { name: "Job orders" })).toHaveAttribute("href", `/en/org/${p2.slug}/job-orders`);
+    await expect(partnerNavigation.getByRole("link", { name: "Job orders" })).toHaveAttribute("aria-current", "page");
     await expect(partnerNavigation.getByRole("link", { name: "Find employers" })).toHaveAttribute("href", `/en/org/${p2.slug}/find-employers`);
     await expectNoAxeViolations(competitor.page);
 
