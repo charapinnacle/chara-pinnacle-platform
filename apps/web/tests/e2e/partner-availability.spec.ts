@@ -194,7 +194,7 @@ test.describe("Workforce availability (FR-K3)", () => {
     expect(listings(id).map((row) => row.source_country)).toEqual(["PH"]);
   });
 
-  test("AC4: a member reads the listings without changing them, and a skeleton shows while they load", async ({ page }) => {
+  test("AC4: a member reads the listings without changing them, and the page skeleton shows while they load", async ({ page }) => {
     test.setTimeout(90_000);
     const { id, slug } = await partnerWithCompany("staffing_company");
     seedProfile(id);
@@ -216,9 +216,11 @@ test.describe("Workforce availability (FR-K3)", () => {
     const held = executeAsync("begin; lock table public.workforce_availability in access exclusive mode; select pg_sleep(4); commit;");
     await new Promise((resolve) => setTimeout(resolve, 1000));
     await page.goto(path, { waitUntil: "commit" });
-    await expect(section.getByRole("status", { name: "Loading" })).toBeVisible({ timeout: 15_000 });
+    // The section menu says whether a listing is added, so the page reads the listings before it shows.
+    await expect(page.getByRole("status", { name: "Loading" })).toBeVisible({ timeout: 15_000 });
+    await openProfileSection(page, "Available workforce");
     await expect(section.getByRole("listitem")).toContainText("Confirmed 3 days ago", { timeout: 15_000 });
-    await expect(section.getByRole("status", { name: "Loading" })).toHaveCount(0);
+    await expect(page.getByRole("status", { name: "Loading" })).toHaveCount(0);
     await held;
   });
 
