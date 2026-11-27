@@ -8,6 +8,7 @@ import { signInBrowser } from "./support/session";
 import { signInAtAal2 } from "./support/team";
 import { expect, test } from "./support/test";
 import type { TestUser } from "./support/test-user";
+import { openProfileSection } from "./support/workforce-profile";
 
 type Partner = { user: TestUser; id: string; slug: string };
 
@@ -239,6 +240,7 @@ test.describe("Partner dashboards (FR-R3, FR-R4, release 2a)", () => {
     await reader.page.goto(dashboardUrl("staffing", s.slug));
     await expect(listingsTile(reader.page, "Workforce listings")).toHaveAccessibleName(/^1 Workforce listings 1 needs confirming$/);
     await reader.page.goto(`/en/org/${s.slug}/workforce-profile`);
+    await openProfileSection(reader.page, "Available workforce");
     const readerRow = listingRow(reader.page, "Welders and flame cutters, Philippines");
     // The workforce profile names a stale listing "Hidden from search".
     await expect(readerRow).toContainText("Hidden from search");

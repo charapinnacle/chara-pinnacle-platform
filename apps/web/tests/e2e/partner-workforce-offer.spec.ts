@@ -258,7 +258,7 @@ test.describe("What you offer (FR-K2)", () => {
     await page.getByRole("radio", { name: "Local and international" }).check();
     await page.getByRole("button", { name: "Save what you offer" }).click();
     await expect(page.getByText("Workforce offer saved", { exact: true })).toBeVisible();
-    await expect(page).toHaveURL(path);
+    await expect(page).toHaveURL(`${path}#what-you-offer-heading`);
     expect(offer(id)).toBe(`${codes.slice(1).join(",")}|F|en|contract|both`);
     expect(offerAudits(id).at(-1)?.metadata).toEqual({
       occupations: { added: [codes[10]], removed: [codes[0]] },
