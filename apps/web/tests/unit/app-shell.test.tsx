@@ -67,14 +67,14 @@ describe("the header of the signed-in area", () => {
 
   it("offers an owner Billing and a member not, for the organisation in the address", () => {
     expect(mainLabels(nav({ accountKind: "company", organizations: [acme] }, "/en/org/acme/jobs"))).toEqual([
-      "Organisation",
+      "Dashboard",
       "Vacancies",
       "Applicants",
       "Team",
       "Billing",
     ]);
     expect(mainLabels(nav({ accountKind: "company", organizations: [beta] }, "/en/org/beta/jobs"))).toEqual([
-      "Organisation",
+      "Dashboard",
       "Vacancies",
       "Applicants",
       "Team",
@@ -197,8 +197,8 @@ describe("the layout of the signed-in area", () => {
     const props = await shell();
     expect(props.homeHref).toBe("/en/dashboard/employer");
     expect(props.headerActions?.props.organizations).toEqual([
-      { slug: "acme", displayName: "Acme Bau", role: "owner", roleLabel: "Owner", suspended: false },
-      { slug: "beta", displayName: "Beta GmbH", role: "admin", roleLabel: "Administrator", suspended: true },
+      { slug: "acme", displayName: "Acme Bau", role: "owner", roleLabel: "Employer · Owner", suspended: false },
+      { slug: "beta", displayName: "Beta GmbH", role: "admin", roleLabel: "Employer · Administrator", suspended: true },
     ]);
     expect(organizationsMock).toHaveBeenCalledWith("u1");
   });
@@ -213,8 +213,8 @@ describe("the layout of the signed-in area", () => {
     ]);
     const props = await shell();
     expect(props.headerActions?.props.organizations).toEqual([
-      { slug: "manila", displayName: "Manila Skills", role: "owner", roleLabel: "Owner", suspended: false, partnerSegment: "recruitment", analytics: true },
-      { slug: "staff", displayName: "Staff Co", role: "member", roleLabel: "Member", suspended: false, partnerSegment: "staffing", analytics: true },
+      { slug: "manila", displayName: "Manila Skills", role: "owner", roleLabel: "Recruitment company · Owner", suspended: false, partnerSegment: "recruitment", analytics: true },
+      { slug: "staff", displayName: "Staff Co", role: "member", roleLabel: "Staffing company · Member", suspended: false, partnerSegment: "staffing", analytics: true },
     ]);
     expect(props.homeHref).toBe("/en/dashboard/recruitment");
     navigation.pathname = "/en/org/manila/members";
@@ -222,11 +222,11 @@ describe("the layout of the signed-in area", () => {
     expect(html).toContain('href="/en/dashboard/recruitment?org=manila"');
     expect(html).toContain('href="/en/dashboard/staffing?org=staff"');
     expect(html).not.toContain("/en/dashboard/employer");
-    expect(mainLabels(html)).toEqual(["Organisation", "Workforce profile", "Analytics", "Team", "Billing"]);
+    expect(mainLabels(html)).toEqual(["Dashboard", "Workforce profile", "Analytics", "Team", "Billing"]);
     expect(html).toMatch(/<a [^>]*aria-current="page"[^>]*>Team<\/a>/);
     expect(html).not.toContain(">Vacancies<");
     navigation.pathname = "/en/org/staff/members";
-    expect(mainLabels(renderToStaticMarkup(props.headerActions))).toEqual(["Organisation", "Workforce profile", "Analytics", "Team"]);
+    expect(mainLabels(renderToStaticMarkup(props.headerActions))).toEqual(["Dashboard", "Workforce profile", "Analytics", "Team"]);
   });
 
   it("FR-O1: adds Invitations for a partner and Requirements for an employer while release 2b is on", async () => {
@@ -243,10 +243,10 @@ describe("the layout of the signed-in area", () => {
     expect(releasedMock).toHaveBeenCalledWith("release_job_orders");
     navigation.pathname = "/en/org/manila/invitations";
     const html = renderToStaticMarkup(props.headerActions);
-    expect(mainLabels(html)).toEqual(["Organisation", "Workforce profile", "Job orders", "Find employers", "Invitations", "Responses", "Analytics", "Team"]);
+    expect(mainLabels(html)).toEqual(["Dashboard", "Workforce profile", "Job orders", "Find employers", "Invitations", "Responses", "Analytics", "Team"]);
     expect(html).toMatch(/<a [^>]*aria-current="page"[^>]*>Invitations<\/a>/);
     navigation.pathname = "/en/org/acme/requirements";
-    expect(mainLabels(renderToStaticMarkup(props.headerActions))).toEqual(["Organisation", "Vacancies", "Applicants", "Requirements", "Analytics", "Team"]);
+    expect(mainLabels(renderToStaticMarkup(props.headerActions))).toEqual(["Dashboard", "Vacancies", "Applicants", "Requirements", "Analytics", "Team"]);
   });
 
   it("FR-O4: adds Submissions for a candidate and a partner while candidate submissions are released", async () => {
@@ -263,7 +263,7 @@ describe("the layout of the signed-in area", () => {
     ]);
     navigation.pathname = "/en/org/manila/submissions";
     html = renderToStaticMarkup((await shell()).headerActions);
-    expect(mainLabels(html)).toEqual(["Organisation", "Workforce profile", "Job orders", "Find employers", "Invitations", "Responses", "Submissions", "Analytics", "Team"]);
+    expect(mainLabels(html)).toEqual(["Dashboard", "Workforce profile", "Job orders", "Find employers", "Invitations", "Responses", "Submissions", "Analytics", "Team"]);
     releasedMock.mockImplementation(async (key: string) => key !== "release_candidate_submissions");
     userMock.mockResolvedValue({ ...user, accountKind: "worker" });
     expect(mainLabels(renderToStaticMarkup((await shell()).headerActions))).not.toContain("Submissions");
@@ -286,7 +286,7 @@ describe("the layout of the signed-in area", () => {
     navigation.pathname = "/en/org/manila/messages/6f1c2d52-8a64-4d0e-a1c4-6b0b1d7b4d11";
     html = renderToStaticMarkup(props.headerActions);
     expect(mainLabels(html)).toEqual([
-      "Organisation",
+      "Dashboard",
       "Workforce profile",
       "Job orders",
       "Find employers",
@@ -304,7 +304,7 @@ describe("the layout of the signed-in area", () => {
     expect(html).toContain('href="/en/org/manila/messages"');
     navigation.pathname = "/en/org/acme/messages";
     expect(mainLabels(renderToStaticMarkup(props.headerActions))).toEqual([
-      "Organisation",
+      "Dashboard",
       "Vacancies",
       "Applicants",
       "Requirements",

@@ -57,7 +57,7 @@ describe("the Messages link of a candidate", () => {
 describe("the header links of an organisation", () => {
   it.each(["owner", "admin"] as const)("give an %s Billing as well as the four pages of every member", (role) => {
     expect(labels(organizationLinks("en", { slug: "acme", role, suspended: false }))).toEqual([
-      "Organisation",
+      "Dashboard",
       "Vacancies",
       "Applicants",
       "Team",
@@ -67,7 +67,7 @@ describe("the header links of an organisation", () => {
 
   it("give a member no Billing, because the page answers a member with the forbidden page", () => {
     expect(labels(organizationLinks("en", { slug: "acme", role: "member", suspended: false }))).toEqual([
-      "Organisation",
+      "Dashboard",
       "Vacancies",
       "Applicants",
       "Team",
@@ -91,13 +91,13 @@ describe("the header links of an organisation", () => {
         ({ label, href, match }) => [label, href, match],
       ),
     ).toEqual([
-      ["Organisation", "/en/dashboard/recruitment?org=manila", "/en/dashboard/recruitment"],
+      ["Dashboard", "/en/dashboard/recruitment?org=manila", "/en/dashboard/recruitment"],
       ["Workforce profile", "/en/org/manila/workforce-profile", "/en/org/manila/workforce-profile"],
       ["Team", "/en/org/manila/members", "/en/org/manila/members"],
       ["Billing", "/en/org/manila/billing", "/en/org/manila/billing"],
     ]);
     expect(labels(organizationLinks("en", { slug: "staff", role: "member", suspended: false, partnerSegment: "staffing" }))).toEqual([
-      "Organisation",
+      "Dashboard",
       "Workforce profile",
       "Team",
     ]);
@@ -108,7 +108,7 @@ describe("the header links of an organisation", () => {
     expect(
       organizationLinks("en", { slug: "acme", role: "member", suspended: false, jobOrders: true }).map(({ label, href }) => [label, href]),
     ).toEqual([
-      ["Organisation", "/en/dashboard/employer?org=acme"],
+      ["Dashboard", "/en/dashboard/employer?org=acme"],
       ["Vacancies", "/en/org/acme/jobs"],
       ["Applicants", "/en/org/acme/applicants"],
       ["Requirements", "/en/org/acme/requirements"],
@@ -119,7 +119,7 @@ describe("the header links of an organisation", () => {
         ({ label, href }) => [label, href],
       ),
     ).toEqual([
-      ["Organisation", "/en/dashboard/recruitment?org=manila"],
+      ["Dashboard", "/en/dashboard/recruitment?org=manila"],
       ["Workforce profile", "/en/org/manila/workforce-profile"],
       ["Job orders", "/en/org/manila/job-orders"],
       ["Find employers", "/en/org/manila/find-employers"],
@@ -148,14 +148,14 @@ describe("the header links of an organisation", () => {
     expect(
       organizationLinks("en", { slug: "acme", role: "member", suspended: false, analytics: true }).map(({ label, href }) => [label, href]),
     ).toEqual([
-      ["Organisation", "/en/dashboard/employer?org=acme"],
+      ["Dashboard", "/en/dashboard/employer?org=acme"],
       ["Vacancies", "/en/org/acme/jobs"],
       ["Applicants", "/en/org/acme/applicants"],
       ["Analytics", "/en/org/acme/analytics"],
       ["Team", "/en/org/acme/members"],
     ]);
     expect(labels(organizationLinks("en", { slug: "manila", role: "owner", suspended: false, partnerSegment: "recruitment", analytics: true }))).toEqual([
-      "Organisation",
+      "Dashboard",
       "Workforce profile",
       "Analytics",
       "Team",
@@ -166,7 +166,7 @@ describe("the header links of an organisation", () => {
 
   it("FR-P1: add Messages before Team for every organisation while release 2c is on", () => {
     expect(labels(organizationLinks("en", { slug: "acme", role: "member", suspended: false, messaging: true }))).toEqual([
-      "Organisation",
+      "Dashboard",
       "Vacancies",
       "Applicants",
       "Messages",
@@ -182,7 +182,7 @@ describe("the header links of an organisation", () => {
 
   it("FR-Q2, FR-Q3: add Find workers and the contact requests before the analytics for employers and partners while Find Workers is released", () => {
     expect(labels(organizationLinks("en", { slug: "acme", role: "member", suspended: false, jobOrders: true, analytics: true, findWorkers: true }))).toEqual([
-      "Organisation",
+      "Dashboard",
       "Vacancies",
       "Applicants",
       "Requirements",
@@ -246,6 +246,14 @@ describe("the account links", () => {
     const [notifications] = accountLinks("en", "company", "acme");
     expect(notifications.href).toBe("/en/settings/notifications?org=acme");
     expect(isCurrent("/en/settings/notifications", notifications)).toBe(true);
+  });
+
+  it("give an owner or admin the company profile of the organisation, which the sidebar does not hold", () => {
+    expect(accountLinks("en", "company", "acme", "acme").map(({ label, href }) => [label, href])).toEqual([
+      ["Settings", "/en/settings/notifications?org=acme"],
+      ["Company profile", "/en/org/acme/profile"],
+      ["My reports", "/en/reports"],
+    ]);
   });
 });
 

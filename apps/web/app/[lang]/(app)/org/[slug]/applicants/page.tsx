@@ -83,7 +83,7 @@ export default async function ApplicantsPage({ params, searchParams }: PageProps
         key: source,
         href: source === "direct" ? applicantsPath(lang, slug) : submissionPipelinePath(lang, slug),
         label: source === "direct" ? "Direct applications" : "Partner submissions",
-        current: pipeline.source === source && !pipeline.requirement,
+        current: pipeline.source === source,
       }))}
     />
   ) : null;

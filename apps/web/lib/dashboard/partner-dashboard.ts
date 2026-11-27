@@ -1,8 +1,8 @@
 import { limitNoun, usageText, type OrgUsage } from "@/lib/billing/limits";
 import type { MatchingWorkers, PartnerRequests } from "@/lib/dashboard/connections";
+import type { SubmissionStatus } from "@/lib/submissions/presentation";
 import { classifyUsage } from "@/lib/billing/usage";
 import { formatCount } from "@/lib/i18n/format";
-import { partnerSubmissionLabels, type SubmissionStatus } from "@/lib/submissions/presentation";
 import { partnerSegments, segmentOf, type CompanySegment } from "@/lib/dashboard/segments";
 import type { PartnerType } from "@/lib/validation/sign-up";
 import type { ReviewStatus } from "@/lib/validation/partner-review";
@@ -89,17 +89,6 @@ export type NetworkFigures = {
   responsesDeclined: number;
 };
 
-// The outcomes of the approved submissions for one requirement (FR-O5 AC10).
-export type SubmissionOutcome = {
-  requirementId: string;
-  title: string;
-  submitted: number;
-  inProgress: number;
-  hired: number;
-  notSelected: number;
-  withdrawn: number;
-  lastChangeAt: string;
-};
 
 // What is still missing from the workforce profile, as the name of what to add (private.partner_profile_missing).
 export const missingPartLabels: Readonly<Record<string, string>> = {
@@ -225,46 +214,6 @@ export function usageAttention(usage: OrgUsage, key: string): "at_limit" | "over
   return state === "at_limit" || state === "over_limit" ? state : null;
 }
 
-// The 30-day view count as the page says it (FR-R3 AC10): a hidden small count is "fewer than 5", never the number.
-export function profileViewsText(figures: Pick<PartnerFigures, "profileViews" | "profileViewsFewerThan">): string {
-  if (figures.profileViewsFewerThan !== null) return `fewer than ${formatCount(figures.profileViewsFewerThan)}`;
-  return formatCount(figures.profileViews ?? 0);
-}
 
-// The statuses as the dashboard counts them, in the order a submission moves; a request the candidate has not answered
-// is waiting for the worker's agreement (FR-R3 AC5).
-const stageOrder: readonly SubmissionStatus[] = [
-  "awaiting_candidate",
-  "submitted",
-  "viewed",
-  "shortlisted",
-  "interview",
-  "offer",
-  "hired",
-  "rejected",
-  "withdrawn",
-  "declined_by_candidate",
-  "expired",
-];
 
-const stageLabels: Record<SubmissionStatus, string> = {
-  ...partnerSubmissionLabels,
-  awaiting_candidate: "Waiting for the worker's agreement",
-};
 
-// The statuses that hold a submission, with their labels; none when the company has submitted no one.
-export function submissionStageLines(stages: Record<SubmissionStatus, number>): { status: SubmissionStatus; label: string; count: number }[] {
-  return stageOrder.filter((status) => stages[status] > 0).map((status) => ({ status, label: stageLabels[status], count: stages[status] }));
-}
-
-// "8 submitted: 1 hired, 1 not selected, 5 in progress", the parts at 0 left out.
-export function outcomeText(outcome: SubmissionOutcome): string {
-  const parts = [
-    outcome.hired > 0 ? `${formatCount(outcome.hired)} hired` : null,
-    outcome.notSelected > 0 ? `${formatCount(outcome.notSelected)} not selected` : null,
-    outcome.inProgress > 0 ? `${formatCount(outcome.inProgress)} in progress` : null,
-    outcome.withdrawn > 0 ? `${formatCount(outcome.withdrawn)} withdrawn` : null,
-  ].filter((part) => part !== null);
-  const head = `${formatCount(outcome.submitted)} submitted`;
-  return parts.length > 0 ? `${head}: ${parts.join(", ")}` : head;
-}

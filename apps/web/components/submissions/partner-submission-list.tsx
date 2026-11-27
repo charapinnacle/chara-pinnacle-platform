@@ -16,13 +16,15 @@ type PartnerSubmissionListProps = {
   // One requirement's candidates, or every requirement's with the requirement named on each row.
   requirementId: string | null;
   cursor: string | null;
+  // Whether the employer has opened submissions to the partner; the page then offers Submit a candidate itself.
+  canSubmit?: boolean;
 };
 
 // One page of the candidates the partner asked to submit, newest first (FR-O4 AC12, NFR-U4): the address entered until
 // the candidate approves and the candidate's name after it, the status in words with what it means, and the dates, with
 // each stage the employer moved the candidate to and when (FR-O5 AC10), never the employer's notes or reasons. A
 // submission hidden by moderation says so and leads to the decision and its appeal (FR-S1 AC12, V57).
-export async function PartnerSubmissionList({ lang, slug, organizationId, requirementId, cursor }: PartnerSubmissionListProps) {
+export async function PartnerSubmissionList({ lang, slug, organizationId, requirementId, cursor, canSubmit }: PartnerSubmissionListProps) {
   const { submissions, nextCursor, cursorIgnored } = await listPartnerSubmissions(organizationId, requirementId, cursor);
   const pagePath = (next?: string) =>
     requirementId ? requirementSubmissionsPath(lang, slug, requirementId, next) : partnerSubmissionsPath(lang, slug, next);
@@ -32,7 +34,11 @@ export async function PartnerSubmissionList({ lang, slug, organizationId, requir
         <EmptyState
           icon={UserRoundPlus}
           title="No candidates submitted yet"
-          description="Once the employer selects your company, or allows it to submit candidates, you can ask candidates for their permission to be submitted."
+          description={
+            canSubmit
+              ? "Ask a candidate for permission to submit them. The employer sees the candidate once they approve."
+              : "Once the employer selects your company, or allows it to submit candidates, you can ask candidates for their permission to be submitted."
+          }
         >
           {requirementId ? null : (
             <TextLink standalone href={responsesPath(lang, slug)}>

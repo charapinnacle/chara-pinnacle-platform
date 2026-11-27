@@ -157,7 +157,7 @@ export default async function SubmissionPage({ params }: PageProps<"/[lang]/subm
   }
 
   const { request } = found;
-  const [documents, limits] = await Promise.all([getApplyDocuments(), getApplyLimits()]);
+  const [documents, limits] = await Promise.all([getApplyDocuments({ checkedOnly: true }), getApplyLimits()]);
 
   return (
     <div className="grid w-full max-w-3xl gap-section">

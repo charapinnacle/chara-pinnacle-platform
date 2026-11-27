@@ -1,7 +1,7 @@
 import "server-only";
 import * as z from "zod";
 import { matchingWorkersColumns, parseMatchingWorkers } from "@/lib/dashboard/connections";
-import type { PartnerFigures, SubmissionOutcome } from "@/lib/dashboard/partner-dashboard";
+import type { PartnerFigures } from "@/lib/dashboard/partner-dashboard";
 import type { SubmissionStatus } from "@/lib/submissions/presentation";
 import { createClient } from "@/lib/supabase/server";
 import { reviewStatusSchema } from "@/lib/validation/partner-review";
@@ -98,34 +98,4 @@ export async function getPartnerFigures(organizationId: string): Promise<Partner
   };
 }
 
-const outcomeRow = z.object({
-  requirement_id: z.string(),
-  title: z.string(),
-  submitted: count,
-  in_progress: count,
-  hired: count,
-  not_selected: count,
-  withdrawn: count,
-  last_change_at: z.string(),
-});
 
-// The hired and not selected counts of the company's submissions per requirement (FR-O5 AC10), the ten requirements
-// with the latest change first, titled as the company knows each requirement.
-export async function getSubmissionOutcomes(organizationId: string): Promise<SubmissionOutcome[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("list_partner_submission_outcomes", { p_org: organizationId });
-  if (error) throw new Error("The outcomes of the submissions could not be loaded", { cause: error });
-  return z
-    .array(outcomeRow)
-    .parse(data)
-    .map((row) => ({
-      requirementId: row.requirement_id,
-      title: row.title,
-      submitted: row.submitted,
-      inProgress: row.in_progress,
-      hired: row.hired,
-      notSelected: row.not_selected,
-      withdrawn: row.withdrawn,
-      lastChangeAt: row.last_change_at,
-    }));
-}

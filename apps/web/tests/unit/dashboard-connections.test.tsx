@@ -11,9 +11,8 @@ const {
   matchingWorkersText,
   organizationUnread,
   parseMatchingWorkers,
-  partnerRequestLines,
 } = await import("@/lib/dashboard/connections");
-const { EmployerRequestsCard, MatchingWorkersCard, PartnerRequestsCard, UnreadMessagesCard } = await import(
+const { EmployerRequestsCard, MatchingWorkersCard, UnreadMessagesCard } = await import(
   "@/components/dashboard/connection-blocks"
 );
 const { FindWorkersCard } = await import("@/components/dashboard/find-workers-card");
@@ -119,29 +118,6 @@ describe("unread messages (FR-R3, FR-R4, FR-R5 release 2c)", () => {
 });
 
 describe("partner requests (FR-R4 AC6) and the employer's requests", () => {
-  it("splits the requests waiting for the partner into inquiries and workforce requests", () => {
-    expect(partnerRequestLines({ total: 3, inquiries: 2 })).toEqual([
-      { key: "inquiries", label: "Inquiries", count: 2 },
-      { key: "workforce", label: "Workforce requests", count: 1 },
-    ]);
-    expect(partnerRequestLines({ total: 1, inquiries: 0 })).toEqual([{ key: "workforce", label: "Workforce requests", count: 1 }]);
-    expect(partnerRequestLines({ total: 0, inquiries: 0 })).toEqual([]);
-  });
-
-  it("answers inquiries in the inbox and workforce requests from the invitations", async () => {
-    let page = await html(<PartnerRequestsCard requests={{ total: 3, inquiries: 2 }} lang="en" slug="rekrut" />);
-    expect(page).toContain("Inquiries waiting for your answer");
-    expect(page).toContain("Workforce requests waiting for your answer");
-    expect(page).toMatch(/href="\/en\/org\/rekrut\/messages\?context=inquiry"[^>]*>Answer the inquiries/);
-    expect(page).toMatch(/href="\/en\/org\/rekrut\/invitations"[^>]*>Respond to request/);
-    page = await html(<PartnerRequestsCard requests={{ total: 1, inquiries: 1 }} lang="en" slug="rekrut" />);
-    expect(page).not.toContain("Respond to request");
-    page = await html(<PartnerRequestsCard requests={{ total: 1, inquiries: 0 }} lang="en" slug="rekrut" />);
-    expect(page).toMatch(/href="\/en\/org\/rekrut\/invitations"[^>]*>Respond to request/);
-    page = await html(<PartnerRequestsCard requests={{ total: 0, inquiries: 0 }} lang="en" slug="rekrut" />);
-    expect(page).toContain("No inquiries or workforce requests wait for your answer.");
-  });
-
   it("tells the employer what waits and what was answered, or how to send one", async () => {
     let page = await html(<EmployerRequestsCard requests={{ waiting: 2, answered: 1 }} lang="en" slug="acme" findPartnersHref="/en/partners/recruitment" />);
     expect(page).toContain("Waiting for the partner&#x27;s answer");

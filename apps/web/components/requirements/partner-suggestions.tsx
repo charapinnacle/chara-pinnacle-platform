@@ -43,7 +43,7 @@ function DirectoryLinks({ lang, requirement, kinds }: { lang: string; requiremen
 function CriteriaList({ label, items, met }: { label: string; items: string[]; met: boolean }) {
   if (items.length === 0) return null;
   return (
-    <div className="grid gap-1">
+    <div className="grid content-start gap-1">
       <p className="text-small font-medium">{met ? "Criteria met" : "Criteria not met"}</p>
       <ul aria-label={label} className="grid list-disc gap-0.5 ps-5 text-small text-muted-foreground">
         {items.map((item) => (
