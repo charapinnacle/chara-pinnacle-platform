@@ -41,6 +41,7 @@ export type AnalyticsViewProps = {
 export function AnalyticsView(props: AnalyticsViewProps) {
   const { lang, organization, level, hasFigures } = props;
   const manager = organization.role !== "member";
+  const partner = organization.type !== "employer";
   const compare = manager ? (
     <TextLink standalone href={billingPath(lang, organization.slug)}>
       Compare plans
@@ -49,19 +50,30 @@ export function AnalyticsView(props: AnalyticsViewProps) {
 
   if (level === 0) {
     return (
-      <EmptyState icon={ChartColumn} title="Your plan does not include analytics" description="The paid plans count profile views, invitations and responses.">
+      <EmptyState
+        icon={ChartColumn}
+        title="Your plan does not include analytics"
+        description={
+          partner
+            ? "The paid plans count profile views, invitations and responses."
+            : "The paid plans count the invitations you send, the responses you receive and the candidates partners submit."
+        }
+      >
         {compare ?? <p className="text-small text-muted-foreground">An owner or admin of your company can change the plan.</p>}
       </EmptyState>
     );
   }
 
   if (!hasFigures) {
-    const partner = organization.type !== "employer";
     return (
       <EmptyState
         icon={ChartColumn}
         title="No activity yet"
-        description="Figures appear the day after employers or partners interact with your profile."
+        description={
+          partner
+            ? "Figures appear the day after employers or partners interact with your profile."
+            : "Figures appear the day after you invite partners or partners respond to your requirements."
+        }
       >
         <TextLink
           standalone
@@ -100,7 +112,9 @@ export function AnalyticsView(props: AnalyticsViewProps) {
             id="by-country"
             dimension="country"
             title="By country"
-            description="The country of the company that viewed your profile or acted with you."
+            description={
+              partner ? "The country of the company that viewed your profile or acted with you." : "The country of the partner that acted with you."
+            }
             rowHeader="Country"
             rows={props.byCountry ?? []}
             {...props}

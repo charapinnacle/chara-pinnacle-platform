@@ -40,7 +40,11 @@ export default async function AnalyticsPage({ params, searchParams }: PageProps<
     <div className="grid w-full gap-section">
       <PageHeader
         title="Analytics"
-        description="How your company does on the partner network: counts only, never who viewed your profile or acted."
+        description={
+          organization.type === "employer"
+            ? "How your company works with partners on the network: counts only, never which partner acted."
+            : "How your company does on the partner network: counts only, never who viewed your profile or acted."
+        }
         breadcrumb={<Breadcrumbs items={[organizationCrumb(lang, organization), { label: "Analytics" }]} />}
       />
       <AnalyticsView
