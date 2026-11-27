@@ -34,6 +34,7 @@ import {
   type PartnerKind,
 } from "@/lib/responses/presentation";
 import { RESPONSE_MESSAGES } from "@/lib/responses/refusal";
+import { todayUtc } from "@/lib/validation/passport";
 import { responsePath } from "@/lib/routes";
 import {
   CERTIFICATES_MAX,
@@ -137,6 +138,9 @@ export function ResponseForm({
   billingHref,
   blockedBy,
 }: ResponseFormProps) {
+  const today = todayUtc();
+  // A kept date from an earlier save may now be past; it stays selectable so that the response can be saved unchanged.
+  const earliest = edit?.kept.availableFrom && edit.kept.availableFrom < today ? edit.kept.availableFrom : today;
   const schema = useMemo(() => responseFormSchema({ maxCapacity, kind, kept: edit?.kept }), [maxCapacity, kind, edit?.kept]);
   const form = useForm<ResponseFormInput, unknown, ResponseFormValues>({
     resolver: zodResolver(schema),
@@ -212,7 +216,7 @@ export function ResponseForm({
         inputMode="numeric"
         description={`The employer needs ${formatCount(workersNeeded)}. You can offer at most ${formatCount(maxCapacity)}.`}
       />
-      <InputField control={control} name="availableFrom" id={ids.availableFrom} label="Available from" type="date" description="Today or later, within the next 3 years." />
+      <InputField control={control} name="availableFrom" id={ids.availableFrom} label="Available from" type="date" min={earliest} description="Today or later, within the next 3 years." />
       <TextareaField
         control={control}
         name="timelineNote"
