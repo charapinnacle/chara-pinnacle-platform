@@ -78,12 +78,11 @@ export async function getApplyOccupation(userId: string): Promise<{ occupationId
 
 // The candidate's own documents that can be shared, newest first; the row policy hides deleted ones and a file that
 // failed its check cannot be opened by anyone, so it is not offered.
-export async function getApplyDocuments(): Promise<ApplyDocument[]> {
+// An application takes documents still being checked; approving a submission takes only checked ones.
+export async function getApplyDocuments({ checkedOnly = false } = {}): Promise<ApplyDocument[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("worker_documents")
-    .select("id, title, type")
-    .neq("scan_status", "rejected")
+  const query = supabase.from("worker_documents").select("id, title, type");
+  const { data, error } = await (checkedOnly ? query.in("scan_status", ["clean", "skipped"]) : query.neq("scan_status", "rejected"))
     .order("created_at", { ascending: false })
     .order("id", { ascending: false })
     .limit(READ_LIMIT);
