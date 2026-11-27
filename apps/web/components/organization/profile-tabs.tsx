@@ -85,7 +85,7 @@ export function ProfileTabs({
               onClick={() => open(index)}
               onKeyDown={(event) => onKeyDown(event, index)}
               className={cn(
-                "flex min-h-11 shrink-0 items-center gap-2 rounded-lg border px-3 text-start text-small font-medium whitespace-nowrap transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+                "relative flex min-h-11 shrink-0 items-center gap-2 rounded-lg border px-3 text-start text-small font-medium whitespace-nowrap transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
                 selected
                   ? "border-foreground bg-card text-foreground lg:shadow-xs"
                   : "bg-card text-muted-foreground hover:text-foreground lg:border-transparent lg:bg-transparent",
