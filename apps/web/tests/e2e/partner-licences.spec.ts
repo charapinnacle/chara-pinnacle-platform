@@ -281,7 +281,7 @@ test.describe("Licences (FR-J2)", () => {
     expect(licences(id).map((row) => row.country_code).sort()).toEqual(["DE", "NL", "PH"]);
   });
 
-  test("AC4, AC11: a member reads the licences without changing them, and a skeleton shows while they load", async ({ page }) => {
+  test("AC4, AC11: a member reads the licences without changing them, and the page skeleton shows while they load", async ({ page }) => {
     test.setTimeout(90_000);
     const { id, slug } = await partnerWithCompany("recruitment_company");
     seedLicence(id, "PH", "DMW-777-LB-R", daysFromToday(300));
@@ -302,9 +302,11 @@ test.describe("Licences (FR-J2)", () => {
     const held = executeAsync("begin; lock table public.partner_licences in access exclusive mode; select pg_sleep(4); commit;");
     await new Promise((resolve) => setTimeout(resolve, 1000));
     await page.goto(path, { waitUntil: "commit" });
-    await expect(section.getByRole("status", { name: "Loading" })).toBeVisible({ timeout: 15_000 });
+    // The section menu says whether a licence is added, so the page reads the licences before it shows.
+    await expect(page.getByRole("status", { name: "Loading" })).toBeVisible({ timeout: 15_000 });
+    await openProfileSection(page, "Licences");
     await expect(section.getByRole("listitem")).toContainText("DMW-777-LB-R", { timeout: 15_000 });
-    await expect(section.getByRole("status", { name: "Loading" })).toHaveCount(0);
+    await expect(page.getByRole("status", { name: "Loading" })).toHaveCount(0);
     await held;
   });
 });
