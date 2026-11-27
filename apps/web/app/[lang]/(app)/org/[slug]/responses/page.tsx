@@ -10,6 +10,7 @@ import { organizationCrumb } from "@/lib/app/navigation";
 import { getCountries } from "@/lib/dal/reference";
 import { isReleased } from "@/lib/dal/release";
 import { requireOrgRole } from "@/lib/dal/session";
+import { ResponseTabs } from "@/components/layout/section-tabs";
 
 export const metadata: Metadata = { title: "Responses", robots: { index: false } };
 
@@ -21,6 +22,7 @@ export default async function ResponsesPage({ params, searchParams }: PageProps<
   const [{ lang, slug }, raw] = await Promise.all([params, searchParams]);
   if (!(await isReleased("release_job_orders"))) notFound();
   const { organization } = await requireOrgRole(lang, slug, "member", { mfa: false, hideFromOutsiders: true, partner: true });
+  const submissions = await isReleased("release_candidate_submissions");
   if (organization.suspended) return <SuspendedOrganization title="Responses" subject="responses" />;
   const cursor = typeof raw.cursor === "string" && UUID.test(raw.cursor) ? raw.cursor : null;
   const countries = await getCountries();
@@ -32,6 +34,7 @@ export default async function ResponsesPage({ params, searchParams }: PageProps<
         description="The responses your company sent to job orders and invitations, newest first. Open one to read, change or withdraw it."
         breadcrumb={<Breadcrumbs items={[organizationCrumb(lang, organization), { label: "Responses" }]} />}
       />
+      <ResponseTabs lang={lang} slug={slug} current="responses" submissions={submissions} />
       <Suspense key={cursor ?? "first"} fallback={<LoadingSkeleton rows={4} />}>
         <MyResponseList
           lang={lang}

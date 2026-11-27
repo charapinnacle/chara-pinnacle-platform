@@ -1,14 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  accountLinks,
-  currentOrganization,
-  isCurrent,
-  isGatePage,
-  organizationCrumb,
-  organizationLinks,
-  workerLinks,
-  type NavOrganization,
-} from "@/lib/app/navigation";
+import { accountLinks, currentOrganization, isCurrent, isGatePage, type NavOrganization, organizationCrumb, organizationLinks, workerLinks } from "@/lib/app/navigation";
 
 const labels = (links: readonly { label: string }[]) => links.map(({ label }) => label);
 
@@ -104,7 +95,7 @@ describe("the header links of an organisation", () => {
     expect(organizationLinks("en", { slug: "staff", role: "owner", suspended: true, partnerSegment: "staffing" })).toEqual([]);
   });
 
-  it("FR-O1, FR-O2: add Requirements for an employer, and Job orders, Find employers, Invitations and Responses for a partner while release 2b is on", () => {
+  it("FR-O1, FR-O2: add Requirements for an employer, and Job orders (with Invitations), Find employers and Responses for a partner, in groups, while release 2b is on", () => {
     expect(
       organizationLinks("en", { slug: "acme", role: "member", suspended: false, jobOrders: true }).map(({ label, href }) => [label, href]),
     ).toEqual([
@@ -120,13 +111,24 @@ describe("the header links of an organisation", () => {
       ),
     ).toEqual([
       ["Dashboard", "/en/dashboard/recruitment?org=manila"],
-      ["Workforce profile", "/en/org/manila/workforce-profile"],
       ["Job orders", "/en/org/manila/job-orders"],
       ["Find employers", "/en/org/manila/find-employers"],
-      ["Invitations", "/en/org/manila/invitations"],
       ["Responses", "/en/org/manila/responses"],
+      ["Workforce profile", "/en/org/manila/workforce-profile"],
       ["Team", "/en/org/manila/members"],
     ]);
+    const partner = organizationLinks("en", { slug: "manila", role: "owner", suspended: false, partnerSegment: "recruitment", jobOrders: true });
+    expect(labels(partner), "one list, Billing last for the owner").toEqual([
+      "Dashboard",
+      "Job orders",
+      "Find employers",
+      "Responses",
+      "Workforce profile",
+      "Team",
+      "Billing",
+    ]);
+    const jobOrders = partner.find(({ label }) => label === "Job orders")!;
+    expect(isCurrent("/en/org/manila/invitations", jobOrders), "Invitations is a tab of Job orders").toBe(true);
     expect(
       organizationLinks("en", {
         slug: "manila",
@@ -135,8 +137,8 @@ describe("the header links of an organisation", () => {
         partnerSegment: "recruitment",
         jobOrders: true,
         candidateSubmissions: true,
-      }).map(({ label, href }) => [label, href]),
-    ).toContainEqual(["Submissions", "/en/org/manila/submissions"]);
+      }).find(({ label }) => label === "Responses")?.also,
+    ).toEqual(["/en/org/manila/submissions"]);
     expect(labels(organizationLinks("en", { slug: "acme", role: "member", suspended: false, jobOrders: true, candidateSubmissions: true }))).not.toContain(
       "Submissions",
     );
@@ -164,30 +166,23 @@ describe("the header links of an organisation", () => {
     expect(organizationLinks("en", { slug: "manila", role: "owner", suspended: true, partnerSegment: "recruitment", analytics: true })).toEqual([]);
   });
 
-  it("FR-P1: add Messages before Team for every organisation while release 2c is on", () => {
+  it("FR-P1: gives no organisation a Messages item, since the header's messages button opens the conversations", () => {
     expect(labels(organizationLinks("en", { slug: "acme", role: "member", suspended: false, messaging: true }))).toEqual([
       "Dashboard",
       "Vacancies",
       "Applicants",
-      "Messages",
       "Team",
     ]);
-    expect(
-      organizationLinks("en", { slug: "manila", role: "member", suspended: false, partnerSegment: "recruitment", messaging: true }).find(
-        ({ label }) => label === "Messages",
-      )?.href,
-    ).toBe("/en/org/manila/messages");
     expect(organizationLinks("en", { slug: "acme", role: "owner", suspended: true, messaging: true })).toEqual([]);
   });
 
-  it("FR-Q2, FR-Q3: add Find workers and the contact requests before the analytics for employers and partners while Find Workers is released", () => {
+  it("FR-Q2, FR-Q3: add Find workers, with its contact requests as a tab, before the analytics for employers and partners while Find Workers is released", () => {
     expect(labels(organizationLinks("en", { slug: "acme", role: "member", suspended: false, jobOrders: true, analytics: true, findWorkers: true }))).toEqual([
       "Dashboard",
       "Vacancies",
       "Applicants",
       "Requirements",
       "Find workers",
-      "Contact requests",
       "Analytics",
       "Team",
     ]);
@@ -196,11 +191,10 @@ describe("the header links of an organisation", () => {
         ({ label }) => label === "Find workers",
       )?.href,
     ).toBe("/en/org/manila/find-workers");
-    expect(
-      organizationLinks("en", { slug: "manila", role: "member", suspended: false, partnerSegment: "recruitment", findWorkers: true }).find(
-        ({ label }) => label === "Contact requests",
-      )?.href,
-    ).toBe("/en/org/manila/contact-requests");
+    const findWorkers = organizationLinks("en", { slug: "manila", role: "member", suspended: false, partnerSegment: "recruitment", findWorkers: true }).find(
+      ({ label }) => label === "Find workers",
+    )!;
+    expect(isCurrent("/en/org/manila/contact-requests", findWorkers), "Contact requests is a tab of Find workers").toBe(true);
     expect(organizationLinks("en", { slug: "acme", role: "owner", suspended: true, findWorkers: true })).toEqual([]);
   });
 

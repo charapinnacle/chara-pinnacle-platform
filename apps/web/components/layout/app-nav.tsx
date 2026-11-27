@@ -11,6 +11,7 @@ import { accountLinks, currentOrganization, isGatePage, organizationLinks, worke
 import type { UnreadMessages } from "@/lib/messaging/thread";
 import { companyDashboardPath } from "@/lib/routes";
 import { cn } from "@/lib/utils";
+import { messagesPath } from "@/lib/routes";
 
 export type AppNavProps = {
   lang: string;
@@ -70,11 +71,13 @@ export function OrganizationList({ lang, organizations, current }: { lang: strin
 export function AppNav(props: AppNavProps) {
   const { lang, organizations, notifications, unreadMessages } = props;
   const { organization, links, switcher, account } = useAppNavigation(props);
-  const messagesLink = unreadMessages ? links.find((link) => link.icon === "messages") : undefined;
+  // A candidate's Messages is in the menu; an organisation's conversations are only behind this button, not in the sidebar.
+  const messagesHref =
+    links.find((link) => link.icon === "messages")?.href ?? (organization?.messaging ? messagesPath(lang, organization.slug) : undefined);
   const badge =
-    unreadMessages && messagesLink ? (
+    unreadMessages && messagesHref ? (
       <MessagesBadge
-        href={messagesLink.href}
+        href={messagesHref}
         userId={unreadMessages.userId}
         initial={unreadMessages.initial}
         organizationId={organization ? (unreadMessages.organizationIds[organization.slug] ?? null) : null}
