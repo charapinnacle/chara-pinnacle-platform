@@ -28,7 +28,7 @@ vi.mock("@/lib/dal/legal", () => ({ getSignupDocuments: documentsMock }));
 vi.mock("@/lib/dal/rate-limit", () => ({ isThrottled: throttledMock, visitorProof: proofMock }));
 vi.mock("@/lib/dal/release", () => ({ isReleased: releasedMock }));
 vi.mock("@/lib/dal/team", () => ({ getInvitationPreview: previewMock }));
-vi.mock("@/lib/invitation-cookie", () => ({ rememberInvitation: rememberMock }));
+vi.mock("@/lib/invitation-cookie", () => ({ INVITATION_METADATA: "invitation", rememberInvitation: rememberMock }));
 vi.mock("@/lib/pending-email", () => ({
   rememberPendingEmail: rememberEmailMock,
   forgetPendingEmail: forgetEmailMock,
@@ -79,6 +79,7 @@ describe("signUp action with an invitation", () => {
   it("keeps the invitation link for onboarding when an employer registers from it", async () => {
     await expect(signUp(employer, token)).rejects.toThrow("REDIRECT:/en/verify-email");
     expect(rememberMock).toHaveBeenCalledWith(token);
+    expect(signUpMock).toHaveBeenCalledWith(expect.objectContaining({ options: { data: expect.objectContaining({ invitation: token }) } }));
   });
 
   it("FR-J1: carries the type of the inviting recruitment company into the intended organisation type", async () => {
