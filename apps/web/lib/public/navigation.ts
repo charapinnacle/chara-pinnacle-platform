@@ -9,17 +9,20 @@ export const JOB_ORDERS_PATH = "job-orders";
 export const FIND_COMPANIES_PATH = "companies";
 export const FIND_WORKERS_PATH = "find-workers";
 export const REQUEST_WORKERS_PATH = "request-workers";
+export const FOR_PARTNERS_PATH = "for-partners";
 
-// The header shows a few links (OPEN_QUESTIONS.md D90, which replaces the header lists of P18 and P22): Find Jobs and For
-// employers on every public page, For job seekers instead of both on the For employers page, How it works, then Post a Job
-// and Sign in; on a phone a Menu button opens the rest. Pricing, Trust & Safety, About and Contact stay in the
-// footer only (P18).
+// The header names one door per audience: the workers' search, the employers' page and, while release 2a is on (FR-L5),
+// the page for recruitment and staffing companies; then Sign in and Post a job. Below 768 px they are in the Menu.
 export const headerLinks = [
   { path: "jobs", label: "Find jobs" },
   { path: EMPLOYERS_PATH, label: "For employers" },
+  { path: FOR_PARTNERS_PATH, label: "For partners" },
 ] as const;
 
-export const jobSeekersLink = { path: "", label: "For job seekers" } as const;
+// The For partners page exists only while release 2a is on.
+export function releasedHeaderLinks(released: readonly ReleaseSwitch[]) {
+  return headerLinks.filter(({ path }) => path !== FOR_PARTNERS_PATH || released.includes("release_partner_directories"));
+}
 
 // The navigation of the client's structure (section 2) that Phase 1 does not have, in its order, with the release that
 // makes an item a page and its address then (FR-L5). Until its release is on an item is named in the menu as plain text,
@@ -53,7 +56,7 @@ export function networkMenu(released: readonly ReleaseSwitch[]): { links: { path
 }
 
 // Every page of the network serves companies (employers and partners), none a person looking for work.
-const companyPaths = new Set<string>([EMPLOYERS_PATH, ...networkFeatures.flatMap(({ path }) => (path === null ? [] : [path]))]);
+const companyPaths = new Set<string>([EMPLOYERS_PATH, FOR_PARTNERS_PATH, ...networkFeatures.flatMap(({ path }) => (path === null ? [] : [path]))]);
 
 // A signed-in worker is not offered the employer's or a partner's side of the site, and a signed-in company not the job
 // seeker's.
@@ -62,22 +65,13 @@ export function forAccountKind<T extends { path: string }>(
   accountKind: Database["public"]["Enums"]["account_kind"] | null | undefined,
 ): T[] {
   if (accountKind === "worker") return links.filter(({ path }) => !companyPaths.has(path));
-  if (accountKind === "company") return links.filter(({ path }) => path !== "jobs" && path !== jobSeekersLink.path);
+  if (accountKind === "company") return links.filter(({ path }) => path !== "jobs");
   return [...links];
 }
-
-export const howItWorksLink = { path: "how-it-works", label: "How it works" } as const;
 
 export const guestLinks = [
   { path: "login", label: "Sign in" },
   { path: "signup", label: "Sign up" },
-] as const;
-
-export const menuLinks = [
-  { path: "jobs", label: "Find jobs" },
-  { path: EMPLOYERS_PATH, label: "For employers" },
-  jobSeekersLink,
-  { path: "how-it-works", label: `How ${BRAND_NAME} works` },
 ] as const;
 
 export const LEGAL_INDEX_PATH = "legal";
@@ -205,5 +199,5 @@ export const rankingGroup = {
 // The pages of the releases that are on, for the sitemap: the network pages of the menu and the ranking page.
 export function releasedPagePaths(released: readonly ReleaseSwitch[]): string[] {
   const network = networkMenu(released).links.map(({ path }) => path);
-  return released.includes("release_partner_directories") ? [...network, RANKING_PATH] : network;
+  return released.includes("release_partner_directories") ? [...network, FOR_PARTNERS_PATH, RANKING_PATH] : network;
 }

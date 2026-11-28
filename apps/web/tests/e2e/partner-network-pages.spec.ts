@@ -9,11 +9,11 @@ import { createCommittedUser } from "./support/login";
 import { newCompany } from "./support/jobs";
 import { partnerWithCompany, setPartnerRelease } from "./support/partners";
 import { seedAllButCv, signIn } from "./support/passport";
-import { MENU_LINKS } from "./support/public-pages";
 import { SITE } from "./support/seo";
 import { expect, test } from "./support/test";
 
 const DIRECTORIES = ["Recruitment partners", "Staffing partners"];
+const AUDIENCES = ["Find jobs", "For employers", "For partners"];
 const STILL_LATER = ["Find workers", "Request workers", "Find companies", "Workforce corridors", "Job orders"];
 const UNRELEASED_PATHS = ["/en/job-orders", "/en/companies", "/en/find-workers", "/en/request-workers"];
 
@@ -49,7 +49,7 @@ test.describe("the public partner network pages (FR-L5)", () => {
     await page.setViewportSize({ width: 360, height: 800 });
     await page.goto("/en");
     const panel = await openMenu(page);
-    await expect(exploreLinks(panel)).toHaveText([...MENU_LINKS, ...DIRECTORIES]);
+    await expect(exploreLinks(panel)).toHaveText([...AUDIENCES, ...DIRECTORIES]);
     await expect(exploreLinks(panel).filter({ hasText: "Recruitment partners" })).toHaveAttribute("href", "/en/partners/recruitment");
     await expect(exploreLinks(panel).filter({ hasText: "Staffing partners" })).toHaveAttribute("href", "/en/partners/staffing");
     // Written in sentence case, drawn in Title Case (PR #110).
@@ -73,14 +73,15 @@ test.describe("the public partner network pages (FR-L5)", () => {
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   });
 
-  test("AC1, PR #111: a worker's Menu offers no directory, a company's and a partner's offer both and nothing of the job seeker's side", async ({ browser }) => {
+  test("AC1, PR #111: a worker's Menu offers no directory, a company's and a partner's offer both", async ({ browser }) => {
     const phone = { viewport: { width: 360, height: 800 } };
     const worker = await signedInPage(browser, await createCommittedUser("worker"), phone);
     // Signed in, the home page leads to the dashboard, so the Menu is read on another public page.
     await worker.page.goto("/en");
     await expect(worker.page).toHaveURL("/en/dashboard/worker");
     await worker.page.goto("/en/how-it-works");
-    await expect(exploreLinks(await openMenu(worker.page))).toHaveText(["Find jobs", "For job seekers", "How Chara Pinnacle works"]);
+    await openMenu(worker.page);
+    await expect(exploreLinks(worker.page.getByRole("dialog", { name: "Menu" }))).toHaveText(["Find jobs"]);
     await worker.page.keyboard.press("Escape");
     await expect(worker.page.getByRole("main").getByRole("heading", { name: "For employers" })).toBeVisible();
     await expect(worker.page.getByRole("main").getByRole("link", { name: "Recruitment partners" })).toHaveCount(0);
@@ -89,13 +90,13 @@ test.describe("the public partner network pages (FR-L5)", () => {
     const company = await newCompany();
     const employer = await signedInPage(browser, company.owner, phone);
     await employer.page.goto("/en/how-it-works");
-    await expect(exploreLinks(await openMenu(employer.page))).toHaveText(["For employers", "How Chara Pinnacle works", ...DIRECTORIES]);
+    await expect(exploreLinks(await openMenu(employer.page))).toHaveText(["For employers", "For partners", ...DIRECTORIES]);
     await employer.context.close();
 
     const { user } = await partnerWithCompany("staffing_company");
     const partner = await signedInPage(browser, user, phone);
     await partner.page.goto("/en/how-it-works");
-    await expect(exploreLinks(await openMenu(partner.page))).toHaveText(["For employers", "How Chara Pinnacle works", ...DIRECTORIES]);
+    await expect(exploreLinks(await openMenu(partner.page))).toHaveText(["For employers", "For partners", ...DIRECTORIES]);
     await partner.page.keyboard.press("Escape");
     await expect(partner.page.getByRole("link", { name: "Sign up as a staffing company" })).toHaveCount(0);
     await partner.context.close();
@@ -104,7 +105,7 @@ test.describe("the public partner network pages (FR-L5)", () => {
   test("AC3: the pages of 2b and 2c do not exist and neither the sitemap nor the menu names them; with their switches on only the pages built so far (Job orders, V40; Find companies, V53; Find workers, V69) appear", async ({ request }) => {
     for (const path of UNRELEASED_PATHS) expect((await request.get(path)).status(), path).toBe(404);
     const sitemap = await (await request.get("/sitemap.xml")).text();
-    for (const path of ["/en/partners/recruitment", "/en/partners/staffing"]) expect(sitemap).toContain(`<loc>${SITE}${path}</loc>`);
+    for (const path of ["/en/partners/recruitment", "/en/partners/staffing", "/en/for-partners"]) expect(sitemap).toContain(`<loc>${SITE}${path}</loc>`);
     for (const path of UNRELEASED_PATHS) expect(sitemap).not.toContain(`<loc>${SITE}${path}</loc>`);
 
     // Their switches alone publish nothing: each page's own unit adds its link and sitemap entry (job-orders.spec.ts
@@ -130,6 +131,8 @@ test.describe("the public partner network pages (FR-L5)", () => {
     const off = await (await request.get("/sitemap.xml")).text();
     expect(off).not.toContain("/en/partners/recruitment</loc>");
     expect(off).not.toContain("/en/partners/staffing</loc>");
+    expect(off).not.toContain("/en/for-partners</loc>");
+    expect((await request.get("/en/for-partners")).status()).toBe(404);
     setPartnerRelease(true);
   });
 
@@ -161,14 +164,26 @@ test.describe("the public partner network pages (FR-L5)", () => {
     await expect(page.getByText("100% complete", { exact: true })).toBeVisible();
   });
 
-  test("AC9, AC10: home, How it works and For employers explain the partner network, the job orders without a link, with one h1 and no axe violation", async ({ page }) => {
+  test("AC9, AC10: the header and home, How it works and For employers explain the partner network, the job orders without a link, with one h1 and no axe violation", async ({ page }) => {
     await page.goto("/en");
     const home = page.getByRole("region", { name: "For recruitment and staffing companies" });
     await expect(home).toBeVisible();
     await expect(home.getByRole("link", { name: "Sign up as a recruitment company" })).toHaveAttribute("href", "/en/signup?kind=recruitment_company");
     await expect(home.getByRole("link", { name: "Sign up as a staffing company" })).toHaveAttribute("href", "/en/signup?kind=staffing_company");
-    await expect(home.getByRole("link", { name: "Recruitment partners" })).toHaveAttribute("href", "/en/partners/recruitment");
-    await expect(home.getByRole("link", { name: "Staffing partners" })).toHaveAttribute("href", "/en/partners/staffing");
+    await expect(home.getByRole("link", { name: "See recruitment companies" })).toHaveAttribute("href", "/en/partners/recruitment");
+    await expect(home.getByRole("link", { name: "See staffing companies" })).toHaveAttribute("href", "/en/partners/staffing");
+    // The header adds For partners while release 2a is on.
+    const header = page.getByRole("navigation", { name: "Main" });
+    await expect(header.getByRole("link")).toHaveText([...AUDIENCES, "Sign in", "Post a job"]);
+    await header.getByRole("link", { name: "For partners" }).click();
+    await expect(page).toHaveURL("/en/for-partners");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("For recruitment and staffing companies");
+    await expect(page.getByRole("main").getByRole("heading", { level: 3 })).toContainText(["Register", "Describe your company", "Get listed"]);
+    await expect(page.getByRole("link", { name: "Sign up as a recruitment company" })).toHaveAttribute("href", "/en/signup?kind=recruitment_company");
+    await expect(page.getByRole("link", { name: "Sign up as a staffing company" })).toHaveAttribute("href", "/en/signup?kind=staffing_company");
+    await expectAccessibleAtBothWidths(page);
+    await page.goto("/en");
+    await expect(home.getByRole("link", { name: "How it works for partners" })).toHaveAttribute("href", "/en/for-partners");
     await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
     await expectAccessibleAtBothWidths(page);
 

@@ -77,11 +77,11 @@ describe("the statistics block (FR-H4 AC1, AC3, AC4)", () => {
 });
 
 describe("the home page (U73)", () => {
-  it("follows the order of D90: hero, How it works, the CHARA Passport, the employer band, the closing call, and no audience split", async () => {
+  it("has the hero, the CHARA Passport and the closing call in that order, and no How it works or employer band", async () => {
     const html = await renderHome();
-    const order = ['<h1 id="home-heading"', "home-how-heading", "home-passport-heading", 'aria-label="For employers"', "home-start-heading"].map((marker) =>
-      html.indexOf(marker),
-    );
+    const order = ['<h1 id="home-heading"', "home-passport-heading", "home-start-heading"].map((marker) => html.indexOf(marker));
+    expect(html).not.toContain("home-how-heading");
+    expect(html).not.toContain('aria-label="For employers"');
     expect(html).not.toContain("home-who-heading");
     expect(html).not.toContain("home-network-heading");
     expect(order.every((position) => position >= 0)).toBe(true);
@@ -99,16 +99,13 @@ describe("the home page (U73)", () => {
     expect(html).not.toContain("/images/");
   });
 
-  it("leads every Post a job of the page where the header's does, and offers none to whom the header offers none", async () => {
+  it("leads its Start hiring where the header's Post a job does, and has no Post a job of its own", async () => {
     getPostJobHref.mockResolvedValue("/en/post-job");
     const employer = await renderHome();
-    // The employer band's Post a job and the closing call's Start hiring; the hero's line leads to For employers.
-    expect(employer.match(/href="\/en\/post-job"/g)).toHaveLength(2);
+    expect(employer.match(/href="\/en\/post-job"/g)).toHaveLength(1);
+    expect(employer).not.toContain(">Post a job<");
     getPostJobHref.mockResolvedValue(null);
     const candidate = await renderHome();
-    // Only the hero's quiet line remains, and it leads to For employers, not to posting.
-    expect(candidate.match(/>Post a job</g)).toHaveLength(1);
-    expect(candidate).toContain('href="/en/employers">Post a job</a>');
     expect(candidate).not.toContain("Start hiring");
     expect(candidate).toContain('role="search"');
   });
@@ -138,17 +135,17 @@ describe("the partner audience of the home page (FR-L5 AC9)", () => {
     expect(textOf(html).toLowerCase()).not.toMatch(/recruitment|staffing/);
   });
 
-  it("follows the employer band while release 2a is on, headed for recruitment and staffing companies, with the sign-up as either and both directories", async () => {
+  it("comes before the closing call while release 2a is on, headed for recruitment and staffing companies, with the sign-up as either and both directories", async () => {
     releasedSwitches.mockResolvedValue(["release_partner_directories"]);
     const html = await renderHome();
     expect(html).toMatch(/<h2 id="home-partners-heading"[^>]*>For recruitment and staffing companies<\/h2>/);
-    expect(html.indexOf('aria-label="For employers"')).toBeLessThan(html.indexOf("home-partners-heading"));
+    expect(html.indexOf("home-passport-heading")).toBeLessThan(html.indexOf("home-partners-heading"));
     expect(html.indexOf("home-partners-heading")).toBeLessThan(html.indexOf("home-start-heading"));
     for (const [href, label] of [
       ["/en/signup?kind=recruitment_company", "Sign up as a recruitment company"],
       ["/en/signup?kind=staffing_company", "Sign up as a staffing company"],
-      ["/en/partners/recruitment", "Recruitment partners"],
-      ["/en/partners/staffing", "Staffing partners"],
+      ["/en/partners/recruitment", "See recruitment companies"],
+      ["/en/partners/staffing", "See staffing companies"],
     ]) {
       expect(html).toMatch(new RegExp(`<a [^>]*href="${href.replace(/[?]/g, "\\?")}"[^>]*>${label}</a>`));
     }

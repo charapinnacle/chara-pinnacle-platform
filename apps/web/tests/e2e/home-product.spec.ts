@@ -34,7 +34,7 @@ const NEVER_SAID = [
 ];
 
 test.describe("the home page (U73)", () => {
-  test("the hero holds the h1, the client's line, the search and the quiet line to For employers; the sections follow in order", async ({ page }) => {
+  test("the hero holds the h1, the client's line and the search, and no link; the sections follow in order", async ({ page }) => {
     await page.goto("/en");
     const main = page.getByRole("main");
     const hero = region(page, "The Global Workforce Network");
@@ -42,8 +42,7 @@ test.describe("the home page (U73)", () => {
     await expect(hero.getByText("Connect with the people and companies that can build your workforce.")).toBeVisible();
     await expect(search(page).getByRole("combobox")).toHaveCount(3);
     await expect(search(page).getByRole("button", { name: "Search jobs" })).toBeVisible();
-    await expect(hero.getByRole("link")).toHaveCount(1);
-    await expect(hero.getByRole("link", { name: "Post a job" })).toHaveAttribute("href", "/en/employers");
+    await expect(hero.getByRole("link")).toHaveCount(0);
 
     await expect(main.locator("h2:not(#platform-statistics-heading)")).toHaveText(HOME_SECTION_HEADINGS);
     const order = await main.locator(":scope > section").evaluateAll((sections) =>
@@ -51,9 +50,7 @@ test.describe("the home page (U73)", () => {
     );
     expect(order.filter((name) => name !== "Global Workforce Network")).toEqual([
       "The Global Workforce Network",
-      "From profile to offer, in three steps.",
       "One professional profile. Multiple opportunities.",
-      "For employers",
       "Your Workforce. Your Network. One Platform.",
     ]);
     const tops = await main.locator("h1, h2").evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().top));
@@ -163,21 +160,7 @@ test.describe("the home page (U73)", () => {
     await expect(page.getByRole("list", { name: "Active filters" })).toHaveCount(0);
   });
 
-  test("How it works gives a candidate's three steps and one button, which opens the candidate sign-up", async ({ page }) => {
-    await page.goto("/en");
-    const how = region(page, "From profile to offer, in three steps.");
-    await expect(how.getByRole("listitem").getByRole("heading", { level: 3 })).toHaveText([
-      "Create your CHARA Passport",
-      "Apply with the documents you choose",
-      "Follow every stage of your application",
-    ]);
-    await expect(how.getByRole("link")).toHaveCount(1);
-    await how.getByRole("link", { name: "Create your CHARA Passport" }).click();
-    await expect(page).toHaveURL("/en/signup?kind=worker");
-    await expect(page.getByRole("radio", { name: "Worker" })).toBeChecked();
-  });
-
-  test("the passport section states the four facts and nothing else; the employer band leads to the employer sign-up and to For employers", async ({ page }) => {
+  test("the passport section states the four facts and nothing else, and no How it works or employer band follows", async ({ page }) => {
     await page.goto("/en");
     const passport = region(page, "One professional profile. Multiple opportunities.");
     await expect(passport.getByRole("list", { name: "What your CHARA Passport gives you" }).getByRole("listitem")).toHaveCount(4);
@@ -185,12 +168,9 @@ test.describe("the home page (U73)", () => {
     await expect(passport).toContainText("Your access log shows which organisation opened which document, and when.");
     await expect(passport.getByRole("link")).toHaveCount(0);
 
-    const band = region(page, "For employers");
-    await expect(band).toContainText("Hiring? Publish a vacancy and manage every applicant in one pipeline.");
-    await expect(band.getByRole("link", { name: "Post a job" })).toHaveAttribute("href", "/en/post-job");
-    await band.getByRole("link", { name: "For employers" }).click();
-    await expect(page).toHaveURL("/en/employers");
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Hire from the Global Workforce Network.");
+    await expect(region(page, "For employers")).toHaveCount(0);
+    await expect(region(page, "From profile to offer, in three steps.")).toHaveCount(0);
+    await expect(page.getByRole("main").getByText("Hiring?")).toHaveCount(0);
   });
 
   test("the closing call offers Join Chara Pinnacle and Start hiring, each to its sign-up", async ({ page }) => {
@@ -219,7 +199,7 @@ test.describe("the home page (U73)", () => {
     await expect(footer.getByText(`© ${new Date().getFullYear()} Chara Pinnacle`)).toBeVisible();
   });
 
-  test("from the top the keyboard reaches the header, then the search, which Enter sends, then the employer line", async ({ page }) => {
+  test("from the top the keyboard reaches the header, then the search, which Enter sends", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto("/en");
     // The Menu is a phone's and not displayed here; its button replaces the no-JavaScript link once the page is hydrated.
@@ -232,7 +212,7 @@ test.describe("the home page (U73)", () => {
         return `${element.closest("main") ? "main" : element.closest("header") ? "header" : "other"}:${element.getAttribute("placeholder") ?? element.innerText.trim()}`;
       });
       stops.push(stop);
-      if (stop === "main:Post a job") break;
+      if (stop === "main:Search jobs") break;
     }
     expect(stops).toEqual([
       "other:Skip to main content",
@@ -242,10 +222,8 @@ test.describe("the home page (U73)", () => {
       "main:Any country",
       "main:Any city",
       "main:Search jobs",
-      "main:Post a job",
     ]);
     // Back to Country: typing narrows the list, Enter picks the first match, and Enter again sends the search.
-    await page.keyboard.press("Shift+Tab");
     await page.keyboard.press("Shift+Tab");
     await page.keyboard.press("Shift+Tab");
     await page.keyboard.type("Germany");

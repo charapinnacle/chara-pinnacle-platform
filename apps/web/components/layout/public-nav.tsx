@@ -1,19 +1,22 @@
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { FormButton } from "@/components/forms/form-button";
-import { AudienceLinks } from "@/components/layout/audience-links";
 import { LinkButton } from "@/components/layout/link-button";
 import { SiteMenu } from "@/components/layout/site-menu";
 import { signOut } from "@/lib/actions/login";
 import { getPostJobHref } from "@/lib/dal/organizations";
 import { releasedSwitches } from "@/lib/dal/release";
 import { getCurrentUser } from "@/lib/dal/session";
-import { forAccountKind, guestLinks, howItWorksLink, menuLinks, networkMenu } from "@/lib/public/navigation";
+import { forAccountKind, guestLinks, networkMenu, releasedHeaderLinks } from "@/lib/public/navigation";
 import { homePath } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
 const linkClassName =
   "inline-flex min-h-11 items-center rounded-lg px-3 text-small font-medium text-foreground transition-colors duration-150 hover:bg-secondary";
+
+// The directories read quieter than the account items, as section links beside the logo.
+const sectionLinkClassName =
+  "inline-flex min-h-11 items-center rounded-lg px-3 text-small font-medium text-muted-foreground transition-colors duration-150 hover:text-foreground";
 
 const groupTitleClassName = "mb-1.5 text-eyebrow text-muted-foreground uppercase";
 
@@ -43,7 +46,7 @@ function LogOut({ className, buttonClassName }: { className?: string; buttonClas
 function AccountItems({ lang, area }: { lang: string; area: string | null }) {
   if (!area) {
     return (
-      <li>
+      <li className="ms-auto">
         <Link href={`/${lang}/${signIn.path}`} className={linkClassName}>
           {signIn.label}
         </Link>
@@ -52,7 +55,7 @@ function AccountItems({ lang, area }: { lang: string; area: string | null }) {
   }
   return (
     <>
-      <li className="max-xs:hidden">
+      <li className="ms-auto max-xs:hidden">
         <Link href={area} className={linkClassName}>
           Go to my area
         </Link>
@@ -92,54 +95,59 @@ function MenuActions({ lang, area, postJobHref }: { lang: string; area: string |
   );
 }
 
-// The public header (OPEN_QUESTIONS.md D90): from 768 px the links, Post a job and Sign in, with How it works from 1024 px,
-// and no Menu. Below 768 px only the logo, Post a job, Sign in and Menu stay, and Menu opens the panel with everything a
+// The public header: from 768 px the audience links beside the logo, then Sign in and Post a job at the end, and no Menu.
+// Below 768 px only the logo, Post a job, Sign in and Menu stay, and Menu opens the panel with everything a
 // visitor can explore, the client's later-phase navigation as plain text, and the account actions; below 420 px Post a job
 // moves into the panel. An item of that navigation becomes an Explore link once its release is on (FR-L5).
 export async function PublicNav({ lang }: { lang: string }) {
   const [user, postJobHref, released] = await Promise.all([getCurrentUser(), getPostJobHref(lang), releasedSwitches()]);
   const area = user ? homePath(lang, user.accountKind) : null;
   const network = networkMenu(released);
+  const audiences = forAccountKind(releasedHeaderLinks(released), user?.accountKind);
+  const explore = [...audiences, ...forAccountKind(network.links, user?.accountKind)];
   return (
-    <div className="flex items-center gap-1">
-      <nav aria-label="Main">
+    <div className="flex flex-1 items-center gap-1">
+      <nav aria-label="Main" className="flex-1">
         <ul className="flex items-center gap-1">
-          <AudienceLinks lang={lang} accountKind={user?.accountKind} className={linkClassName} />
-          <li className="max-lg:hidden">
-            <Link href={`/${lang}/${howItWorksLink.path}`} className={linkClassName}>
-              {howItWorksLink.label}
-            </Link>
-          </li>
+          {audiences.map(({ path, label }) => (
+            <li key={path} className="max-md:hidden">
+              <Link href={`/${lang}/${path}`} className={sectionLinkClassName}>
+                {label}
+              </Link>
+            </li>
+          ))}
+          <AccountItems lang={lang} area={area} />
           {/* Post a job leads into the signed-in area: prefetching it would load the whole app shell on every public page. */}
           {postJobHref ? (
             <li className="max-xs:hidden">
-              <LinkButton href={postJobHref} prefetch={false} size="default" className="min-h-11 px-4 md:mx-1">
+              <LinkButton href={postJobHref} prefetch={false} size="default" className="ms-1 min-h-11 px-5">
                 Post a job
               </LinkButton>
             </li>
           ) : null}
-          <AccountItems lang={lang} area={area} />
         </ul>
       </nav>
       <SiteMenu homeHref={`/${lang}`}>
-        <nav aria-labelledby="menu-explore" className="pt-6 pb-2">
-          <p id="menu-explore" className={groupTitleClassName}>
-            Explore
-          </p>
-          <ul className="divide-y">
-            {forAccountKind([...menuLinks, ...network.links], user?.accountKind).map(({ path, label }) => (
-              <li key={label}>
-                <Link
-                  href={path ? `/${lang}/${path}` : `/${lang}`}
-                  className="flex min-h-13 items-center justify-between gap-3 text-lead font-medium transition-colors duration-150 hover:text-brand-ink"
-                >
-                  {label}
-                  <ChevronRight aria-hidden className="size-4 shrink-0 text-muted-foreground" />
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
+        {explore.length > 0 ? (
+          <nav aria-labelledby="menu-explore" className="pt-6 pb-2">
+            <p id="menu-explore" className={groupTitleClassName}>
+              Explore
+            </p>
+            <ul className="divide-y">
+              {explore.map(({ path, label }) => (
+                <li key={label}>
+                  <Link
+                    href={`/${lang}/${path}`}
+                    className="flex min-h-13 items-center justify-between gap-3 text-lead font-medium transition-colors duration-150 hover:text-brand-ink"
+                  >
+                    {label}
+                    <ChevronRight aria-hidden className="size-4 shrink-0 text-muted-foreground" />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        ) : null}
         <div className="pt-6 pb-6">
           <div className="mb-3 flex items-center justify-between gap-3">
             <p id="menu-later" className={cn(groupTitleClassName, "mb-0")}>

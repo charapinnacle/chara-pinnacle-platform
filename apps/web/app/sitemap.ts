@@ -7,7 +7,7 @@ import { legalSlugs, networkFeatures, rankingGroup, releasedPagePaths } from "@/
 import { sitemapEntries, vacancyCapacity } from "@/lib/seo/sitemap";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const capacity = vacancyCapacity(legalSlugs.length + networkFeatures.length + rankingGroup.links.length);
+  const capacity = vacancyCapacity(legalSlugs.length + networkFeatures.length + rankingGroup.links.length + 1);
   const [released, published, vacancies, partners, companies] = await Promise.all([
     releasedSwitches(),
     listPublishedLegalSlugs(legalSlugs),

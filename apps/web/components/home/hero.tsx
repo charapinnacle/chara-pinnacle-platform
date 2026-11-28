@@ -1,12 +1,9 @@
 import { HeroSearch, type HeroSearchProps } from "@/components/home/hero-search";
-import { TextLink } from "@/components/forms/text-link";
 import { PageContainer } from "@/components/layout/page-container";
-import { EMPLOYERS_PATH } from "@/lib/public/navigation";
 
 // The page is for the person looking for work, as Indeed's and Glassdoor's are: the client's headline and line, the search
-// as the one action, and one quiet line that sends an employer to their own page.
-export function Hero({ showHiringLine, ...search }: HeroSearchProps & { showHiringLine: boolean }) {
-  const { lang } = search;
+// as the one action.
+export function Hero(search: HeroSearchProps) {
   return (
     <section aria-labelledby="home-heading">
       <PageContainer className="grid justify-items-center pt-20 pb-16 text-center sm:pt-28 sm:pb-24 lg:pt-36 lg:pb-28">
@@ -19,14 +16,6 @@ export function Hero({ showHiringLine, ...search }: HeroSearchProps & { showHiri
         <div className="mt-11 w-full max-w-4xl">
           <HeroSearch {...search} />
         </div>
-        {showHiringLine ? (
-          <p className="mt-4 flex items-center gap-1.5 text-body text-muted-foreground">
-            Hiring?
-            <TextLink href={`/${lang}/${EMPLOYERS_PATH}`} prefetch={false} standalone>
-              Post a job
-            </TextLink>
-          </p>
-        ) : null}
       </PageContainer>
     </section>
   );
