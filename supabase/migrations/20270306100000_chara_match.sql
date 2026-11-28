@@ -874,6 +874,8 @@ as $$
     'release_job_orders', 'release_candidate_submissions', 'release_messaging', 'release_find_workers',
     'release_data_export', 'requirement_open_days', 'requirement_extension_days', 'requirement_closing_reminder_days',
     'response_documents_max', 'message_body_max_chars', 'contact_request_repeat_days', 'contact_request_decline_days',
-    'contact_request_expiry_days', 'release_chara_match'
+    'contact_request_expiry_days', 'release_chara_match',
+    -- The switches of 20270304100000_partner_boosts.sql and 20270305100000_workforce_corridors.sql, kept whichever runs first.
+    'release_boosts', 'release_corridors'
   ])
 $$;
