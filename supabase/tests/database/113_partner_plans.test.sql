@@ -156,10 +156,10 @@ select results_eq(
   $$select plan_code, string_agg(feature_key, ',' order by feature_key)
     from billing.plan_features where plan_code like '%employer%' group by plan_code order by plan_code$$,
   $$values
-    ('employer_enterprise', 'advanced_partner_search,advanced_worker_search,analytics_advanced,available_workforce_search,csv_export,multi_country_requirements,shortlisting,worker_search'),
-    ('employer_professional', 'advanced_partner_search,advanced_worker_search,analytics_advanced,available_workforce_search,csv_export,multi_country_requirements,shortlisting,worker_search'),
-    ('employer_starter', 'available_workforce_search,csv_export,shortlisting,worker_search')$$,
-  'the employer features keep their Phase 1 rows and add worker and workforce search on every paid plan, the advanced ones on Professional and Enterprise'
+    ('employer_enterprise', 'advanced_partner_search,advanced_worker_search,analytics_advanced,available_workforce_search,chara_match,csv_export,multi_country_requirements,shortlisting,worker_search'),
+    ('employer_professional', 'advanced_partner_search,advanced_worker_search,analytics_advanced,available_workforce_search,chara_match,csv_export,multi_country_requirements,shortlisting,worker_search'),
+    ('employer_starter', 'available_workforce_search,chara_match,csv_export,shortlisting,worker_search')$$,
+  'the employer features keep their Phase 1 rows and add worker and workforce search and CHARA Match on every paid plan, the advanced ones on Professional and Enterprise'
 );
 
 -- The catalogue
@@ -188,6 +188,7 @@ select results_eq(
     ('analytics_basic', '{recruitment_company,staffing_company}'),
     ('analytics_enterprise', '{recruitment_company,staffing_company}'),
     ('available_workforce_search', '{employer}'),
+    ('chara_match', '{employer}'),
     ('csv_export', '{employer}'),
     ('employer_discovery', '{recruitment_company,staffing_company}'),
     ('job_order_access', '{recruitment_company,staffing_company}'),

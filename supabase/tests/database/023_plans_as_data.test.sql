@@ -1,5 +1,5 @@
 begin;
-select plan(146);
+select plan(147);
 
 \ir organizations_fixture.inc
 
@@ -108,9 +108,14 @@ select results_eq(
   'shortlisting and csv_export are on every paid plan, analytics_advanced on Professional and Enterprise, and the free plan has no feature'
 );
 select is_empty(
-  $$select 1 from billing.plan_features where feature_key = any (array['chara_match', 'corridors', 'multi_partner_invitation',
+  $$select 1 from billing.plan_features where feature_key = any (array['corridors', 'multi_partner_invitation',
       'priority_visibility'])$$,
   'no feature key of a phase after Phase 2 is seeded'
+);
+select results_eq(
+  $$select plan_code from billing.plan_features where feature_key = 'chara_match' order by plan_code$$,
+  $$values ('employer_enterprise'), ('employer_professional'), ('employer_starter')$$,
+  'chara_match is on every paid employer plan and never reserved for a higher one (C2, R21); the free plan has none'
 );
 select is(
   (select count(*) from billing.plans p
