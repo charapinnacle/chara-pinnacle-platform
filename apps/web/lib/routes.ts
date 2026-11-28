@@ -211,6 +211,12 @@ export function findWorkersPath(lang: string, slug: string, query = ""): string 
   return query === "" ? path : `${path}?${query}`;
 }
 
+// CHARA Match of an employer (ARCHITECTURE.md section 9.3), with the query of a prefill, a run and the matches shown.
+export function charaMatchPath(lang: string, slug: string, query = ""): string {
+  const path = `/${lang}/org/${slug}/match`;
+  return query === "" ? path : `${path}?${query}`;
+}
+
 // The contact requests a worker received, and those an organisation sent from Find Workers (FR-Q3).
 export function contactRequestsPath(lang: string): string {
   return `/${lang}/contact-requests`;
