@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { Response } from "@playwright/test";
 import { expectAccessibleAtBothWidths } from "./support/applications";
 import { execute, literal } from "./support/db";
+import { pickDate, shownDate } from "./support/date-picker";
 import { waitForHydration } from "./support/hydration";
 import { createCommittedUser } from "./support/login";
 import { seedAllButCv } from "./support/passport";
@@ -109,7 +110,7 @@ test.describe("CHARA Match (section 9.3)", () => {
     await pickWithKeys(page, "Industry", "Constr", "Construction");
     await pickWithKeys(page, "Occupation", "Welders", "Welders and flame cutters");
     await page.getByLabel("Number of workers", { exact: true }).fill("20");
-    await page.getByLabel("Start date", { exact: true }).fill(startIn(60));
+    await pickDate(page.getByLabel("Start date", { exact: true }), startIn(60));
     await page.getByLabel("Recruitment type", { exact: true }).selectOption("international");
     await page.getByRole("button", { name: "Find matches" }).press("Enter");
 
@@ -167,7 +168,7 @@ test.describe("CHARA Match (section 9.3)", () => {
       matchUrl(acme.slug, `destination=IS&industry=F&occupation=7212&workers=12&start=${start}&recruitment=international`),
     );
     await expect(page.getByLabel("Number of workers", { exact: true })).toHaveValue("12");
-    await expect(page.getByLabel("Start date", { exact: true })).toHaveValue(start);
+    await expect(page.getByLabel("Start date", { exact: true })).toContainText(shownDate(start));
     await expect(page.getByLabel("Recruitment type", { exact: true })).toHaveValue("international");
   });
 

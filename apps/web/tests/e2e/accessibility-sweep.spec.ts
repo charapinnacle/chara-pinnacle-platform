@@ -148,7 +148,8 @@ const accountStatePages = [
 // candidate (empty, with messages and closed), are checked in messaging.spec.ts. Find Workers of an employer (with cards, a
 // rule notice, saved, empty, failed and from a requirement) and the public Find Workers page are checked in find-workers.spec.ts;
 // the contact requests of a worker (with requests, the decline dialog and empty) and of an organisation (with an accepted and
-// a waiting request, and filtered) in contact-requests.spec.ts.
+// a waiting request, and filtered) in contact-requests.spec.ts. CHARA Match of an employer (the form, the summary and the
+// matches, and the plan notice of a free employer) is checked in chara-match.spec.ts.
 const releasedPages = [
   "/[lang]/appeals",
   "/[lang]/appeals/[id]",
@@ -178,6 +179,7 @@ const releasedPages = [
   "/[lang]/org/[slug]/job-orders",
   "/[lang]/org/[slug]/job-orders/[id]",
   "/[lang]/org/[slug]/job-orders/[id]/respond",
+  "/[lang]/org/[slug]/match",
   "/[lang]/org/[slug]/messages",
   "/[lang]/org/[slug]/messages/[id]",
   "/[lang]/org/[slug]/requirements",
