@@ -1,5 +1,7 @@
 import "server-only";
 import * as z from "zod";
+import { corridorPagePath } from "@/lib/corridors/presentation";
+import { listCorridors } from "@/lib/dal/corridors";
 import { createClient } from "@/lib/supabase/server";
 import type { SitemapCompany, SitemapPartner, SitemapVacancy } from "@/lib/seo/sitemap";
 
@@ -75,4 +77,11 @@ export async function listPublishedLegalSlugs(slugs: readonly string[]): Promise
   if (error) throw new Error("The legal pages of the sitemap could not be loaded", { cause: error });
   const published = new Set(data.map(({ slug }) => slug));
   return slugs.filter((slug) => published.has(slug));
+}
+
+// The listed corridors (those with enough partners), whose pages are indexed; none while release_corridors is off. A
+// corridor below the threshold keeps its page but stays out of the sitemap.
+export async function listSitemapCorridorPaths(): Promise<string[]> {
+  const list = await listCorridors();
+  return list?.corridors.map((row) => corridorPagePath(row.source_country, row.destination_country)) ?? [];
 }

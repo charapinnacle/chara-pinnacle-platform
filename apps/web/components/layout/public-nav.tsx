@@ -140,21 +140,24 @@ export async function PublicNav({ lang }: { lang: string }) {
             ))}
           </ul>
         </nav>
-        <div className="pt-6 pb-6">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <p id="menu-later" className={cn(groupTitleClassName, "mb-0")}>
-              Coming in a later phase
-            </p>
-            <span className="shrink-0 rounded-full border px-2.5 py-0.5 text-caption font-medium text-muted-foreground">Not yet available</span>
+        {/* Once every item of the network is released nothing is left to announce, and the block goes. */}
+        {network.later.length > 0 ? (
+          <div className="pt-6 pb-6">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <p id="menu-later" className={cn(groupTitleClassName, "mb-0")}>
+                Coming in a later phase
+              </p>
+              <span className="shrink-0 rounded-full border px-2.5 py-0.5 text-caption font-medium text-muted-foreground">Not yet available</span>
+            </div>
+            <ul aria-labelledby="menu-later" className="flex flex-wrap gap-2">
+              {network.later.map((feature) => (
+                <li key={feature} className="rounded-lg bg-secondary px-3 py-1.5 text-small text-muted-foreground">
+                  {feature}
+                </li>
+              ))}
+            </ul>
           </div>
-          <ul aria-labelledby="menu-later" className="flex flex-wrap gap-2">
-            {network.later.map((feature) => (
-              <li key={feature} className="rounded-lg bg-secondary px-3 py-1.5 text-small text-muted-foreground">
-                {feature}
-              </li>
-            ))}
-          </ul>
-        </div>
+        ) : null}
         <MenuActions lang={lang} area={area} postJobHref={postJobHref} />
       </SiteMenu>
     </div>

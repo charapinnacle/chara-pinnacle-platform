@@ -131,6 +131,8 @@ describe("the network items of the menu (FR-L5 AC4)", () => {
   const findCompanies = { path: "companies", label: "Find companies" };
   const findWorkers = { path: "find-workers", label: "Find workers" };
   const requestWorkers = { path: "request-workers", label: "Request workers" };
+  const corridors = { path: "corridors", label: "Workforce corridors" };
+  const labelsOf = (links: readonly { label: string }[]) => links.map(({ label }) => label);
   const three = ["release_partner_directories", "release_job_orders", "release_find_workers"] as const;
   const combinations: ReleaseSwitch[][] = Array.from({ length: 8 }, (_, bits) => three.filter((_, index) => bits & (1 << index)));
 
@@ -148,16 +150,27 @@ describe("the network items of the menu (FR-L5 AC4)", () => {
     }
   });
 
-  it("keeps the items whose pages do not exist yet as labels whatever their switch says, in the order of the client's structure", () => {
+  it("keeps every item a label until its switch is on, in the order of the client's structure, and leaves none once every switch is on", () => {
     expect(networkFeatures.map(({ label }) => label)).toEqual(order);
     expect(networkMenu([]).later).toEqual(order);
-    const all = networkMenu([...three, "release_candidate_submissions", "release_messaging"]);
-    expect(all.links).toEqual([findWorkers, requestWorkers, findCompanies, ...directories, jobOrders]);
-    expect(all.later).toEqual(["Workforce corridors"]);
+    const releases = networkMenu([...three, "release_candidate_submissions", "release_messaging"]);
+    expect(releases.links).toEqual([findWorkers, requestWorkers, findCompanies, ...directories, jobOrders]);
+    expect(releases.later).toEqual(["Workforce corridors"]);
+    const all = networkMenu([...three, "release_candidate_submissions", "release_messaging", "release_corridors"]);
+    expect(all.links).toEqual([findWorkers, requestWorkers, findCompanies, ...directories, corridors, jobOrders]);
+    expect(all.later).toEqual([]);
     expect(networkMenu(["release_messaging"]).links).toEqual([requestWorkers]);
-    expect(networkFeatures.filter(({ path }) => path !== null).map(({ path }) => path)).toEqual(
-      [findWorkers, requestWorkers, findCompanies, ...directories, jobOrders].map(({ path }) => path),
+    expect(networkFeatures.map(({ path }) => path)).toEqual(
+      [findWorkers, requestWorkers, findCompanies, ...directories, corridors, jobOrders].map(({ path }) => path),
     );
+  });
+
+  it("links Workforce corridors exactly while release_corridors is on, whatever release 2a says (brief section 18)", () => {
+    expect(networkMenu(["release_corridors"]).links).toEqual([corridors]);
+    expect(networkMenu(["release_corridors"]).later).not.toContain("Workforce corridors");
+    expect(networkMenu(["release_partner_directories"]).links).not.toContainEqual(corridors);
+    expect(labelsOf(forAccountKind(networkMenu(["release_corridors"]).links, "worker"))).toEqual([]);
+    expect(labelsOf(forAccountKind(networkMenu(["release_corridors"]).links, null))).toEqual(["Workforce corridors"]);
   });
 
   it("offers a worker none of the network's pages, and a company and a visitor every released one", () => {

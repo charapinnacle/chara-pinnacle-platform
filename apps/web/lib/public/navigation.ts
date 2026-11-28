@@ -9,6 +9,8 @@ export const JOB_ORDERS_PATH = "job-orders";
 export const FIND_COMPANIES_PATH = "companies";
 export const FIND_WORKERS_PATH = "find-workers";
 export const REQUEST_WORKERS_PATH = "request-workers";
+export const CORRIDORS_PATH = "corridors";
+export const NETWORK_PATH = "network";
 
 // The header shows a few links (OPEN_QUESTIONS.md D90, which replaces the header lists of P18 and P22): Find Jobs and For
 // employers on every public page, For job seekers instead of both on the For employers page, How it works, then Post a Job
@@ -25,9 +27,9 @@ export const jobSeekersLink = { path: "", label: "For job seekers" } as const;
 // makes an item a page and its address then (FR-L5). Until its release is on an item is named in the menu as plain text,
 // never a link, so the client sees where it will go. The partner directories (release 2a), Job Orders (release 2b, V40),
 // Find Companies (release 2b, V53), Find Workers (release 2c, V69) and Request Workers (release 2c, V71, a public page
-// that leads employers to the staffing partners) exist; an item's path and release here also put it in the sitemap.
-// Workforce Corridors belongs to no release of Phase 2.
-type NetworkFeature = { label: string } & ({ path: string; release: ReleaseSwitch } | { path: null; release: null });
+// that leads employers to the staffing partners) exist, and so do the Workforce corridors (release_corridors); an item's
+// path and release here also put it in the sitemap.
+type NetworkFeature = { label: string; path: string; release: ReleaseSwitch };
 
 export const networkFeatures: readonly NetworkFeature[] = [
   { label: "Find workers", path: FIND_WORKERS_PATH, release: "release_find_workers" },
@@ -35,7 +37,7 @@ export const networkFeatures: readonly NetworkFeature[] = [
   { label: "Find companies", path: FIND_COMPANIES_PATH, release: "release_job_orders" },
   { label: "Recruitment partners", path: RECRUITMENT_DIRECTORY_PATH, release: "release_partner_directories" },
   { label: "Staffing partners", path: STAFFING_DIRECTORY_PATH, release: "release_partner_directories" },
-  { label: "Workforce corridors", path: null, release: null },
+  { label: "Workforce corridors", path: CORRIDORS_PATH, release: "release_corridors" },
   { label: "Job orders", path: JOB_ORDERS_PATH, release: "release_job_orders" },
 ];
 
@@ -46,14 +48,14 @@ export function networkMenu(released: readonly ReleaseSwitch[]): { links: { path
   const links: { path: string; label: string }[] = [];
   const later: string[] = [];
   for (const { label, path, release } of networkFeatures) {
-    if (path !== null && released.includes(release)) links.push({ path, label });
+    if (released.includes(release)) links.push({ path, label });
     else later.push(label);
   }
   return { links, later };
 }
 
 // Every page of the network serves companies (employers and partners), none a person looking for work.
-const companyPaths = new Set<string>([EMPLOYERS_PATH, ...networkFeatures.flatMap(({ path }) => (path === null ? [] : [path]))]);
+const companyPaths = new Set<string>([EMPLOYERS_PATH, ...networkFeatures.map(({ path }) => path)]);
 
 // A signed-in worker is not offered the employer's or a partner's side of the site, and a signed-in company not the job
 // seeker's.

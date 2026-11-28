@@ -26,7 +26,9 @@ vi.mock("@/lib/supabase/server", () => ({
   }),
 }));
 
-const { listPublishedLegalSlugs, listSitemapCompanies, listSitemapPartners, listSitemapVacancies } = await import("@/lib/dal/sitemap");
+const { listPublishedLegalSlugs, listSitemapCompanies, listSitemapCorridorPaths, listSitemapPartners, listSitemapVacancies } = await import(
+  "@/lib/dal/sitemap"
+);
 
 const entry = (n: number) => ({
   id: `0a1b2c3d-0000-4000-8000-${String(n).padStart(12, "0")}`,
@@ -166,5 +168,30 @@ describe("listSitemapCompanies (FR-K5 AC10)", () => {
     expect(await listSitemapCompanies(100)).toEqual([]);
     results = [{ data: null, error: { code: "57014", message: "canceling statement due to statement timeout" } }];
     await expect(listSitemapCompanies(100)).rejects.toThrow("The company pages of the sitemap could not be loaded");
+  });
+});
+
+describe("listSitemapCorridorPaths (brief section 18)", () => {
+  const corridor = (source: string, destination: string) => ({
+    source_country: source,
+    source_name: source,
+    destination_country: destination,
+    destination_name: destination,
+    recruitment_partners: 6,
+    staffing_partners: null,
+    workers_available: "100–249",
+  });
+
+  it("lists the page of every listed corridor in lower case, as the corridor pages are addressed", async () => {
+    results = [{ data: { min_count: 5, workforce_requires_sign_in: true, refreshed_at: null, corridors: [corridor("PH", "DE"), corridor("PL", "DE")] }, error: null }];
+    expect(await listSitemapCorridorPaths()).toEqual(["corridors/ph-de", "corridors/pl-de"]);
+    expect(calls).toEqual([{ name: "list_corridors", args: undefined }]);
+  });
+
+  it("lists none while release_corridors is off and throws when the read fails", async () => {
+    results = [{ data: null, error: { code: "P0002", message: "CHARA_NOT_FOUND" } }];
+    expect(await listSitemapCorridorPaths()).toEqual([]);
+    results = [{ data: null, error: { code: "57014", message: "canceling statement due to statement timeout" } }];
+    await expect(listSitemapCorridorPaths()).rejects.toThrow("The workforce corridors could not be loaded");
   });
 });

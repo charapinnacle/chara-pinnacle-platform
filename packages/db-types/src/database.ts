@@ -2828,6 +2828,9 @@ isOneToOne: false
               "blocked_by_me": boolean,"context_id": string,"context_title": string,"context_type": Database["public"]['Enums']["conversation_context"],"counterpart_kind": string,"counterpart_name": string,"id": string,"last_message_at": string,"organization_id": string,"read_only_reason": string,"requirement_id": string,"unread": number
             }[]
                            },
+"get_corridor":
+{ Args: { "p_destination": string,"p_source": string }; Returns: Json
+                           },
 "get_dashboard_applications":
 { Args: { "p_organization_id": string }; Returns: {
               "recent": number,"status": Database["public"]['Enums']["application_status"],"total": number
@@ -2867,6 +2870,9 @@ isOneToOne: false
 { Args: { "p_id": string }; Returns: {
               "applied_at": string,"cover_note": string,"employer_display_name": string,"id": string,"job_id": string,"job_title": string,"status": Database["public"]['Enums']["application_status"],"vacancy_is_open": boolean
             }[]
+                           },
+"get_network":
+{ Args: { "p_destination": string }; Returns: Json
                            },
 "get_org_analytics":
 { Args: { "p_dimension"?: string,"p_org": string,"p_period"?: string }; Returns: {
@@ -2976,6 +2982,9 @@ isOneToOne: false
 { Args: { "p_before_at"?: string,"p_before_id"?: string,"p_context_type"?: Database["public"]['Enums']["conversation_context"],"p_limit"?: number,"p_org"?: string }; Returns: {
               "context_id": string,"context_title": string,"context_type": Database["public"]['Enums']["conversation_context"],"counterpart_kind": string,"counterpart_name": string,"id": string,"last_message_at": string,"organization_id": string,"read_only_reason": string,"requirement_id": string,"unread": number
             }[]
+                           },
+"list_corridors":
+{ Args: Record<PropertyKey, never>; Returns: Json
                            },
 "list_employer_submissions":
 { Args: { "p_limit"?: number,"p_offset"?: number,"p_org": string,"p_requirement"?: string,"p_stage"?: Database["public"]['Enums']["submission_status"] }; Returns: {

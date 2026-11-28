@@ -405,6 +405,15 @@ describe("the Phase 2 legal gate (FR-S4 AC9)", () => {
     expect(result.stdout).toContain("job_orders: partner-dpa (missing)");
   });
 
+  it("holds the workforce corridors to the legal documents of release 2a", () => {
+    const result = run(released({ release_corridors: true }), MIRRORED, WITH_PHASE_2_DRAFTS);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      "partner_accounts is switched on (release_corridors) but its legal documents are not approved: partner-terms (draft), employer-pays-commitment (draft)",
+    );
+    expect(result.stdout).toContain("Release switches on: release_corridors\n");
+  });
+
   it("checks each feature against its own switches", () => {
     const result = run(released({ release_partner_directories: true, release_candidate_submissions: "true", release_messaging: "yes" }), MIRRORED, {
       ...PUBLISHED,

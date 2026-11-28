@@ -185,6 +185,7 @@ const config = defineConfig({
         "**/messaging-dashboard-blocks.spec.ts",
         "**/release-2c-journey.spec.ts",
         "**/worker-identity.spec.ts",
+        "**/workforce-corridors.spec.ts",
       ],
     },
     {
@@ -784,13 +785,21 @@ const config = defineConfig({
       testMatch: "**/worker-identity.spec.ts",
       dependencies: ["release-2c-journey"],
     },
+    // The workforce corridors set release_corridors and release 2a for the whole database and hide the partners serving
+    // their destination, so they follow the worker identity checks and come before the sitemap.
+    {
+      name: "workforce-corridors-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/workforce-corridors.spec.ts",
+      dependencies: ["worker-identity-release"],
+    },
     // The sitemap is compared with every public vacancy of the database, so no other spec may open or close one while
     // these tests run: they follow every other project.
     {
       name: "sitemap",
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/search-engine-sitemap.spec.ts",
-      dependencies: ["worker-identity-release"],
+      dependencies: ["workforce-corridors-release"],
     },
     // The load times of the performance smoke are measured when no other spec loads the server: last of all.
     {
