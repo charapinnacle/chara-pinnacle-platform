@@ -131,6 +131,7 @@ describe("the message rules of the composer (FR-P1 AC3, AC10)", () => {
     expect(parseInboxFilter("partner_response")).toBe("partner_response");
     for (const value of [undefined, "", "poll", ["application"]]) expect(parseInboxFilter(value)).toBeNull();
     expect(parseInboxFilter("inquiry")).toBe("inquiry");
+    expect(parseInboxFilter("partner_inquiry")).toBe("partner_inquiry");
   });
 });
 
@@ -178,7 +179,13 @@ describe("the addresses and labels of the pages (FR-P1 AC11)", () => {
 
   it("offers each side the filters of its contexts", () => {
     expect(inboxContexts({ kind: "worker" })).toEqual(["application", "candidate_submission", "contact_request"]);
-    expect(inboxContexts({ kind: "partner", slug: "r" })).toEqual(["requirement_invitation", "partner_response", "contact_request", "inquiry"]);
+    expect(inboxContexts({ kind: "partner", slug: "r" })).toEqual([
+      "requirement_invitation",
+      "partner_response",
+      "contact_request",
+      "inquiry",
+      "partner_inquiry",
+    ]);
     expect(inboxContexts({ kind: "employer", slug: "a" })).toHaveLength(6);
   });
 

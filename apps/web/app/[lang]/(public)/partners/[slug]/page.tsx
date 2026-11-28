@@ -11,7 +11,7 @@ import { PageContainer } from "@/components/layout/page-container";
 import { PartnerProfileView } from "@/components/partners/partner-profile-view";
 import { hasConnectionActions } from "@/lib/connections/access";
 import { offersStaffing } from "@/lib/connections/contact-actions";
-import { getContactEmployer } from "@/lib/dal/connection-actions";
+import { getContactEmployer, getContactPartner } from "@/lib/dal/connection-actions";
 import { getProfileConnection } from "@/lib/dal/connections";
 import { getInviteChoices } from "@/lib/dal/invitations";
 import { getPartnerProfile } from "@/lib/dal/partner-profile";
@@ -106,13 +106,21 @@ export default async function PartnerProfilePage({ params, searchParams }: PageP
   // A rule about non-EU workers matters unless every country this partner sources from is inside free movement.
   const nonEuWorkers = profile.sourceCountries.length === 0 || profile.sourceCountries.some(({ code }) => outsideFreeMovement(code));
   const agencyWorkRules = agencyRules.filter((rule) => nonEuWorkers || !rule.nonEuWorkersOnly);
+  // A member of a partner company that may write to this one (D91: recruitment to recruitment or staffing, staffing to
+  // recruitment) contacts it with the same inquiry, when the viewer writes for no employer.
+  const sender =
+    employer ??
+    (connection?.id && connection.access.kind === "signed_in"
+      ? await getContactPartner({ id: connection.id, type: profile.type })
+      : null);
+  const sendLabel = employer ? "Send inquiry" : "Contact this company";
   // The database refuses an owner or admin at aal1, and the redirect would drop what they typed, so they verify first.
-  const stepUp = employer?.manager && user?.aal !== "aal2" ? mfaPath(lang, path) : null;
+  const stepUp = sender?.manager && user?.aal !== "aal2" ? mfaPath(lang, path) : null;
   const contact =
-    employer && connection?.id && stepUp ? (
+    sender && connection?.id && stepUp ? (
       <div className="grid gap-2">
         <div className="flex flex-wrap gap-3">
-          <LinkButton href={stepUp}>Send inquiry</LinkButton>
+          <LinkButton href={stepUp}>{sendLabel}</LinkButton>
           {staffing ? (
             <LinkButton variant="secondary" href={stepUp}>
               Request workforce
@@ -121,10 +129,16 @@ export default async function PartnerProfilePage({ params, searchParams }: PageP
         </div>
         <p className="text-small text-muted-foreground">Owners and admins write to partners after the two-step check.</p>
       </div>
-    ) : employer && connection?.id ? (
+    ) : sender && connection?.id ? (
       <div className="flex flex-wrap gap-3">
-        <SendInquiry slug={employer.slug} employerName={employer.displayName} partnerId={connection.id} partnerName={profile.displayName} />
-        {staffing ? (
+        <SendInquiry
+          slug={sender.slug}
+          senderName={sender.displayName}
+          partnerId={connection.id}
+          partnerName={profile.displayName}
+          label={sendLabel}
+        />
+        {employer && staffing ? (
           <RequestWorkforce
             slug={employer.slug}
             partnerId={connection.id}

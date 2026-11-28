@@ -178,6 +178,53 @@ test.describe("Structured connection actions (FR-P2)", () => {
     await expectAccessibleAtBothWidths(page);
   });
 
+  test("D91: a member of a recruitment company contacts another one, and a staffing company is offered nothing on a staffing profile", async ({ page, browser }) => {
+    test.setTimeout(240_000);
+    const plain = await listedPartner("recruitment_company");
+    const staffzwei = await listedPartner("staffing_company");
+    const sender = await createCommittedUser("company");
+    const staffer = await createCommittedUser("company");
+    execute(
+      `insert into billing.subscriptions (organization_id, plan_code, status, provider)
+       values (${literal(rekrut.id)}, 'recruitment_partner', 'active', 'null'), (${literal(staffit.id)}, 'staffing_partner', 'active', 'null');
+       insert into public.organization_members (organization_id, user_id, role, accepted_at)
+       values (${literal(rekrut.id)}, ${literal(sender.id)}, 'member', now()), (${literal(staffit.id)}, ${literal(staffer.id)}, 'member', now())`,
+    );
+
+    await signInAtAal1(page, sender, profileUrl(plain.slug));
+    await expect(page.getByRole("button", { name: /^Request workforce/ })).toHaveCount(0);
+    const contact = page.getByRole("button", { name: `Contact this company to ${plain.name}` });
+    await waitForHydration(contact);
+    await contact.click();
+    const dialog = page.getByRole("dialog", { name: `Send an inquiry to ${plain.name}` });
+    await expect(dialog).toContainText(`${plain.name} sees ${rekrut.name}'s name and your inquiry`);
+    const text = "We place welders in Hamburg and look for a partner for pipe fitters. Shall we talk?";
+    await dialog.getByLabel("Your inquiry").fill(text);
+    await dialog.getByRole("button", { name: "Send inquiry" }).click();
+    await expect(page).toHaveURL(new RegExp(`/en/org/${rekrut.slug}/messages/[0-9a-f-]{36}$`));
+    const thread = page.getByRole("log", { name: `Messages with ${plain.name}` });
+    await expect(thread).toContainText("Inquiry");
+    await expect(thread).toContainText(text);
+    const [row] = query<{ context_type: string; kind: string }>(
+      `select v.context_type::text, c.kind::text from public.connections c join public.conversations v on v.id = c.conversation_id
+       where c.from_organization_id = ${literal(rekrut.id)} and c.to_organization_id = ${literal(plain.id)}`,
+    );
+    expect(row).toEqual({ context_type: "partner_inquiry", kind: "inquiry" });
+
+    await page.goto(`/en/org/${rekrut.slug}/messages?context=partner_inquiry`);
+    await expect(page.getByRole("link", { name: "Partner inquiries" })).toHaveAttribute("aria-current", "page");
+    await expect(page.getByRole("main")).toContainText(plain.name);
+    await expect(page.getByRole("main")).toContainText("Partner inquiry");
+    await expectAccessibleAtBothWidths(page);
+
+    const staffContext = await browser.newContext();
+    const staffPage = await staffContext.newPage();
+    await signInAtAal1(staffPage, staffer, profileUrl(staffzwei.slug));
+    await expect(staffPage.getByRole("button", { name: /^Contact this company/ })).toHaveCount(0);
+    await expect(staffPage.getByRole("button", { name: /^Send inquiry/ })).toHaveCount(0);
+    await staffContext.close();
+  });
+
   test("AC9: a visitor is asked to sign in to contact, with the profile as the next page", async ({ browser }) => {
     const visitor = await newVisitor(browser);
     await visitor.page.goto(profileUrl(staffit.slug));

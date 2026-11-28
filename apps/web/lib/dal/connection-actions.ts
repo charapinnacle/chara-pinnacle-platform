@@ -1,5 +1,7 @@
 import "server-only";
+import type { Database } from "@chara-pinnacle/db-types";
 import * as z from "zod";
+import { partnerInquiryAllowed } from "@/lib/connections/contact-actions";
 import type { ConversationConnection } from "@/lib/connections/typed-messages";
 import { getMyOrganizations } from "@/lib/dal/organizations";
 import { getCountries } from "@/lib/dal/reference";
@@ -87,4 +89,25 @@ export async function getContactEmployer(saveFor: string | null): Promise<Contac
         basedInCountry: employer.basedInCountry,
       }
     : null;
+}
+
+export type ContactPartner = Omit<ContactEmployer, "basedInCountry">;
+
+// The partner company a signed-in member writes to the partner target for from its public profile (D91): the first of
+// the viewer's recruitment and staffing companies, not suspended, that may write to the target's type, while release
+// 2c's messaging is on; null for anybody else and for a member of the target itself. send_partner_inquiry checks the
+// listing, the plan and the limits again.
+export async function getContactPartner(target: {
+  id: string;
+  type: Database["public"]["Enums"]["organization_type"];
+}): Promise<ContactPartner | null> {
+  if (!(await isReleased("release_messaging"))) return null;
+  const user = await getCurrentUser();
+  if (!user || user.suspended || user.accountKind !== "company") return null;
+  const organizations = await getMyOrganizations(user.id);
+  if (organizations.some(({ id }) => id === target.id)) return null;
+  const sender = organizations.find(
+    ({ type, suspended }) => !suspended && type !== "employer" && partnerInquiryAllowed(type, target.type),
+  );
+  return sender ? { id: sender.id, slug: sender.slug, displayName: sender.displayName, manager: sender.role !== "member" } : null;
 }
