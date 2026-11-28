@@ -27,7 +27,7 @@ import { getUnreadMessageCounts } from "@/lib/dal/messaging";
 import { getUsagePrompts } from "@/lib/dal/usage";
 import { RECRUITMENT_DIRECTORY_PATH } from "@/lib/public/navigation";
 import { ACTIVE_REQUIREMENTS } from "@/lib/requirements/limits";
-import { applicantsPath, billingPath, findWorkersPath, jobsPath, organizationProfilePath, requirementsPath } from "@/lib/routes";
+import { applicantsPath, billingPath, charaMatchPath, findWorkersPath, jobsPath, organizationProfilePath, requirementsPath } from "@/lib/routes";
 import type { MemberRole } from "@/lib/validation/team";
 
 type EmployerDashboardProps = {
@@ -42,6 +42,8 @@ type EmployerDashboardProps = {
   findWorkers?: boolean;
   // Messaging is released: the unread messages and the inquiries and workforce requests are shown (FR-R5, release 2c).
   messaging?: boolean;
+  // CHARA Match is released: the partner network part links to it (section 9.3).
+  charaMatch?: boolean;
 };
 
 async function NoVacanciesYet({ empty, lang, slug, role }: { empty: Promise<boolean>; lang: string; slug: string; role: MemberRole }) {
@@ -81,14 +83,15 @@ type PartnerNetworkProps = {
   canManage: boolean;
   requirements: boolean;
   messaging: boolean;
+  charaMatch: boolean;
 };
 
 // "Who can help me fill my workforce requirement?" (spec §30, FR-R5) after the Phase 1 blocks (AC2): one read for every
 // figure of the partner network, so its failure leaves the hiring figures in place (AC10). The blocks of release 2b come
 // only with job orders and the submitted candidates only with candidate submissions (AC7). Release 2c adds the
 // inquiries and workforce requests and the unread messages with messaging, the latter from a read of their own, and the
-// matching workers with Find Workers (AC5, AC6).
-function PartnerNetwork({ lang, organizationId, slug, canManage, requirements, messaging }: PartnerNetworkProps) {
+// matching workers with Find Workers (AC5, AC6). With CHARA Match released, the header links to it (section 9.3).
+function PartnerNetwork({ lang, organizationId, slug, canManage, requirements, messaging, charaMatch }: PartnerNetworkProps) {
   const findPartnersHref = `/${lang}/${RECRUITMENT_DIRECTORY_PATH}`;
   const unread = messaging ? getUnreadMessageCounts().then((counts) => organizationUnread(counts, organizationId)) : null;
   // Read inside the network figures, which are not drawn when they fail to load; the failure is then not left unhandled.
@@ -103,6 +106,11 @@ function PartnerNetwork({ lang, organizationId, slug, canManage, requirements, m
           {requirements && canManage ? (
             <TextLink standalone href={`${requirementsPath(lang, slug)}/new`}>
               Post workforce requirement
+            </TextLink>
+          ) : null}
+          {charaMatch ? (
+            <TextLink standalone href={charaMatchPath(lang, slug)}>
+              CHARA Match
             </TextLink>
           ) : null}
           <TextLink standalone href={findPartnersHref}>
@@ -157,6 +165,7 @@ export function EmployerDashboard({
   requirements,
   findWorkers = false,
   messaging = false,
+  charaMatch = false,
 }: EmployerDashboardProps) {
   const { slug, role } = organization;
   const { applications, vacancies, plan, empty } = startDashboardLoad(organization.id);
@@ -267,6 +276,7 @@ export function EmployerDashboard({
           canManage={manager}
           requirements={requirements}
           messaging={messaging}
+          charaMatch={charaMatch}
         />
       ) : null}
     </div>
