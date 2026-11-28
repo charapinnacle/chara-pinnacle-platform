@@ -706,7 +706,70 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
-                },"messages": {
+                },"match_results": {
+                  Row: {
+                    "entity_id": string,"entity_type": string,"reasons": Json,"run_id": string,"score": number
+                  }
+                  Insert: {
+                    "entity_id": string,"entity_type": string,"reasons": Json,"run_id": string,"score": number
+                  }
+                  Update: {
+                    "entity_id"?: string,"entity_type"?: string,"reasons"?: Json,"run_id"?: string,"score"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "match_results_run_id_fkey"
+      columns: ["run_id"]
+isOneToOne: false
+      referencedRelation: "match_runs"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"match_rules": {
+                  Row: {
+                    "enabled": boolean,"entity_type": string,"rule_key": string,"weight": number
+                  }
+                  Insert: {
+                    "enabled"?: boolean,"entity_type": string,"rule_key": string,"weight": number
+                  }
+                  Update: {
+                    "enabled"?: boolean,"entity_type"?: string,"rule_key"?: string,"weight"?: number
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"match_runs": {
+                  Row: {
+                    "created_at": string,"created_by": string | null,"id": string,"inputs": Json,"organization_id": string,"summary": Json
+                  }
+                  Insert: {
+                    "created_at"?: string,"created_by"?: string | null,"id"?: string,"inputs": Json,"organization_id": string,"summary"?: Json
+                  }
+                  Update: {
+                    "created_at"?: string,"created_by"?: string | null,"id"?: string,"inputs"?: Json,"organization_id"?: string,"summary"?: Json
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "match_runs_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "match_runs_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "organizations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "match_runs_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "v_org_limits"
+      referencedColumns: ["organization_id"]
+    }
+                  ]
+},"messages": {
                   Row: {
                     "body": string,"connection_id": string | null,"conversation_id": string,"created_at": string,"id": string,"kind": Database["public"]['Enums']["message_kind"],"moderation_state": Database["public"]['Enums']["job_moderation_state"],"sender_organization_id": string | null,"sender_user_id": string | null
                   }
@@ -2716,6 +2779,16 @@ isOneToOne: false
                            },
 "change_member_role":
 { Args: { "p_org": string,"p_role": Database["public"]['Enums']["member_role"],"p_user": string }; Returns: undefined
+                           },
+"chara_match":
+{ Args: { "p_destination": string,"p_industry": string,"p_occupation": string,"p_org": string,"p_recruitment": Database["public"]['Enums']["recruitment_preference"],"p_start": string,"p_workers": number }; Returns: {
+              "created_at": string,"inputs": Json,"run_id": string,"summary": Json
+            }[]
+                           },
+"chara_match_results":
+{ Args: { "p_cursor"?: string,"p_entity_type": string,"p_limit"?: number,"p_run": string }; Returns: {
+              "card": Json,"display_name": string,"entity_id": string,"next_cursor": string,"organization_type": Database["public"]['Enums']["organization_type"],"reasons": Json,"score": number,"slug": string
+            }[]
                            },
 "choose_account_kind":
 { Args: { "p_consents"?: Json,"p_kind": Database["public"]['Enums']["account_kind"],"p_org_type"?: Database["public"]['Enums']["organization_type"] }; Returns: Database["public"]['Enums']["account_kind"]
