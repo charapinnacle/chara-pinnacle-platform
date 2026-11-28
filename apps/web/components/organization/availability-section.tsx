@@ -128,6 +128,7 @@ export function AvailabilitySection({
     <>
       {listings.length === 0 ? (
         <EmptyState
+          flat
           title="No availability listed yet"
           description={
             !canManage

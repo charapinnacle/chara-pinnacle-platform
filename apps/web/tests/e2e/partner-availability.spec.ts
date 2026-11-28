@@ -5,6 +5,7 @@ import { createCommittedPartner, partnerWithCompany, pickWithKeys, setPartnerRel
 import { signInAtAal1, signInAtAal2 } from "./support/team";
 import { expect, test } from "./support/test";
 import { pickDate } from "./support/date-picker";
+import { openProfileSection } from "./support/workforce-profile";
 
 interface ListingRow {
   id: string;
@@ -60,6 +61,7 @@ test.describe("Workforce availability (FR-K3)", () => {
     const secret = await enrollTotp(user);
     await signInAtAal2(page, user, secret, `/en/org/${slug}/workforce-profile`);
 
+    await openProfileSection(page, "Available workforce");
     const section = page.getByRole("region", { name: "Available workforce" });
     await expect(section.getByRole("heading", { name: "No availability listed yet" })).toBeVisible();
     await expectAccessibleAtBothWidths(page);
@@ -127,6 +129,7 @@ test.describe("Workforce availability (FR-K3)", () => {
     const secret = await enrollTotp(user);
     await signInAtAal2(page, user, secret, `/en/org/${slug}/workforce-profile`);
 
+    await openProfileSection(page, "Recruiting capacity");
     const section = page.getByRole("region", { name: "Recruiting capacity" });
     const items = section.getByRole("listitem");
     await expect(items).toHaveCount(2);
@@ -191,7 +194,7 @@ test.describe("Workforce availability (FR-K3)", () => {
     expect(listings(id).map((row) => row.source_country)).toEqual(["PH"]);
   });
 
-  test("AC4: a member reads the listings without changing them, and a skeleton shows while they load", async ({ page }) => {
+  test("AC4: a member reads the listings without changing them, and the page skeleton shows while they load", async ({ page }) => {
     test.setTimeout(90_000);
     const { id, slug } = await partnerWithCompany("staffing_company");
     seedProfile(id);
@@ -204,6 +207,7 @@ test.describe("Workforce availability (FR-K3)", () => {
     const path = `/en/org/${slug}/workforce-profile`;
     await signInAtAal1(page, member, path);
 
+    await openProfileSection(page, "Available workforce");
     const section = page.getByRole("region", { name: "Available workforce" });
     await expect(section.getByRole("listitem")).toContainText("Confirmed 3 days ago");
     await expect(section.getByRole("button")).toHaveCount(0);
@@ -212,9 +216,11 @@ test.describe("Workforce availability (FR-K3)", () => {
     const held = executeAsync("begin; lock table public.workforce_availability in access exclusive mode; select pg_sleep(4); commit;");
     await new Promise((resolve) => setTimeout(resolve, 1000));
     await page.goto(path, { waitUntil: "commit" });
-    await expect(section.getByRole("status", { name: "Loading" })).toBeVisible({ timeout: 15_000 });
+    // The section menu says whether a listing is added, so the page reads the listings before it shows.
+    await expect(page.getByRole("status", { name: "Loading" })).toBeVisible({ timeout: 15_000 });
+    await openProfileSection(page, "Available workforce");
     await expect(section.getByRole("listitem")).toContainText("Confirmed 3 days ago", { timeout: 15_000 });
-    await expect(section.getByRole("status", { name: "Loading" })).toHaveCount(0);
+    await expect(page.getByRole("status", { name: "Loading" })).toHaveCount(0);
     await held;
   });
 
@@ -242,6 +248,7 @@ test.describe("Workforce availability (FR-K3)", () => {
     await expect(serve.getByText("Removing Philippines")).toHaveCount(0);
     expect(listings(id).map((row) => `${row.occupation_id}${row.source_country}`)).toEqual(["7212NP"]);
 
+    await openProfileSection(page, "What you offer");
     const offer = page.getByRole("region", { name: "What you offer" });
     await offer.getByRole("button", { name: "Remove Welders and flame cutters" }).click();
     await expect(offer.getByRole("status")).toHaveText("Removing Welders and flame cutters also deletes 1 availability listing.");
@@ -262,6 +269,7 @@ test.describe("Workforce availability (FR-K3)", () => {
     const { user, id, slug } = await partnerWithCompany("recruitment_company");
     const secret = await enrollTotp(user);
     await signInAtAal2(page, user, secret, `/en/org/${slug}/workforce-profile`);
+    await openProfileSection(page, "Recruiting capacity");
     const section = page.getByRole("region", { name: "Recruiting capacity" });
     await expect(section).toContainText("Add them above first.");
     await expect(section.getByRole("button", { name: "Add a listing" })).toHaveCount(0);

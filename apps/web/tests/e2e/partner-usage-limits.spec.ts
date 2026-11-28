@@ -11,6 +11,7 @@ import {
 } from "./support/partners";
 import { signInAtAal1, signInAtAal2 } from "./support/team";
 import { expect, test } from "./support/test";
+import { openProfileSection } from "./support/workforce-profile";
 
 const SUPPLIES_FOR = "Where do you supply workers for?";
 
@@ -51,6 +52,7 @@ test.describe("Partner usage and the upgrade prompt (FR-R1)", () => {
     await signInAtAal2(page, user, secret, `/en/org/${slug}/workforce-profile`);
 
     // The free plan includes no listing: the section shows the prompt instead of the add button, and reports it.
+    await openProfileSection(page, "Available workforce");
     const availability = page.getByRole("region", { name: "Available workforce" });
     await expect(availability).toContainText("Workforce listings are not included in your Free plan.");
     await expect(availability).toContainText(
@@ -62,6 +64,7 @@ test.describe("Partner usage and the upgrade prompt (FR-R1)", () => {
     await expect.poll(() => prompts(id)).toEqual(["workforce_listings"]);
 
     // A fourth served country is not added; the prompt in the live region names the usage and is reported.
+    await openProfileSection(page, "Where you serve");
     const serve = page.getByRole("region", { name: "Where you serve" });
     await expect(serve.getByText("3 of 3 countries", { exact: true })).toBeVisible();
     await pickWithKeys(page, SUPPLIES_FOR, "fran", "France");
@@ -80,6 +83,7 @@ test.describe("Partner usage and the upgrade prompt (FR-R1)", () => {
     const secret = await enrollTotp(user);
     await signInAtAal2(page, user, secret, `/en/org/${slug}/workforce-profile`);
 
+    await openProfileSection(page, "Where you serve");
     const serve = page.getByRole("region", { name: "Where you serve" });
     await expect(serve.getByText("2 of 3 countries", { exact: true })).toBeVisible();
     await pickWithKeys(page, SUPPLIES_FOR, "saudi", "Saudi Arabia");
@@ -117,6 +121,7 @@ test.describe("Partner usage and the upgrade prompt (FR-R1)", () => {
     );
     await signInAtAal1(page, member, `/en/org/${slug}/workforce-profile`);
 
+    await openProfileSection(page, "Available workforce");
     const availability = page.getByRole("region", { name: "Available workforce" });
     await expect(availability.getByRole("heading", { name: "No availability listed yet" })).toBeVisible();
     await expect(page.getByText("on your Free plan")).toHaveCount(0);

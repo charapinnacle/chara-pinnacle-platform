@@ -11,6 +11,8 @@ import { CommitmentGate } from "@/components/organization/commitment-gate";
 import { LicencesSection } from "@/components/organization/licences-section";
 import { StandardTermsForm, TrackRecordForm } from "@/components/organization/terms-and-record-forms";
 import { ModerationNotice } from "@/components/organization/moderation-notice";
+import { ProfileSection, type ProfileSectionLink } from "@/components/organization/profile-sections";
+import { ProfileTabs } from "@/components/organization/profile-tabs";
 import { WhereYouServeForm } from "@/components/organization/where-you-serve-form";
 import { WorkforceOfferForm } from "@/components/organization/workforce-offer-form";
 import { getCommitmentBlock } from "@/lib/dal/commitment";
@@ -37,23 +39,23 @@ import { recruitmentTypeLabels, sizeBandLabels, staffingTypeLabels } from "@/lib
 
 export const metadata: Metadata = { title: "Workforce profile", robots: { index: false } };
 
-// The licences are read in their own boundary, so the rest of the page does not wait for them.
+// The licences, read with the page (the section menu says whether one is added); their settings in a boundary of their own.
 async function Licences({
-  organizationId,
   slug,
   canManage,
   countries,
   initialCountry,
   profilePath,
+  licences,
 }: {
-  organizationId: string;
+  licences: Awaited<ReturnType<typeof getPartnerLicences>>;
   slug: string;
   canManage: boolean;
   countries: ReferenceItem[];
   initialCountry: string | null;
   profilePath: string;
 }) {
-  const [licences, { patterns, maxYears }] = await Promise.all([getPartnerLicences(organizationId), getLicenceSettings()]);
+  const { patterns, maxYears } = await getLicenceSettings();
   return (
     <LicencesSection
       slug={slug}
@@ -122,7 +124,12 @@ async function TrackRecord({
         <span className="text-muted-foreground">(counted by Chara Pinnacle from the responses employers selected)</span>
       </p>
       {canManage ? (
-        <TrackRecordForm slug={slug} placementsLastYear={record.placementsLastYear} countriesPlaced={record.countriesPlaced} countries={countries} />
+        <TrackRecordForm
+          slug={slug}
+          placementsLastYear={record.placementsLastYear}
+          countriesPlaced={record.countriesPlaced}
+          countries={countries}
+        />
       ) : (
         <Lines lines={counted ? trackRecordLines(counted.record) : []} empty="No track record stated" />
       )}
@@ -134,6 +141,7 @@ async function TrackRecord({
 // source countries of the profile above.
 async function Availability({
   organizationId,
+  listings,
   partnerType,
   slug,
   canManage,
@@ -143,6 +151,7 @@ async function Availability({
   rules,
   billingHref,
 }: {
+  listings: Awaited<ReturnType<typeof getWorkforceListings>>;
   organizationId: string;
   partnerType: PartnerType;
   slug: string;
@@ -153,10 +162,7 @@ async function Availability({
   rules: AvailabilityRules;
   billingHref: string;
 }) {
-  const [listings, prompts] = await Promise.all([
-    getWorkforceListings(organizationId),
-    getUsagePrompts(organizationId, partnerType, ["workforce_listings"]),
-  ]);
+  const prompts = await getUsagePrompts(organizationId, partnerType, ["workforce_listings"]);
   return (
     <AvailabilitySection
       slug={slug}
@@ -198,21 +204,24 @@ export default async function WorkforceProfilePage({ params, searchParams }: Pag
     availabilityRules,
     moderation,
     allowances,
-  ] =
-    await Promise.all([
-      getOrganizationGeographies(organization.id),
-      getUsagePrompts(organization.id, partnerType, ["markets", "listed_occupations"]),
-      getOrganizationProfile(organization.id),
-      getCountries(),
-      getWorkforceOffer(organization.id),
-      getOccupations(),
-      getIndustries(),
-      getLanguages(),
-      getCommitmentBlock(organization.id),
-      getAvailabilityRules(),
-      getPartnerProfileModeration(organization.id),
-      getUnenforcedAllowances(organization.id, ["markets"]),
-    ]);
+    licences,
+    listings,
+  ] = await Promise.all([
+    getOrganizationGeographies(organization.id),
+    getUsagePrompts(organization.id, partnerType, ["markets", "listed_occupations"]),
+    getOrganizationProfile(organization.id),
+    getCountries(),
+    getWorkforceOffer(organization.id),
+    getOccupations(),
+    getIndustries(),
+    getLanguages(),
+    getCommitmentBlock(organization.id),
+    getAvailabilityRules(),
+    getPartnerProfileModeration(organization.id),
+    getUnenforcedAllowances(organization.id, ["markets"]),
+    getPartnerLicences(organization.id),
+    getWorkforceListings(organization.id),
+  ]);
   const appeal = moderation.decision ? await listMyAppeals(moderation.decision.id) : null;
   const billingHref = billingPath(lang, slug);
   const nameOf = (code: string) => countries.find((country) => country.code === code)?.name ?? code;
@@ -228,7 +237,10 @@ export default async function WorkforceProfilePage({ params, searchParams }: Pag
     },
     { term: "Industries", values: named(industries, offer.industries) },
     { term: "Languages", values: named(languages, offer.languages) },
-    { term: "Recruitment type", values: offer.recruitmentType ? [recruitmentTypeLabels[offer.recruitmentType]] : [] },
+    {
+      term: partnerType === "recruitment_company" ? "Recruitment type" : "Supply type",
+      values: offer.recruitmentType ? [recruitmentTypeLabels[offer.recruitmentType]] : [],
+    },
     {
       term: "Staffing types",
       values: offer.serviceTypes.flatMap((service) => (service === "staffing" ? [] : [staffingTypeLabels[service]])),
@@ -237,8 +249,31 @@ export default async function WorkforceProfilePage({ params, searchParams }: Pag
     { term: "Year founded", values: offer.foundedYear === null ? [] : [String(offer.foundedYear)] },
   ];
 
+  const sections: ProfileSectionLink[] = [
+    {
+      headingId: "where-you-serve-heading",
+      title: "Where you serve",
+      status: geographies.sourcesFrom.length > 0 && geographies.servesMarket.length > 0 ? "done" : "todo",
+    },
+    {
+      headingId: "what-you-offer-heading",
+      title: "What you offer",
+      status: offer.occupations.length > 0 && offer.recruitmentType ? "done" : "todo",
+    },
+    { headingId: "licences-heading", title: "Licences", status: licences.length > 0 ? "done" : "todo" },
+    {
+      headingId: "availability-heading",
+      title: partnerType === "recruitment_company" ? "Recruiting capacity" : "Available workforce",
+      // A staffing company lists its workforce before the review (private.partner_profile_missing); for a recruitment company
+      // it is optional.
+      status: listings.length > 0 ? "done" : partnerType === "staffing_company" ? "todo" : "optional",
+    },
+    { headingId: "terms-heading", title: "Standard terms", status: "optional" },
+    { headingId: "track-record-heading", title: "Track record", status: "optional" },
+  ];
+
   return (
-    <div className="grid w-full max-w-3xl gap-section">
+    <div className="grid w-full max-w-6xl gap-section">
       <PageHeader
         title="Workforce profile"
         description="Employers and job orders reach you through the countries where you serve and what you offer. Once your company is listed, everyone can see them on your profile."
@@ -252,147 +287,147 @@ export default async function WorkforceProfilePage({ params, searchParams }: Pag
       {commitment ? (
         <CommitmentGate slug={slug} owner={organization.role === "owner"} commitment={commitment} reasonId="commitment-reason" />
       ) : null}
-      <section aria-labelledby="where-you-serve-heading" className="grid gap-6">
-        <h2 id="where-you-serve-heading" className="text-h2">
-          Where you serve
-        </h2>
-        {organization.role === "member" ? (
-          <dl className="grid gap-4">
-            {[
-              { term: "Where are you based?", codes: profile ? [profile.country] : [] },
-              { term: "Where do you source workers from?", codes: geographies.sourcesFrom },
-              { term: servedQuestion[partnerType], codes: geographies.servesMarket },
-            ].map(({ term, codes }) => (
-              <div key={term} className="grid gap-1">
-                <dt className="text-small font-semibold">{term}</dt>
-                <dd className="text-body">{codes.length === 0 ? "No countries chosen yet." : codes.map(nameOf).join(", ")}</dd>
-              </div>
-            ))}
-          </dl>
-        ) : (
-          <WhereYouServeForm
-            slug={slug}
-            organizationId={organization.id}
-            partnerType={partnerType}
-            basedIn={basedIn}
-            countries={countries}
-            defaults={geographies}
-            marketsPrompt={prompts.markets}
-            marketsAllowance={allowances.markets}
-            billingHref={billingHref}
-            onboarding={false}
-            listingCounts={listingCounts?.then((counts) => counts.countries)}
-            profilePath={workforceProfilePath(lang, slug)}
-          />
-        )}
-      </section>
-      <section aria-labelledby="what-you-offer-heading" className="grid gap-6">
-        <h2 id="what-you-offer-heading" className="text-h2">
-          What you offer
-        </h2>
-        {organization.role === "member" ? (
-          <dl className="grid gap-4">
-            {offerTerms.map(({ term, values }) => (
-              <div key={term} className="grid gap-1">
-                <dt className="text-small font-semibold">{term}</dt>
-                <dd className="text-body">{values.length === 0 ? "Not given yet." : values.join(", ")}</dd>
-              </div>
-            ))}
-          </dl>
-        ) : (
-          <WorkforceOfferForm
-            slug={slug}
-            organizationId={organization.id}
-            partnerType={partnerType}
-            occupations={occupations}
-            industries={industries}
-            languages={languages}
-            defaults={workforceOfferDefaults(offer)}
-            occupationsPrompt={prompts.listed_occupations}
-            billingHref={billingHref}
-            onboarding={false}
-            listingCounts={listingCounts?.then((counts) => counts.occupations)}
-          />
-        )}
-      </section>
-      <section aria-labelledby="availability-heading" className="grid gap-6">
-        <div className="grid gap-2">
-          <h2 id="availability-heading" className="text-h2">
-            {partnerType === "recruitment_company" ? "Recruiting capacity" : "Available workforce"}
-          </h2>
-          <p className="text-body text-muted-foreground">
-            {partnerType === "recruitment_company"
-              ? "The candidates you can put forward and recruit per occupation and source country."
-              : "The workers on your payroll you can supply per occupation and source country."}{" "}
-            Once your company is listed, signed-in users see each listing confirmed within the last{" "}
-            {formatCount(availabilityRules.staleDays)} days.
-          </p>
-        </div>
-        <Suspense fallback={<LoadingSkeleton rows={2} />}>
-          <Availability
-            organizationId={organization.id}
-            partnerType={partnerType}
-            slug={slug}
-            canManage={organization.role !== "member"}
-            occupations={offer.occupations.map((code) => ({
-              code,
-              name: occupations.find((item) => item.code === code)?.label ?? code,
-            }))}
-            countries={geographies.sourcesFrom.map((code) => ({ code, name: nameOf(code) }))}
-            languages={languages}
-            rules={availabilityRules}
-            billingHref={billingHref}
-          />
-        </Suspense>
-      </section>
-      <section aria-labelledby="terms-heading" className="grid gap-6">
-        <div className="grid gap-2">
-          <h2 id="terms-heading" className="text-h2">
-            Standard terms
-          </h2>
-          <p className="text-body text-muted-foreground">
-            The fee you usually charge, shown on your public profile so employers can compare. Your response to a job order still
-            states the fee for that job order.
-          </p>
-        </div>
-        <Suspense fallback={<LoadingSkeleton rows={2} />}>
-          <StandardTerms organization={organization} slug={slug} canManage={organization.role !== "member"} />
-        </Suspense>
-      </section>
-      <section aria-labelledby="track-record-heading" className="grid gap-6">
-        <div className="grid gap-2">
-          <h2 id="track-record-heading" className="text-h2">
-            Track record
-          </h2>
-          <p className="text-body text-muted-foreground">
-            What your company has done so far. Your public profile shows these as stated by your company, next to the hires
-            counted by Chara Pinnacle.
-          </p>
-        </div>
-        <Suspense fallback={<LoadingSkeleton rows={2} />}>
-          <TrackRecord organizationId={organization.id} slug={slug} countries={countries} canManage={organization.role !== "member"} />
-        </Suspense>
-      </section>
-      <section aria-labelledby="licences-heading" className="grid gap-6">
-        <div className="grid gap-2">
-          <h2 id="licences-heading" className="text-h2">
-            Licences
-          </h2>
-          <p className="text-body text-muted-foreground">
-            The licence or registration you hold for each country where you recruit or supply workers. {LICENCE_STAFF_ONLY}.
-          </p>
-        </div>
-        <Suspense fallback={<LoadingSkeleton rows={2} />}>
-          <Licences
-            organizationId={organization.id}
-            slug={slug}
-            canManage={organization.role !== "member"}
-            countries={countries}
-            initialCountry={typeof licence === "string" && countries.some(({ code }) => code === licence) ? licence : null}
-            profilePath={workforceProfilePath(lang, slug)}
-          />
-        </Suspense>
-      </section>
+      <ProfileTabs
+        key={typeof licence === "string" ? licence : ""}
+        sections={sections}
+        initial={typeof licence === "string" ? "licences-heading" : undefined}
+      >
+        <ProfileSection
+          headingId="where-you-serve-heading"
+          title="Where you serve"
+          description="Where your workers come from and where you place them."
+        >
+          {organization.role === "member" ? (
+            <dl className="grid gap-4">
+              {[
+                { term: "Where are you based?", codes: profile ? [profile.country] : [] },
+                { term: "Where do you source workers from?", codes: geographies.sourcesFrom },
+                { term: servedQuestion[partnerType], codes: geographies.servesMarket },
+              ].map(({ term, codes }) => (
+                <div key={term} className="grid gap-1">
+                  <dt className="text-small font-semibold">{term}</dt>
+                  <dd className="text-body">{codes.length === 0 ? "No countries chosen yet." : codes.map(nameOf).join(", ")}</dd>
+                </div>
+              ))}
+            </dl>
+          ) : (
+            <WhereYouServeForm
+              slug={slug}
+              organizationId={organization.id}
+              partnerType={partnerType}
+              basedIn={basedIn}
+              countries={countries}
+              defaults={geographies}
+              marketsPrompt={prompts.markets}
+              marketsAllowance={allowances.markets}
+              billingHref={billingHref}
+              onboarding={false}
+              listingCounts={listingCounts?.then((counts) => counts.countries)}
+              profilePath={workforceProfilePath(lang, slug)}
+            />
+          )}
+        </ProfileSection>
+        <ProfileSection
+          headingId="what-you-offer-heading"
+          title="What you offer"
+          description={
+            partnerType === "recruitment_company"
+              ? "The occupations you recruit for and how you work."
+              : "The occupations you supply and how you work."
+          }
+        >
+          {organization.role === "member" ? (
+            <dl className="grid gap-4">
+              {offerTerms.map(({ term, values }) => (
+                <div key={term} className="grid gap-1">
+                  <dt className="text-small font-semibold">{term}</dt>
+                  <dd className="text-body">{values.length === 0 ? "Not given yet." : values.join(", ")}</dd>
+                </div>
+              ))}
+            </dl>
+          ) : (
+            <WorkforceOfferForm
+              slug={slug}
+              organizationId={organization.id}
+              partnerType={partnerType}
+              occupations={occupations}
+              industries={industries}
+              languages={languages}
+              defaults={workforceOfferDefaults(offer)}
+              occupationsPrompt={prompts.listed_occupations}
+              billingHref={billingHref}
+              onboarding={false}
+              listingCounts={listingCounts?.then((counts) => counts.occupations)}
+            />
+          )}
+        </ProfileSection>
+        <ProfileSection
+          headingId="licences-heading"
+          title="Licences"
+          description={`The licence or registration you hold for each country where you ${partnerType === "recruitment_company" ? "recruit" : "supply workers"}. ${LICENCE_STAFF_ONLY}.`}
+        >
+          <Suspense fallback={<LoadingSkeleton rows={2} />}>
+            <Licences
+              licences={licences}
+              slug={slug}
+              canManage={organization.role !== "member"}
+              countries={countries}
+              initialCountry={typeof licence === "string" && countries.some(({ code }) => code === licence) ? licence : null}
+              profilePath={workforceProfilePath(lang, slug)}
+            />
+          </Suspense>
+        </ProfileSection>
+        <ProfileSection
+          headingId="availability-heading"
+          title={partnerType === "recruitment_company" ? "Recruiting capacity" : "Available workforce"}
+          description={
+            <>
+              {partnerType === "recruitment_company"
+                ? "The candidates you can put forward and recruit per occupation and source country."
+                : "The workers on your payroll you can supply per occupation and source country."}{" "}
+              Signed-in users see each listing confirmed within the last {formatCount(availabilityRules.staleDays)} days.
+            </>
+          }
+        >
+          <Suspense fallback={<LoadingSkeleton rows={2} />}>
+            <Availability
+              organizationId={organization.id}
+              listings={listings}
+              partnerType={partnerType}
+              slug={slug}
+              canManage={organization.role !== "member"}
+              occupations={offer.occupations.map((code) => ({
+                code,
+                name: occupations.find((item) => item.code === code)?.label ?? code,
+              }))}
+              countries={geographies.sourcesFrom.map((code) => ({ code, name: nameOf(code) }))}
+              languages={languages}
+              rules={availabilityRules}
+              billingHref={billingHref}
+            />
+          </Suspense>
+        </ProfileSection>
+        <ProfileSection
+          headingId="terms-heading"
+          title="Standard terms"
+          optional
+          description="The fee you usually charge, shown on your public profile. Each response to a job order states its own fee."
+        >
+          <Suspense fallback={<LoadingSkeleton rows={2} />}>
+            <StandardTerms organization={organization} slug={slug} canManage={organization.role !== "member"} />
+          </Suspense>
+        </ProfileSection>
+        <ProfileSection
+          headingId="track-record-heading"
+          title="Track record"
+          optional
+          description="What your company has done so far, shown on your public profile as stated by you."
+        >
+          <Suspense fallback={<LoadingSkeleton rows={2} />}>
+            <TrackRecord organizationId={organization.id} slug={slug} countries={countries} canManage={organization.role !== "member"} />
+          </Suspense>
+        </ProfileSection>
+      </ProfileTabs>
     </div>
   );
 }

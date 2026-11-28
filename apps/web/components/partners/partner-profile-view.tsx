@@ -54,7 +54,9 @@ export function PartnerProfileView({ lang, profile, actions, banner, termsAndRec
   const website = publicWebsite(profile.website);
   const staffingTypes = profile.serviceTypes.flatMap((service) => (service === "staffing" ? [] : [staffingTypeLabels[service]]));
   const overview = [
-    ...(profile.recruitmentType ? [{ label: "Recruitment type", value: recruitmentTypeLabels[profile.recruitmentType] }] : []),
+    ...(profile.recruitmentType
+      ? [{ label: profile.type === "recruitment_company" ? "Recruitment type" : "Supply type", value: recruitmentTypeLabels[profile.recruitmentType] }]
+      : []),
     ...(staffingTypes.length > 0 ? [{ label: "Staffing types", value: staffingTypes.join(", ") }] : []),
     ...(profile.foundedYear !== null ? [{ label: "Years operating", value: `Operating since ${profile.foundedYear}` }] : []),
     ...(profile.sizeBand ? [{ label: "Company size", value: sizeBandLabels[profile.sizeBand] }] : []),
