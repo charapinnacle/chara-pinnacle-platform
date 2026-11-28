@@ -148,7 +148,9 @@ const accountStatePages = [
 // candidate (empty, with messages and closed), are checked in messaging.spec.ts. Find Workers of an employer (with cards, a
 // rule notice, saved, empty, failed and from a requirement) and the public Find Workers page are checked in find-workers.spec.ts;
 // the contact requests of a worker (with requests, the decline dialog and empty) and of an organisation (with an accepted and
-// a waiting request, and filtered) in contact-requests.spec.ts.
+// a waiting request, and filtered) in contact-requests.spec.ts. The workforce corridors (the index filtered, a listed
+// corridor, a corridor below the threshold) and the network page of a destination are checked in
+// workforce-corridors.spec.ts.
 const releasedPages = [
   "/[lang]/appeals",
   "/[lang]/appeals/[id]",
@@ -157,6 +159,8 @@ const releasedPages = [
   "/[lang]/companies",
   "/[lang]/companies/[slug]",
   "/[lang]/contact-requests",
+  "/[lang]/corridors",
+  "/[lang]/corridors/[corridor]",
   "/[lang]/find-workers",
   "/[lang]/request-workers",
   "/[lang]/following",
@@ -164,6 +168,7 @@ const releasedPages = [
   "/[lang]/legal/ranking",
   "/[lang]/messages",
   "/[lang]/messages/[id]",
+  "/[lang]/network/[destination]",
   "/[lang]/notifications",
   "/[lang]/org/[slug]/analytics",
   "/[lang]/org/[slug]/applicants/submissions/[id]",
