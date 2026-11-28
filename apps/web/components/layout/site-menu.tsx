@@ -12,7 +12,7 @@ const SITE_MENU_ID = "site-menu";
 const controlClassName =
   "inline-flex min-h-11 items-center justify-center gap-2.5 rounded-lg border bg-card text-small font-medium transition-colors duration-150 hover:border-input";
 
-// The menu of the public header on a phone (below 768 px; wider, the header shows its links): a modal dialog, so the rest of the page is inert while it is open, focus
+// The menu of the public header below 1024 px (wider, the header shows its links): a modal dialog, so the rest of the page is inert while it is open, focus
 // stays inside it and Escape closes it; closed, it is not displayed, so neither the keyboard nor assistive technology
 // reaches it. Without JavaScript the button and the close control are links to the panel and away from it, which shows
 // the panel through :target (the server render and the hydration pass see the links).
@@ -64,12 +64,12 @@ export function SiteMenu({ homeHref, children }: { homeHref: string; children: R
           aria-controls={SITE_MENU_ID}
           aria-haspopup="dialog"
           onClick={show}
-          className={cn(controlClassName, "size-11 md:hidden")}
+          className={cn(controlClassName, "size-11 lg:hidden")}
         >
           {label}
         </button>
       ) : (
-        <a href={`#${SITE_MENU_ID}`} className={cn(controlClassName, "size-11 md:hidden")}>
+        <a href={`#${SITE_MENU_ID}`} className={cn(controlClassName, "size-11 lg:hidden")}>
           {label}
         </a>
       )}

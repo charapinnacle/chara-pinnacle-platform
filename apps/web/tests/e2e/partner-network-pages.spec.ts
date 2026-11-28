@@ -12,8 +12,9 @@ import { seedAllButCv, signIn } from "./support/passport";
 import { SITE } from "./support/seo";
 import { expect, test } from "./support/test";
 
-const DIRECTORIES = ["Recruitment partners", "Staffing partners"];
-const AUDIENCES = ["Find jobs", "For employers", "For partners"];
+// The header and the Menu name the two directories after Find jobs and Employers.
+const DIRECTORIES = ["Recruitment companies", "Staffing companies"];
+const AUDIENCES = ["Find jobs", "Employers", ...DIRECTORIES];
 const STILL_LATER = ["Find workers", "Request workers", "Find companies", "Workforce corridors", "Job orders"];
 const UNRELEASED_PATHS = ["/en/job-orders", "/en/companies", "/en/find-workers", "/en/request-workers"];
 
@@ -49,11 +50,11 @@ test.describe("the public partner network pages (FR-L5)", () => {
     await page.setViewportSize({ width: 360, height: 800 });
     await page.goto("/en");
     const panel = await openMenu(page);
-    await expect(exploreLinks(panel)).toHaveText([...AUDIENCES, ...DIRECTORIES]);
-    await expect(exploreLinks(panel).filter({ hasText: "Recruitment partners" })).toHaveAttribute("href", "/en/partners/recruitment");
-    await expect(exploreLinks(panel).filter({ hasText: "Staffing partners" })).toHaveAttribute("href", "/en/partners/staffing");
+    await expect(exploreLinks(panel)).toHaveText(AUDIENCES);
+    await expect(exploreLinks(panel).filter({ hasText: "Recruitment companies" })).toHaveAttribute("href", "/en/partners/recruitment");
+    await expect(exploreLinks(panel).filter({ hasText: "Staffing companies" })).toHaveAttribute("href", "/en/partners/staffing");
     // Written in sentence case, drawn in Title Case (PR #110).
-    expect(await exploreLinks(panel).filter({ hasText: "Recruitment partners" }).innerText()).toBe("Recruitment partners");
+    expect(await exploreLinks(panel).filter({ hasText: "Recruitment companies" }).innerText()).toBe("Recruitment companies");
     const later = panel.getByRole("list", { name: "Coming in a later phase" });
     await expect(later.getByRole("listitem")).toHaveText(STILL_LATER);
     await expect(later.locator("a, [href], [tabindex]")).toHaveCount(0);
@@ -68,7 +69,7 @@ test.describe("the public partner network pages (FR-L5)", () => {
     for (const label of STILL_LATER) expect(reached).not.toContain(label);
     await expectNoAxeViolations(page);
 
-    await exploreLinks(panel).filter({ hasText: "Staffing partners" }).click();
+    await exploreLinks(panel).filter({ hasText: "Staffing companies" }).click();
     await expect(page).toHaveURL("/en/partners/staffing");
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   });
@@ -90,13 +91,13 @@ test.describe("the public partner network pages (FR-L5)", () => {
     const company = await newCompany();
     const employer = await signedInPage(browser, company.owner, phone);
     await employer.page.goto("/en/how-it-works");
-    await expect(exploreLinks(await openMenu(employer.page))).toHaveText(["For employers", "For partners", ...DIRECTORIES]);
+    await expect(exploreLinks(await openMenu(employer.page))).toHaveText(["Employers", ...DIRECTORIES]);
     await employer.context.close();
 
     const { user } = await partnerWithCompany("staffing_company");
     const partner = await signedInPage(browser, user, phone);
     await partner.page.goto("/en/how-it-works");
-    await expect(exploreLinks(await openMenu(partner.page))).toHaveText(["For employers", "For partners", ...DIRECTORIES]);
+    await expect(exploreLinks(await openMenu(partner.page))).toHaveText(["Employers", ...DIRECTORIES]);
     await partner.page.keyboard.press("Escape");
     await expect(partner.page.getByRole("link", { name: "Sign up as a staffing company" })).toHaveCount(0);
     await partner.context.close();
@@ -172,10 +173,12 @@ test.describe("the public partner network pages (FR-L5)", () => {
     await expect(home.getByRole("link", { name: "Sign up as a staffing company" })).toHaveAttribute("href", "/en/signup?kind=staffing_company");
     await expect(home.getByRole("link", { name: "See recruitment companies" })).toHaveAttribute("href", "/en/partners/recruitment");
     await expect(home.getByRole("link", { name: "See staffing companies" })).toHaveAttribute("href", "/en/partners/staffing");
-    // The header adds For partners while release 2a is on.
+    // The header adds both directories while release 2a is on.
     const header = page.getByRole("navigation", { name: "Main" });
     await expect(header.getByRole("link")).toHaveText([...AUDIENCES, "Sign in", "Post a job"]);
-    await header.getByRole("link", { name: "For partners" }).click();
+    await expect(header.getByRole("link", { name: "Recruitment companies" })).toHaveAttribute("href", "/en/partners/recruitment");
+    await expect(header.getByRole("link", { name: "Staffing companies" })).toHaveAttribute("href", "/en/partners/staffing");
+    await home.getByRole("link", { name: "How it works for partners" }).click();
     await expect(page).toHaveURL("/en/for-partners");
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("For recruitment and staffing companies");
     await expect(page.getByRole("main").getByRole("heading", { level: 3 })).toContainText(["Register", "Describe your company", "Get listed"]);
@@ -183,7 +186,6 @@ test.describe("the public partner network pages (FR-L5)", () => {
     await expect(page.getByRole("link", { name: "Sign up as a staffing company" })).toHaveAttribute("href", "/en/signup?kind=staffing_company");
     await expectAccessibleAtBothWidths(page);
     await page.goto("/en");
-    await expect(home.getByRole("link", { name: "How it works for partners" })).toHaveAttribute("href", "/en/for-partners");
     await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
     await expectAccessibleAtBothWidths(page);
 

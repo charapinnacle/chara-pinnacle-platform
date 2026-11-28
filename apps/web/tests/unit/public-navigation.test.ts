@@ -16,13 +16,14 @@ import {
 import type { ReleaseSwitch } from "@/lib/release";
 
 const footerLinks = legalGroups.flatMap(({ links }) => links);
+const labelsOf = (links: readonly { label: string }[]) => links.map(({ label }) => label);
 
 describe("the navigation of the public pages (FR-H1 AC3, D90)", () => {
-  it("shows one door per audience in the header, For partners only while release 2a is on, and only Sign in of the account links", () => {
-    expect(headerLinks.map(({ label }) => label)).toEqual(["Find jobs", "For employers", "For partners"]);
-    expect(headerLinks.map(({ path }) => path)).toEqual(["jobs", "employers", "for-partners"]);
-    expect(releasedHeaderLinks([]).map(({ label }) => label)).toEqual(["Find jobs", "For employers"]);
-    expect(releasedHeaderLinks(["release_partner_directories"]).map(({ label }) => label)).toEqual(["Find jobs", "For employers", "For partners"]);
+  it("shows Find jobs, Employers and, while release 2a is on, both directories in the header, and only Sign in of the account links", () => {
+    expect(headerLinks.map(({ label }) => label)).toEqual(["Find jobs", "Employers", "Recruitment companies", "Staffing companies"]);
+    expect(headerLinks.map(({ path }) => path)).toEqual(["jobs", "employers", "partners/recruitment", "partners/staffing"]);
+    expect(releasedHeaderLinks([]).map(({ label }) => label)).toEqual(["Find jobs", "Employers"]);
+    expect(releasedHeaderLinks(["release_partner_directories"]).map(({ label }) => label)).toEqual(labelsOf(headerLinks));
     expect(releasedPagePaths([])).not.toContain("for-partners");
     expect(releasedPagePaths(["release_partner_directories"])).toContain("for-partners");
     expect(guestLinks).toEqual([
@@ -113,7 +114,7 @@ describe("the links for an account kind", () => {
 
   it("offers a worker no company's page, a company no job seeker's page, and everyone else every link", () => {
     expect(labels(forAccountKind(headerLinks, "worker"))).toEqual(["Find jobs"]);
-    expect(labels(forAccountKind(headerLinks, "company"))).toEqual(["For employers", "For partners"]);
+    expect(labels(forAccountKind(headerLinks, "company"))).toEqual(["Employers", "Recruitment companies", "Staffing companies"]);
     expect(labels(forAccountKind(headerLinks, null))).toEqual(labels(headerLinks));
   });
 });

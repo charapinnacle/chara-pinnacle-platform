@@ -46,7 +46,7 @@ function LogOut({ className, buttonClassName }: { className?: string; buttonClas
 function AccountItems({ lang, area }: { lang: string; area: string | null }) {
   if (!area) {
     return (
-      <li className="ms-auto">
+      <li className="lg:ms-3">
         <Link href={`/${lang}/${signIn.path}`} className={linkClassName}>
           {signIn.label}
         </Link>
@@ -55,7 +55,7 @@ function AccountItems({ lang, area }: { lang: string; area: string | null }) {
   }
   return (
     <>
-      <li className="ms-auto max-xs:hidden">
+      <li className="max-xs:hidden lg:ms-3">
         <Link href={area} className={linkClassName}>
           Go to my area
         </Link>
@@ -95,8 +95,8 @@ function MenuActions({ lang, area, postJobHref }: { lang: string; area: string |
   );
 }
 
-// The public header: from 768 px the audience links beside the logo, then Sign in and Post a job at the end, and no Menu.
-// Below 768 px only the logo, Post a job, Sign in and Menu stay, and Menu opens the panel with everything a
+// The public header: from 1024 px the audience links, Sign in and Post a job together at the right, and no Menu.
+// Below 1024 px the logo, Post a job, Sign in and Menu stay (Log out from 768 px), and Menu opens the panel with everything a
 // visitor can explore, the client's later-phase navigation as plain text, and the account actions; below 420 px Post a job
 // moves into the panel. An item of that navigation becomes an Explore link once its release is on (FR-L5).
 export async function PublicNav({ lang }: { lang: string }) {
@@ -104,13 +104,15 @@ export async function PublicNav({ lang }: { lang: string }) {
   const area = user ? homePath(lang, user.accountKind) : null;
   const network = networkMenu(released);
   const audiences = forAccountKind(releasedHeaderLinks(released), user?.accountKind);
-  const explore = [...audiences, ...forAccountKind(network.links, user?.accountKind)];
+  // The Menu repeats the header's links first, then the network pages the header does not name.
+  const named = new Set<string>(audiences.map(({ path }) => path));
+  const explore = [...audiences, ...forAccountKind(network.links, user?.accountKind).filter(({ path }) => !named.has(path))];
   return (
     <div className="flex flex-1 items-center gap-1">
       <nav aria-label="Main" className="flex-1">
-        <ul className="flex items-center gap-1">
+        <ul className="flex items-center justify-end gap-1">
           {audiences.map(({ path, label }) => (
-            <li key={path} className="max-md:hidden">
+            <li key={path} className="max-lg:hidden">
               <Link href={`/${lang}/${path}`} className={sectionLinkClassName}>
                 {label}
               </Link>

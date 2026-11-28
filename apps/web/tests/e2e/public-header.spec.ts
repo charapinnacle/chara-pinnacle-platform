@@ -9,13 +9,13 @@ import { expect, test } from "./support/test";
 const nav = (page: import("@playwright/test").Page) => page.getByRole("navigation", { name: "Main" });
 
 test.describe("the header of the public pages (FR-H1 AC3, D81, D90)", () => {
-  test("a visitor sees Find jobs, For employers, Sign in and Post a job and no Menu, and Post a job opens the employer sign-up", async ({ page }) => {
+  test("a visitor sees Find jobs, Employers, Sign in and Post a job and no Menu, and Post a job opens the employer sign-up", async ({ page }) => {
     await page.goto("/en/pricing");
     await expect(nav(page).getByRole("link")).toHaveText(HEADER_LABELS);
     await expect(nav(page).getByRole("link", { name: "Find jobs" })).toHaveAttribute("href", "/en/jobs");
-    await expect(nav(page).getByRole("link", { name: "For employers" })).toHaveAttribute("href", "/en/employers");
-    // The For partners page exists only while release 2a is on.
-    await expect(nav(page).getByRole("link", { name: "For partners" })).toHaveCount(0);
+    await expect(nav(page).getByRole("link", { name: "Employers" })).toHaveAttribute("href", "/en/employers");
+    // The directories exist only while release 2a is on.
+    await expect(nav(page).getByRole("link", { name: "Recruitment companies" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Menu", exact: true })).toBeHidden();
     await expect(page.locator('button[aria-controls="site-menu"]')).toHaveCount(1);
     await nav(page).getByRole("link", { name: "Sign in", exact: true }).click();
@@ -69,7 +69,7 @@ test.describe("the header of the public pages (FR-H1 AC3, D81, D90)", () => {
     const memberSession = await signedInPage(browser, member);
     await memberSession.page.goto("/en/about");
     // A company is offered only the employer's side, a worker only the job seeker's.
-    await expect(nav(memberSession.page).getByRole("link")).toHaveText(["For employers", "Go to my area"]);
+    await expect(nav(memberSession.page).getByRole("link")).toHaveText(["Employers", "Go to my area"]);
     await expect(nav(memberSession.page).getByRole("link", { name: "Post a job" })).toHaveCount(0);
     await memberSession.page.goto("/en/post-job");
     await expect(memberSession.page).toHaveURL(/\/en\/dashboard\/employer/);
@@ -150,7 +150,7 @@ test.describe("the header of the public pages (FR-H1 AC3, D81, D90)", () => {
     await page.setViewportSize({ width: 375, height: 800 });
     await page.goto("/en");
     await expect(nav(page).getByRole("link", { name: "Sign in", exact: true })).toBeVisible();
-    for (const hidden of ["Find jobs", "For employers", "Post a job"]) await expect(nav(page).getByRole("link", { name: hidden }), hidden).toBeHidden();
+    for (const hidden of ["Find jobs", "Employers", "Post a job"]) await expect(nav(page).getByRole("link", { name: hidden }), hidden).toBeHidden();
     await page.getByRole("button", { name: "Menu", exact: true }).click();
     const panel = page.getByRole("dialog", { name: "Menu" });
     await expect(panel.getByRole("link", { name: "Post a job" })).toBeVisible();

@@ -11,17 +11,20 @@ export const FIND_WORKERS_PATH = "find-workers";
 export const REQUEST_WORKERS_PATH = "request-workers";
 export const FOR_PARTNERS_PATH = "for-partners";
 
-// The header names one door per audience: the workers' search, the employers' page and, while release 2a is on (FR-L5),
-// the page for recruitment and staffing companies; then Sign in and Post a job. Below 768 px they are in the Menu.
+// The header, at its right side before Sign in and Post a job: the workers' search, the employers' page and, while release
+// 2a is on (FR-L5), the two partner directories. Below 1024 px they are in the Menu.
 export const headerLinks = [
   { path: "jobs", label: "Find jobs" },
-  { path: EMPLOYERS_PATH, label: "For employers" },
-  { path: FOR_PARTNERS_PATH, label: "For partners" },
+  { path: EMPLOYERS_PATH, label: "Employers" },
+  { path: RECRUITMENT_DIRECTORY_PATH, label: "Recruitment companies" },
+  { path: STAFFING_DIRECTORY_PATH, label: "Staffing companies" },
 ] as const;
 
-// The For partners page exists only while release 2a is on.
+const directoryPaths: readonly string[] = [RECRUITMENT_DIRECTORY_PATH, STAFFING_DIRECTORY_PATH];
+
+// The directories exist only while release 2a is on.
 export function releasedHeaderLinks(released: readonly ReleaseSwitch[]) {
-  return headerLinks.filter(({ path }) => path !== FOR_PARTNERS_PATH || released.includes("release_partner_directories"));
+  return headerLinks.filter(({ path }) => !directoryPaths.includes(path) || released.includes("release_partner_directories"));
 }
 
 // The navigation of the client's structure (section 2) that Phase 1 does not have, in its order, with the release that

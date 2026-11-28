@@ -18,9 +18,9 @@ export const LEGAL_SLUGS = [
 // The links of the header of a visitor on a desktop (OPEN_QUESTIONS.md D90): three links, Post a job and Sign in, and no
 // Menu button (a phone's); on the For employers page For job seekers replaces Find Jobs and For employers. The other pages
 // about Chara Pinnacle are in the footer (P18).
-export const HEADER_LABELS = ["Find jobs", "For employers", "Sign in", "Post a job"];
+export const HEADER_LABELS = ["Find jobs", "Employers", "Sign in", "Post a job"];
 // The audience links of the Menu while no network page is released.
-export const MENU_LINKS = ["Find jobs", "For employers"];
+export const MENU_LINKS = ["Find jobs", "Employers"];
 
 // The menu panel: the Explore links of the released network pages, the client's later-phase navigation as text, and the
 // account actions.
