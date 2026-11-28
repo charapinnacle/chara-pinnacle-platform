@@ -66,9 +66,10 @@ const PHASE_2_LEGAL_SLUGS = new Set([
   "immigration-disclaimer",
 ]);
 // The release features of private.legal_release_gaps and the release switches that put each of them live (DATA_MODEL.md
-// section 1): 2a partner accounts, 2b job orders with candidate submissions, 2c Find Workers with messaging.
+// section 1): 2a partner accounts (and the workforce corridors, which describe the partner network), 2b job orders with
+// candidate submissions, 2c Find Workers with messaging.
 const RELEASE_FEATURES = {
-  partner_accounts: ["release_partner_directories"],
+  partner_accounts: ["release_partner_directories", "release_corridors"],
   job_orders: ["release_job_orders", "release_candidate_submissions"],
   find_workers: ["release_find_workers", "release_messaging"],
 };
@@ -79,6 +80,7 @@ const RELEASE_SWITCHES = [
   "release_find_workers",
   "release_messaging",
   "release_data_export",
+  "release_corridors",
 ];
 const USAGE = `Usage: node scripts/check-go-live.mjs [${ALLOW_DRAFT_LEGAL}] <settings.json> <plans.json> <release.json>\n`;
 
