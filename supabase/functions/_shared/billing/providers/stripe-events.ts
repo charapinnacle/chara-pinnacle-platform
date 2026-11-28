@@ -166,8 +166,39 @@ function invoiceEvent(type: string, invoice: Obj, providerCreatedAt: string): No
   };
 }
 
-// The seven Stripe events of the subscription lifecycle; anything else (charge.succeeded, customer.updated, ...) is
-// acknowledged by the caller without being stored.
+const SKU = /^[a-z0-9_]{1,64}$/;
+
+// A paid Checkout session of a boost (billing_boost_checkout_start, createPaymentCheckout): our own session in payment
+// mode, paid, whose metadata names the purpose boost, the product and the same organisation as client_reference_id. A
+// session that names two organisations is not ours to trust and gives no event. The payment intent is the reference that
+// makes the boost unique, so the completed event and a later async_payment_succeeded event give one boost.
+function boostEvent(session: Obj, providerCreatedAt: string): NormalizedEvent | null {
+  const id = orgId(session.client_reference_id);
+  const sku = str(at(session, "metadata", "sku"));
+  const amountMinor = num(session.amount_total);
+  const currency = str(session.currency)?.toUpperCase();
+  const providerPaymentRef = ref(session.payment_intent) ?? str(session.id);
+  if (
+    session.mode !== "payment" || session.payment_link || session.payment_status !== "paid" ||
+    at(session, "metadata", "purpose") !== "boost" || !id || at(session, "metadata", "org_id") !== id ||
+    !sku || !SKU.test(sku) || amountMinor === undefined || amountMinor < 0 || !currency || !providerPaymentRef
+  ) {
+    return null;
+  }
+  return {
+    kind: "boost.paid",
+    providerCreatedAt,
+    orgId: id,
+    sku,
+    providerPaymentRef,
+    amountMinor,
+    taxMinor: num(at(session, "total_details", "amount_tax")) ?? 0,
+    currency,
+  };
+}
+
+// The seven Stripe events of the subscription lifecycle and the two of a paid boost session; anything else
+// (charge.succeeded, customer.updated, ...) is acknowledged by the caller without being stored.
 export function normalizeStripeEvent(payload: unknown): NormalizedEvent[] {
   const type = isObject(payload) ? str(payload.type) : undefined;
   const object = at(payload, "data", "object");
@@ -189,9 +220,15 @@ export function normalizeStripeEvent(payload: unknown): NormalizedEvent[] {
           providerCustomerRef,
           providerSubscriptionRef: ref(object.subscription),
         };
+      } else {
+        event = boostEvent(object, providerCreatedAt);
       }
       break;
     }
+    // A payment method that settles later (a bank debit) completes the session unpaid and pays it with this event.
+    case "checkout.session.async_payment_succeeded":
+      event = boostEvent(object, providerCreatedAt);
+      break;
     case "customer.subscription.created":
       event = subscriptionEvent(object, "subscription.activated", providerCreatedAt);
       break;

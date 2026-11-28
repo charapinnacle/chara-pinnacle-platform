@@ -21,6 +21,19 @@ export interface PriceInput {
   metadata: Record<string, string>;
 }
 
+// A one-time payment for a boost (ARCHITECTURE.md section 10.1). The amount, the currency and the name come from the product
+// row that billing_boost_checkout_start read, never from the caller; prices exclude VAT, which the provider adds.
+export interface PaymentCheckoutInput {
+  orgId: string;
+  sku: string;
+  productName: string;
+  amountMinor: number;
+  currency: string;
+  successUrl: string;
+  cancelUrl: string;
+  customerRef?: string;
+}
+
 export type SubscriptionStatus = "trialing" | "active" | "past_due" | "canceled" | "paused";
 
 // Every event carries providerCreatedAt, the time the provider created it, which the database compares with the state it
@@ -73,6 +86,16 @@ export type NormalizedEvent =
       providerSubscriptionRef: string;
       providerPaymentRef: string;
     }
+    | {
+      // A paid boost checkout; the database creates the boost and its order, once per payment reference.
+      kind: "boost.paid";
+      orgId: string;
+      sku: string;
+      providerPaymentRef: string;
+      amountMinor: number;
+      taxMinor: number;
+      currency: string;
+    }
   );
 
 export const EVENT_KINDS: readonly NormalizedEvent["kind"][] = [
@@ -83,6 +106,7 @@ export const EVENT_KINDS: readonly NormalizedEvent["kind"][] = [
   "subscription.trial_will_end",
   "payment.succeeded",
   "payment.failed",
+  "boost.paid",
 ];
 
 // A subscription as the provider holds it now, for the weekly comparison with the records.
@@ -108,6 +132,7 @@ export type WebhookVerification =
 export interface BillingProvider {
   readonly name: "null" | "stripe";
   createCheckout(input: CheckoutInput): Promise<{ url: string }>;
+  createPaymentCheckout(input: PaymentCheckoutInput): Promise<{ url: string }>;
   // configuration names the provider's portal configuration of the organisation's type (its products); without it the
   // provider's default configuration applies.
   createPortal(input: { customerRef: string; returnUrl: string; configuration?: string }): Promise<{ url: string }>;
