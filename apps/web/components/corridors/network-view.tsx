@@ -8,7 +8,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { ImmigrationNotice } from "@/components/public/immigration-notice";
 import { corridorsPath, countText, workforceText } from "@/lib/corridors/presentation";
 import type { Network } from "@/lib/dal/corridors";
-import { formatCount, formatDateTime } from "@/lib/i18n/format";
+import { countryInSentence, formatCount, formatDateTime } from "@/lib/i18n/format";
 
 type Occupation = Network["industries"][number]["occupations"][number];
 
@@ -58,7 +58,7 @@ export function NetworkView({ lang, network, directories }: { lang: string; netw
           />
         }
         title={`Workforce network for ${network.destination_name}`}
-        description={`Recruitment and staffing partners that serve employers in ${network.destination_name}, by industry and occupation.`}
+        description={`Recruitment and staffing partners that serve employers in ${countryInSentence(network.destination_country, network.destination_name)}, by industry and occupation.`}
       />
 
       {network.industries.length === 0 ? (
@@ -87,7 +87,7 @@ export function NetworkView({ lang, network, directories }: { lang: string; netw
               </dl>
             </div>
             {industry.occupations.length > 0 ? (
-              <ul aria-label={`Occupations in ${industry.name}`} className="grid gap-3 md:grid-cols-2">
+              <ul aria-label={`Occupations in ${industry.name}`} className="grid gap-3 lg:grid-cols-2">
                 {industry.occupations.map((occupation) => (
                   <Card as="li" key={occupation.code} padding="sm" className="gap-4">
                     <h3 className="text-h3">{occupation.label}</h3>

@@ -112,7 +112,7 @@ export function CorridorList({ lang, list, filters }: { lang: string; list: Corr
           </EmptyState>
         </div>
       ) : (
-        <ul aria-label="Corridors" className="grid gap-3 md:grid-cols-2">
+        <ul aria-label="Corridors" className="grid gap-3 lg:grid-cols-2">
           {shown.map((row) => (
             <Card as="li" key={`${row.source_country}-${row.destination_country}`} padding="sm" className="gap-4">
               <h2 className="text-h3">

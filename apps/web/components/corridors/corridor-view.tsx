@@ -8,7 +8,7 @@ import { CorridorFigures } from "@/components/corridors/corridor-list";
 import { ImmigrationNotice } from "@/components/public/immigration-notice";
 import { corridorDirectoryPaths, corridorsPath, networkPath } from "@/lib/corridors/presentation";
 import type { Corridor } from "@/lib/dal/corridors";
-import { formatDateTime } from "@/lib/i18n/format";
+import { countryInSentence, formatDateTime } from "@/lib/i18n/format";
 
 // One corridor as the brief draws it (section 18): workers available, recruitment partners, staffing partners and
 // industries. A corridor with fewer partners than the threshold shows no figure, only that it has fewer. The links into
@@ -33,7 +33,7 @@ export function CorridorView({ lang, corridor, directories }: { lang: string; co
             <span className="sr-only">to</span> {corridor.destination_name}
           </>
         }
-        description={`Recruitment and staffing partners that source workers from ${corridor.source_name} for employers in ${corridor.destination_name}.`}
+        description={`Recruitment and staffing partners that source workers from ${countryInSentence(corridor.source_country, corridor.source_name)} for employers in ${countryInSentence(corridor.destination_country, corridor.destination_name)}.`}
       />
 
       <Card as="section" aria-label="Corridor figures" padding="md" className="gap-6">
