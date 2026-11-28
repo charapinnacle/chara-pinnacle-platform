@@ -143,7 +143,7 @@ test.describe("which plans and what they list (FR-H2 AC5, AC6, AC11)", () => {
     setPlan("employer_enterprise", "is_public = true, contact_sales = false, price_minor = 19900");
     execute(`
       insert into billing.plan_features (plan_code, feature_key)
-      values ('employer_starter', 'chara_match'), ('employer_starter', 'corridors'), ('employer_starter', 'advanced_worker_search')
+      values ('employer_starter', 'corridors'), ('employer_starter', 'advanced_worker_search')
       on conflict do nothing;
       update billing.plan_limits set limit_value = 4 where plan_code = 'employer_starter' and limit_key = 'active_requirements';
       update billing.plan_limits set limit_value = null where plan_code = 'employer_enterprise' and limit_key = 'active_jobs';
@@ -161,6 +161,7 @@ test.describe("which plans and what they list (FR-H2 AC5, AC6, AC11)", () => {
       await expect(card.getByRole("listitem").filter({ hasText: members })).toHaveCount(1);
       await expect(card.getByText("Shortlisting of applicants")).toBeVisible();
     }
+    // chara_match is seeded on every paid plan and listed only while release_chara_match is on, which it is not here.
     const basic = await planCard(page, "Basic").innerText();
     expect(basic).not.toMatch(/match|corridor|worker search|analytics/i);
     // The workforce requirements and partner invitations are limits of the plan record like the others (FR-R1 AC3).
