@@ -17,9 +17,11 @@ language sql as $$
   select (select count(*) from audit.log) || '|' || (select md5(string_agg(key || value::text, ',' order by key)) from private.settings)
 $$;
 
+-- release_boosts (20270304100000_partner_boosts.sql) is checked by 230_partner_boosts.test.sql; it is left out below so
+-- that these lists hold whether or not that migration is present.
 select is(
   (select string_agg(key || '=' || (value #>> '{}') || ':' || jsonb_typeof(value), ',' order by key) from private.settings
-   where key like 'release\_%'),
+   where key like 'release\_%' and key <> 'release_boosts'),
   'release_candidate_submissions=false:boolean,release_corridors=false:boolean,release_data_export=false:boolean,'
   || 'release_find_workers=false:boolean,release_job_orders=false:boolean,release_messaging=false:boolean,'
   || 'release_partner_directories=false:boolean',
@@ -28,7 +30,7 @@ select is(
 
 set local role anon;
 select is(
-  (select string_agg(key || '=' || value, ',' order by key) from public.get_public_settings() where key like 'release\_%'),
+  (select string_agg(key || '=' || value, ',' order by key) from public.get_public_settings() where key like 'release\_%' and key <> 'release_boosts'),
   'release_candidate_submissions=false,release_corridors=false,release_data_export=false,release_find_workers=false,'
   || 'release_job_orders=false,release_messaging=false,release_partner_directories=false',
   'AC2: an anonymous caller reads every release switch and its boolean value through get_public_settings'
@@ -37,7 +39,7 @@ reset role;
 
 select is(
   (select string_agg(key || ':' || value_type || ':' || coalesce(release_feature, 'none'), ',' order by key) from private.setting_rules
-   where key like 'release\_%'),
+   where key like 'release\_%' and key <> 'release_boosts'),
   'release_candidate_submissions:boolean:job_orders,release_corridors:boolean:partner_accounts,release_data_export:boolean:none,'
   || 'release_find_workers:boolean:find_workers,release_job_orders:boolean:job_orders,release_messaging:boolean:find_workers,'
   || 'release_partner_directories:boolean:partner_accounts',

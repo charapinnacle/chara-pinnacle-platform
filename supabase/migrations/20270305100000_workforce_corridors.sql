@@ -25,7 +25,8 @@ insert into private.setting_rules (key, value_type, min, max, label, release_fea
   ('release_corridors', 'boolean', null, null, 'Workforce corridors: corridor and network pages', 'partner_accounts');
 
 -- get_public_settings of 20270216200200_contact_request_public_periods.sql with release_corridors, which the menu, the
--- sitemap and the corridor pages read.
+-- sitemap and the corridor pages read. release_boosts is added by 20270304100000_partner_boosts.sql and kept here; a key
+-- without a settings row returns no row.
 create or replace function public.get_public_settings() returns table (key text, value text)
 language sql
 stable
@@ -42,7 +43,7 @@ as $$
     'release_job_orders', 'release_candidate_submissions', 'release_messaging', 'release_find_workers',
     'release_data_export', 'requirement_open_days', 'requirement_extension_days', 'requirement_closing_reminder_days',
     'response_documents_max', 'message_body_max_chars', 'contact_request_repeat_days', 'contact_request_decline_days',
-    'contact_request_expiry_days', 'release_corridors'
+    'contact_request_expiry_days', 'release_boosts', 'release_corridors'
   ])
 $$;
 

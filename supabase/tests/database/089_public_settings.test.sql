@@ -55,6 +55,11 @@ select throws_ok(
 );
 reset role;
 
+-- release_boosts (20270304100000_partner_boosts.sql) is in the key list of the function and returned once its settings row
+-- exists, so the expected keys hold it only then; the API roles cannot read private.settings, so it is decided here.
+create temp table t_optional_keys as select key from private.settings where key = 'release_boosts';
+grant select on t_optional_keys to anon, authenticated;
+
 set local role anon;
 select is(
   (select array_agg(key order by key) from public.get_public_settings()),
@@ -69,6 +74,7 @@ select is(
     union all select 'response_documents_max' union all select 'message_body_max_chars'
     union all select 'contact_request_repeat_days' union all select 'contact_request_decline_days'
     union all select 'contact_request_expiry_days' union all select 'release_corridors'
+    union all select key from t_optional_keys
   ) k),
   'an anonymous visitor gets exactly the seven public keys, the release switch (FR-T1), the partner review target (FR-J1), the licence form rules (FR-J2), the availability periods (FR-K3) and the release switches of 2b and 2c (FR-L5) and of the data export (FR-S3), the requirement durations (FR-M2), the documents limit of a response (FR-O2), the length of a message (FR-P1), the contact request periods (FR-Q3) and the switch of the workforce corridors'
 );
@@ -96,6 +102,7 @@ select is(
     union all select 'response_documents_max' union all select 'message_body_max_chars'
     union all select 'contact_request_repeat_days' union all select 'contact_request_decline_days'
     union all select 'contact_request_expiry_days' union all select 'release_corridors'
+    union all select key from t_optional_keys
   ) k),
   'a signed-in user gets the same keys'
 );
