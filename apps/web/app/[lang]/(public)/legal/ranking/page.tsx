@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { TextLink } from "@/components/forms/text-link";
 import { ContentPage, ContentSection } from "@/components/public/content-page";
+import { rankingBoostCopy } from "@/lib/boosts/presentation";
 import { isReleased } from "@/lib/dal/release";
 import { getAvailabilityRules } from "@/lib/dal/workforce-availability";
 import { formatCount } from "@/lib/i18n/format";
@@ -30,14 +31,16 @@ const sentenceCase = (text: string) => text.charAt(0).toUpperCase() + text.slice
 // lib/partners/ranking.ts, whose values a unit test holds against public.search_partners and
 // public.search_available_workforce (and public.suggest_partners, public.list_job_orders and public.search_employers). It
 // describes release 2a, so it exists only while release 2a is on; the partner suggestions (V36), the job orders (V39) and
-// Find Employers (V53) of release 2b are described while release 2b is on, and Find Workers (V69) while release 2c is on.
+// Find Employers (V53) of release 2b are described while release 2b is on, Find Workers (V69) while release 2c is on, and
+// the boosted companies shown apart from the directory results while release_boosts is on.
 export default async function RankingPage({ params }: PageProps<"/[lang]/legal/ranking">) {
   const { lang } = await params;
   if (!(await isReleased("release_partner_directories"))) notFound();
-  const [{ staleDays }, suggestions, findWorkers] = await Promise.all([
+  const [{ staleDays }, suggestions, findWorkers, boosts] = await Promise.all([
     getAvailabilityRules(),
     isReleased("release_job_orders"),
     isReleased("release_find_workers"),
+    isReleased("release_boosts"),
   ]);
   const current = `confirmed by the company within the last ${formatCount(staleDays)} days`;
 
@@ -248,6 +251,12 @@ export default async function RankingPage({ params }: PageProps<"/[lang]/legal/r
           <li>Paging and limits: {rankingCopy.paging}</li>
         </ul>
       </ContentSection>
+
+      {boosts ? (
+        <ContentSection heading="Boosted companies">
+          <p>{rankingBoostCopy}</p>
+        </ContentSection>
+      ) : null}
 
       <ContentSection heading="Questions">
         <p>

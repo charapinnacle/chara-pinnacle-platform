@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { BoostedRail } from "@/components/boosts/boosted-rail";
 import { LoadingSkeleton } from "@/components/feedback/loading-skeleton";
 import { Notice } from "@/components/forms/notice";
 import { TextLink } from "@/components/forms/text-link";
@@ -23,16 +24,18 @@ export async function generateMetadata({ params }: PageProps<"/[lang]/partners/r
 
 // The directory of recruitment companies (FR-L1), rendered per request: the address holds the filters and the page
 // cursor, so a search can be shared and Back restores it. An employer also finds the Available workforce search here
-// (FR-K3). Nothing is shown while release 2a is off.
+// (FR-K3). Nothing is shown while release 2a is off. While release_boosts is on, the boosted companies that match the
+// search have a rail of their own above the results, read apart from them.
 export default async function RecruitmentPartnersPage({ params, searchParams }: PageProps<"/[lang]/partners/recruitment">) {
   const [{ lang }, rawParams] = await Promise.all([params, searchParams]);
   if (!(await isReleased("release_partner_directories"))) notFound();
-  const [occupations, industries, countries, languages, employer] = await Promise.all([
+  const [occupations, industries, countries, languages, employer, boosts] = await Promise.all([
     getOccupations(),
     getIndustries(),
     getCountries(),
     getLanguages(),
     isEmployerMember(),
+    isReleased("release_boosts"),
   ]);
   const { filters, errors } = parsePartnerSearchParams(rawParams, "recruitment");
   const ignored = Object.values(errors);
@@ -70,6 +73,11 @@ export default async function RecruitmentPartnersPage({ params, searchParams }: 
         languages={languages}
         advancedOpen={usesAdvancedFilters(filters)}
       />
+      {boosts ? (
+        <Suspense key={`boosted-${partnerSearchQuery({ ...filters, cursor: undefined })}`} fallback={null}>
+          <BoostedRail lang={lang} kind="recruitment" filters={filters} />
+        </Suspense>
+      ) : null}
       <Suspense key={partnerSearchQuery(filters)} fallback={<LoadingSkeleton rows={5} />}>
         <PartnerResults lang={lang} kind="recruitment" filters={filters} />
       </Suspense>

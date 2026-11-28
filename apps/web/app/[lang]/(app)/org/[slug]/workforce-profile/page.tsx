@@ -30,7 +30,7 @@ import { getAvailabilityRules, getListingCounts, getWorkforceListings } from "@/
 import { getPartnerKind, getWorkforceOffer, workforceOfferDefaults } from "@/lib/dal/workforce-offer";
 import { getOwnStandardTerms, getOwnTrackRecord, getPublicTermsAndRecord } from "@/lib/dal/partner-terms";
 import { standardTermsLines, trackRecordLines } from "@/lib/partners/terms-and-record";
-import { billingPath, workforceProfilePath, workforceProfilePreviewPath } from "@/lib/routes";
+import { billingPath, boostPath, workforceProfilePath, workforceProfilePreviewPath } from "@/lib/routes";
 import { servedQuestion } from "@/lib/validation/geographies";
 import { LICENCE_STAFF_ONLY } from "@/lib/validation/licences";
 import { partnerTypeSchema, type PartnerType } from "@/lib/validation/sign-up";
@@ -184,7 +184,7 @@ async function Availability({
 // The workforce profile of a recruitment or staffing company: where it serves (FR-K1) and what it offers (FR-K2), changed
 // after onboarding by the owner or an admin (at aal2, as on every organisation page); a member reads it. The licences it
 // holds per country (FR-J2) are recorded here too, for staff only, and the workforce it can supply (FR-K3). Release 2a
-// only. ?licence=<country> opens the licence form for that country (the prompt after saving Where you serve, FR-K1 AC8).
+// only. While release_boosts is on it links to the boost page. ?licence=<country> opens the licence form for that country (the prompt after saving Where you serve, FR-K1 AC8).
 export default async function WorkforceProfilePage({ params, searchParams }: PageProps<"/[lang]/org/[slug]/workforce-profile">) {
   const [{ lang, slug }, { licence }] = await Promise.all([params, searchParams]);
   if (!(await isReleased("release_partner_directories"))) notFound();
@@ -206,6 +206,7 @@ export default async function WorkforceProfilePage({ params, searchParams }: Pag
     allowances,
     licences,
     listings,
+    boosts,
   ] = await Promise.all([
     getOrganizationGeographies(organization.id),
     getUsagePrompts(organization.id, partnerType, ["markets", "listed_occupations"]),
@@ -221,6 +222,7 @@ export default async function WorkforceProfilePage({ params, searchParams }: Pag
     getUnenforcedAllowances(organization.id, ["markets"]),
     getPartnerLicences(organization.id),
     getWorkforceListings(organization.id),
+    isReleased("release_boosts"),
   ]);
   const appeal = moderation.decision ? await listMyAppeals(moderation.decision.id) : null;
   const billingHref = billingPath(lang, slug);
@@ -279,9 +281,16 @@ export default async function WorkforceProfilePage({ params, searchParams }: Pag
         description="Employers and job orders reach you through the countries where you serve and what you offer. Once your company is listed, everyone can see them on your profile."
         breadcrumb={<Breadcrumbs items={[{ label: organization.displayName }, { label: "Workforce profile" }]} />}
       >
-        <TextLink standalone href={workforceProfilePreviewPath(lang, slug)}>
-          Preview your public profile
-        </TextLink>
+        <div className="flex flex-wrap gap-x-6 gap-y-2">
+          <TextLink standalone href={workforceProfilePreviewPath(lang, slug)}>
+            Preview your public profile
+          </TextLink>
+          {boosts ? (
+            <TextLink standalone href={boostPath(lang, slug)}>
+              Boost your profile
+            </TextLink>
+          ) : null}
+        </div>
       </PageHeader>
       <ModerationNotice lang={lang} moderation={moderation} appeal={appeal} />
       {commitment ? (

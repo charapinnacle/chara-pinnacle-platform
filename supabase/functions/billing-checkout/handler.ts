@@ -23,6 +23,11 @@ const REASONS = new Set([
   "already_subscribed",
   "no_customer",
   "portal_not_configured",
+  "boosts_off",
+  "unknown_product",
+  "product_not_for_org_type",
+  "product_not_sold",
+  "not_listed",
 ]);
 const FIELDS = new Set(["billing_country", "identifier", "vat_id", "registration_number"]);
 // FR-G6: the database refuses a worker account with this detail. The answer to the caller is the generic one (it is not
@@ -37,7 +42,7 @@ export type PortalConfigurations = Partial<Record<OrganizationType, string>>;
 interface BillingCheckoutDeps {
   userClient: (authorization: string) => SupabaseClient;
   serviceClient: SupabaseClient;
-  provider: Pick<BillingProvider, "name" | "createCheckout" | "createPortal">;
+  provider: Pick<BillingProvider, "name" | "createCheckout" | "createPaymentCheckout" | "createPortal">;
   siteUrl: string;
   portalConfigurations: PortalConfigurations;
 }
@@ -58,6 +63,12 @@ interface Portal {
   orgId: string;
 }
 
+interface Boost {
+  action: "boost";
+  orgId: string;
+  sku: string;
+}
+
 function isBoundedInteger(value: unknown, max: number): value is number {
   return Number.isInteger(value) && (value as number) >= 0 && (value as number) <= max;
 }
@@ -72,12 +83,17 @@ function text(value: unknown): string | null | undefined {
 
 // Only what the call needs is read from the body: the customer reference and the return addresses come from the
 // database and from the function's own settings, never from the caller.
-function parse(body: unknown): Checkout | Portal | null {
+function parse(body: unknown): Checkout | Portal | Boost | null {
   if (!isObject(body) || typeof body.orgId !== "string" || !UUID.test(body.orgId)) {
     return null;
   }
   if (body.action === "portal") {
     return { action: "portal", orgId: body.orgId };
+  }
+  if (body.action === "boost") {
+    return typeof body.sku === "string" && body.sku.length <= MAX_FIELD
+      ? { action: "boost", orgId: body.orgId, sku: body.sku }
+      : null;
   }
   const vatId = text(body.vatId);
   const registrationNumber = text(body.registrationNumber);
@@ -206,6 +222,36 @@ async function startPortal(
   return json(200, { url });
 }
 
+// A boost is a one-time payment of the product the database names; the person comes back to the boost page.
+async function startBoost(
+  client: SupabaseClient,
+  userId: string,
+  request: Boost,
+  deps: BillingCheckoutDeps,
+): Promise<Response> {
+  const { data, error } = await client.rpc("billing_boost_checkout_start", {
+    p_org: request.orgId,
+    p_sku: request.sku,
+    p_provider: deps.provider.name,
+  });
+  const row = firstRow(data);
+  if (error || !row) {
+    return error ? answer(error, userId, deps) : json(502, { error: "unavailable" });
+  }
+  const boostUrl = `${new URL(deps.siteUrl).origin}/${RETURN_LOCALE}/org/${String(row.slug)}/boost`;
+  const { url } = await deps.provider.createPaymentCheckout({
+    orgId: request.orgId,
+    sku: request.sku,
+    productName: `Profile boost, ${Number(row.days)} days`,
+    amountMinor: Number(row.amount_minor),
+    currency: String(row.currency),
+    successUrl: boostUrl,
+    cancelUrl: boostUrl,
+    customerRef: (row.customer_ref as string | null) ?? undefined,
+  });
+  return json(200, { url });
+}
+
 function isOrganizationType(value: unknown): value is OrganizationType {
   return value === "employer" || value === "recruitment_company" || value === "staffing_company";
 }
@@ -230,8 +276,11 @@ export async function handleBillingCheckout(req: Request, deps: BillingCheckoutD
 
   const client = deps.userClient(authorization);
   try {
-    return request.action === "portal"
-      ? await startPortal(client, userId, request, deps)
+    if (request.action === "portal") {
+      return await startPortal(client, userId, request, deps);
+    }
+    return request.action === "boost"
+      ? await startBoost(client, userId, request, deps)
       : await startCheckout(client, userId, request, deps);
   } catch (e) {
     console.error("billing-checkout provider failed", { code: e instanceof BillingProviderError ? e.code : "unknown" });

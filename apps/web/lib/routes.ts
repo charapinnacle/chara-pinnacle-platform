@@ -110,6 +110,11 @@ export function billingPath(lang: string, slug: string): string {
   return `/${lang}/org/${slug}/billing`;
 }
 
+// Where a recruitment or staffing company buys a boost of its profile and sees the one running.
+export function boostPath(lang: string, slug: string): string {
+  return `/${lang}/org/${slug}/boost`;
+}
+
 export function organizationProfilePath(lang: string, slug: string): string {
   return `/${lang}/org/${slug}/profile`;
 }

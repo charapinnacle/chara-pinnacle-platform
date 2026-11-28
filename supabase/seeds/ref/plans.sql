@@ -193,3 +193,15 @@ values
   ('staffing_enterprise', 'job_order_access'),
   ('staffing_enterprise', 'worker_search')
 on conflict (plan_code, feature_key) do nothing;
+
+-- Boost products (ARCHITECTURE.md section 10.1; OPEN_QUESTIONS.md C8, draft prices): one per partner type and duration,
+-- EUR minor units, exclusive of VAT. As in migration 20270304100000_partner_boosts.sql.
+insert into billing.boost_products (sku, target_type, org_type, days, price_minor, currency, sort)
+values
+  ('boost_recruitment_7d', 'organization', 'recruitment_company', 7, 5900, 'EUR', 10),
+  ('boost_recruitment_14d', 'organization', 'recruitment_company', 14, 10900, 'EUR', 20),
+  ('boost_recruitment_30d', 'organization', 'recruitment_company', 30, 19900, 'EUR', 30),
+  ('boost_staffing_7d', 'organization', 'staffing_company', 7, 4900, 'EUR', 10),
+  ('boost_staffing_14d', 'organization', 'staffing_company', 14, 8900, 'EUR', 20),
+  ('boost_staffing_30d', 'organization', 'staffing_company', 30, 13900, 'EUR', 30)
+on conflict (sku) do nothing;

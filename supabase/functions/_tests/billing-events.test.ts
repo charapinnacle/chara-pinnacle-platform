@@ -5,6 +5,7 @@ import { stripeProvider } from "../_shared/billing/providers/stripe.ts";
 import { hmacHex } from "./harness.ts";
 import charge from "./fixtures/stripe/events/charge-succeeded.json" with { type: "json" };
 import checkoutCompleted from "./fixtures/stripe/events/checkout-session-completed.json" with { type: "json" };
+import boostPaid from "./fixtures/stripe/events/checkout-session-completed-boost.json" with { type: "json" };
 import customerUpdated from "./fixtures/stripe/events/customer-updated.json" with { type: "json" };
 import invoiceOneOff from "./fixtures/stripe/events/invoice-without-subscription.json" with { type: "json" };
 import invoicePaidTrial from "./fixtures/stripe/events/invoice-paid-trial.json" with { type: "json" };
@@ -168,10 +169,65 @@ Deno.test("a checkout session of another mode, or without our organisation id, g
 });
 
 Deno.test("no normalised event holds a name, an address or an email of the payer", () => {
-  const all = [checkoutCompleted, created, updated, deleted, trialWillEnd, invoicePaid, invoiceFailed, basil]
+  const all = [checkoutCompleted, created, updated, deleted, trialWillEnd, invoicePaid, invoiceFailed, basil, boostPaid]
     .flatMap((event) => stripe().normalize(event));
-  assert.equal(all.length, 8);
-  assert.doesNotMatch(JSON.stringify(all), /billing@example|Acme Bau|Hauptstrasse|customer_email|customer_name/);
+  assert.equal(all.length, 9);
+  assert.doesNotMatch(
+    JSON.stringify(all),
+    /billing@example|Acme Bau|Hauptstrasse|Manila Skills|Ayala|customer_email|customer_name/,
+  );
+});
+
+const boostSession = (patch: Record<string, unknown>, type = "checkout.session.completed") => ({
+  ...boostPaid,
+  type,
+  data: { object: { ...boostPaid.data.object, ...patch } },
+});
+
+Deno.test("boosts: a paid payment session of purpose boost is boost.paid with the product, the payment intent, the amount and the tax", () => {
+  assert.deepEqual(stripe().normalize(boostPaid), [{
+    kind: "boost.paid",
+    providerCreatedAt: "2026-11-01T10:00:00.000Z",
+    orgId: ORG,
+    sku: "boost_recruitment_14d",
+    providerPaymentRef: "pi_boost_1",
+    amountMinor: 12971,
+    taxMinor: 2071,
+    currency: "EUR",
+  }]);
+});
+
+Deno.test("boosts: a session paid later by a bank debit is boost.paid on async_payment_succeeded, with the same payment reference", () => {
+  const unpaid = boostSession({ payment_status: "unpaid" });
+  assert.deepEqual(stripe().normalize(unpaid), [], "the completed session is not paid yet");
+  const [event] = stripe().normalize(boostSession({}, "checkout.session.async_payment_succeeded"));
+  assert.equal(event.kind, "boost.paid");
+  assert.equal("providerPaymentRef" in event && event.providerPaymentRef, "pi_boost_1");
+});
+
+Deno.test("boosts: a session that is not ours, not paid or names two organisations gives no event", () => {
+  const provider = stripe();
+  for (
+    const patch of [
+      { payment_status: "unpaid" },
+      { payment_link: "plink_1ABC" },
+      { metadata: { ...boostPaid.data.object.metadata, purpose: "donation" } },
+      { metadata: { purpose: "boost", sku: "boost_recruitment_14d" } },
+      { metadata: { ...boostPaid.data.object.metadata, org_id: "00000000-0000-0000-0000-000000000001" } },
+      { metadata: { ...boostPaid.data.object.metadata, sku: "Boost; drop" } },
+      { client_reference_id: null },
+      { amount_total: null },
+      { mode: "setup" },
+    ]
+  ) {
+    assert.deepEqual(provider.normalize(boostSession(patch)), [], JSON.stringify(patch));
+  }
+});
+
+Deno.test("boosts: a session without a payment intent falls back to the session id, and the subscription checkout is unchanged", () => {
+  const [event] = stripe().normalize(boostSession({ payment_intent: null }));
+  assert.equal("providerPaymentRef" in event && event.providerPaymentRef, "cs_test_boost");
+  assert.equal(stripe().normalize(checkoutCompleted)[0].kind, "checkout.completed");
 });
 
 Deno.test("FR-G3 AC1: a Stripe delivery is verified on the raw body with every rule of the signature", async () => {

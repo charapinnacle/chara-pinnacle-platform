@@ -4,6 +4,7 @@ import {
   type BillingProvider,
   BillingProviderError,
   type CheckoutInput,
+  type PaymentCheckoutInput,
   type PriceInput,
   type SubscriptionState,
   type WebhookVerification,
@@ -24,6 +25,8 @@ const PORTAL_CONFIGURATION = /^bpc_[A-Za-z0-9]+$/;
 const PRODUCT_REF = /^prod_[A-Za-z0-9]+$/;
 const PRICE_REF = /^price_[A-Za-z0-9]+$/;
 const METADATA_KEY = /^[a-z_]{1,40}$/;
+const SKU = /^[a-z0-9_]{1,64}$/;
+const CURRENCY = /^[A-Z]{3}$/;
 
 function checkoutParams(input: CheckoutInput & { priceRef: string }): URLSearchParams {
   const params = new URLSearchParams({
@@ -48,6 +51,42 @@ function checkoutParams(input: CheckoutInput & { priceRef: string }): URLSearchP
     // be updated from the checkout.
     params.set("customer_update[address]", "auto");
     params.set("customer_update[name]", "auto");
+  }
+  return params;
+}
+
+// A boost is a one-time payment of an amount the product row holds, so the session carries an inline price (no Stripe
+// product to sync). The purpose, the organisation and the product are put on the session and on the payment intent, which
+// is how normalizeStripeEvent recognises a paid boost; a customer is created when the organisation has none, so the tax
+// IDs collected and the invoice belong to one.
+function paymentCheckoutParams(input: PaymentCheckoutInput): URLSearchParams {
+  const params = new URLSearchParams({
+    mode: "payment",
+    "line_items[0][price_data][currency]": input.currency.toLowerCase(),
+    "line_items[0][price_data][unit_amount]": String(input.amountMinor),
+    "line_items[0][price_data][tax_behavior]": "exclusive",
+    "line_items[0][price_data][product_data][name]": input.productName,
+    "line_items[0][quantity]": "1",
+    client_reference_id: input.orgId,
+    "metadata[purpose]": "boost",
+    "metadata[org_id]": input.orgId,
+    "metadata[sku]": input.sku,
+    "payment_intent_data[metadata][purpose]": "boost",
+    "payment_intent_data[metadata][org_id]": input.orgId,
+    "payment_intent_data[metadata][sku]": input.sku,
+    "automatic_tax[enabled]": "true",
+    billing_address_collection: "required",
+    "tax_id_collection[enabled]": "true",
+    "invoice_creation[enabled]": "true",
+    success_url: input.successUrl,
+    cancel_url: input.cancelUrl,
+  });
+  if (input.customerRef) {
+    params.set("customer", input.customerRef);
+    params.set("customer_update[address]", "auto");
+    params.set("customer_update[name]", "auto");
+  } else {
+    params.set("customer_creation", "always");
   }
   return params;
 }
@@ -177,6 +216,16 @@ export function stripeProvider(
       }
       assertAppOrigin(config.siteUrl, input.successUrl, input.cancelUrl);
       return await post("/checkout/sessions", checkoutParams({ ...input, priceRef: input.priceRef }), true);
+    },
+    async createPaymentCheckout(input) {
+      if (
+        !SKU.test(input.sku) || !CURRENCY.test(input.currency) || !Number.isInteger(input.amountMinor) ||
+        input.amountMinor <= 0 || input.productName === "" || input.productName.length > 120
+      ) {
+        throw new BillingProviderError("stripe_bad_payment_input");
+      }
+      assertAppOrigin(config.siteUrl, input.successUrl, input.cancelUrl);
+      return await post("/checkout/sessions", paymentCheckoutParams(input), true);
     },
     async createPortal(input) {
       assertAppOrigin(config.siteUrl, input.returnUrl);

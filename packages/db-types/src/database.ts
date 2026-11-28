@@ -2227,7 +2227,33 @@ isOneToOne: false
                 }
           }
           Views: {
-            "v_job_applicants": {
+            "v_active_boosts": {
+                  Row: {
+                    "ends_at": string | null,"id": string | null,"organization_id": string | null,"sku": string | null,"starts_at": string | null,"target_id": string | null,"target_type": string | null
+                  }
+                  Insert: {
+                           "ends_at"?: string | null,"id"?: string | null,"organization_id"?: string | null,"sku"?: string | null,"starts_at"?: string | null,"target_id"?: string | null,"target_type"?: string | null
+                         }
+                        Update: {
+                           "ends_at"?: string | null,"id"?: string | null,"organization_id"?: string | null,"sku"?: string | null,"starts_at"?: string | null,"target_id"?: string | null,"target_type"?: string | null
+                         }
+                        Relationships: [
+                    
+                  ]
+                },"v_boost_products": {
+                  Row: {
+                    "currency": string | null,"days": number | null,"org_type": Database["public"]['Enums']["organization_type"] | null,"price_minor": number | null,"sku": string | null,"sort": number | null,"target_type": string | null
+                  }
+                  Insert: {
+                           "currency"?: string | null,"days"?: number | null,"org_type"?: Database["public"]['Enums']["organization_type"] | null,"price_minor"?: number | null,"sku"?: string | null,"sort"?: number | null,"target_type"?: string | null
+                         }
+                        Update: {
+                           "currency"?: string | null,"days"?: number | null,"org_type"?: Database["public"]['Enums']["organization_type"] | null,"price_minor"?: number | null,"sku"?: string | null,"sort"?: number | null,"target_type"?: string | null
+                         }
+                        Relationships: [
+                    
+                  ]
+                },"v_job_applicants": {
                   Row: {
                     "applied_at": string | null,"candidate_name": string | null,"completeness": number | null,"documents": number | null,"id": string | null,"job_id": string | null,"job_title": string | null,"organization_id": string | null,"status": Database["public"]['Enums']["application_status"] | null
                   }
@@ -2655,6 +2681,11 @@ isOneToOne: false
 "billing_apply_event":
 { Args: { "p_event_id": string }; Returns: string
                            },
+"billing_boost_checkout_start":
+{ Args: { "p_org": string,"p_provider"?: string,"p_sku": string }; Returns: {
+              "amount_minor": number,"currency": string,"customer_ref": string,"days": number,"slug": string
+            }[]
+                           },
 "billing_checkout_start":
 { Args: { "p_billing_country": string,"p_disclosed_trial_days"?: number,"p_org": string,"p_plan_code": string,"p_provider"?: string,"p_registration_number": string,"p_terms_version": number,"p_vat_id": string }; Returns: {
               "customer_ref": string,"price_ref": string,"slug": string,"trial_days": number
@@ -2692,6 +2723,11 @@ isOneToOne: false
                            },
 "block_conversation":
 { Args: { "p_conversation": string }; Returns: undefined
+                           },
+"boosted_partners":
+{ Args: { "p_based_in"?: string,"p_capacity"?: number,"p_destination"?: string,"p_industry"?: string,"p_kind": string,"p_language"?: string,"p_occupation"?: string,"p_recruitment_type"?: Database["public"]['Enums']["recruitment_preference"],"p_sources_from"?: (string)[],"p_staffing_types"?: (string)[],"p_within_days"?: number,"p_workforce_size"?: string }; Returns: {
+              "based_in_country": string,"display_name": string,"id": string,"main_occupations": Json,"organization_type": Database["public"]['Enums']["organization_type"],"served_countries": Json,"slug": string,"staffing_types": (Database["public"]['Enums']["partner_service_type"])[]
+            }[]
                            },
 "bulk_set_application_status":
 { Args: { "p_application_ids": (string)[],"p_note"?: string,"p_status": Database["public"]['Enums']["application_status"] }; Returns: {

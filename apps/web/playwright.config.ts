@@ -185,6 +185,7 @@ const config = defineConfig({
         "**/messaging-dashboard-blocks.spec.ts",
         "**/release-2c-journey.spec.ts",
         "**/worker-identity.spec.ts",
+        "**/partner-boosts.spec.ts",
       ],
     },
     {
@@ -784,13 +785,21 @@ const config = defineConfig({
       testMatch: "**/worker-identity.spec.ts",
       dependencies: ["release-2c-journey"],
     },
+    // The boosts (ARCHITECTURE.md section 10.1) set release 2a and release_boosts for the whole database, so they follow
+    // the release 2c projects and come before the sitemap.
+    {
+      name: "partner-boosts-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/partner-boosts.spec.ts",
+      dependencies: ["worker-identity-release"],
+    },
     // The sitemap is compared with every public vacancy of the database, so no other spec may open or close one while
     // these tests run: they follow every other project.
     {
       name: "sitemap",
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/search-engine-sitemap.spec.ts",
-      dependencies: ["worker-identity-release"],
+      dependencies: ["partner-boosts-release"],
     },
     // The load times of the performance smoke are measured when no other spec loads the server: last of all.
     {

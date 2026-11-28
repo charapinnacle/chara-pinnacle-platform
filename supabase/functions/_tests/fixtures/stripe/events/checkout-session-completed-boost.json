@@ -1,0 +1,45 @@
+{
+  "id": "evt_boost_paid",
+  "object": "event",
+  "api_version": "2025-01-27.acacia",
+  "created": 1793527200,
+  "livemode": false,
+  "pending_webhooks": 1,
+  "request": {
+    "id": null,
+    "idempotency_key": null
+  },
+  "type": "checkout.session.completed",
+  "data": {
+    "object": {
+      "id": "cs_test_boost",
+      "object": "checkout.session",
+      "mode": "payment",
+      "client_reference_id": "7b0f6a53-2d2c-4a43-9b3b-0f5a3f4a1e11",
+      "customer": "cus_1Nx",
+      "payment_intent": "pi_boost_1",
+      "payment_status": "paid",
+      "amount_subtotal": 10900,
+      "amount_total": 12971,
+      "currency": "eur",
+      "total_details": {
+        "amount_discount": 0,
+        "amount_shipping": 0,
+        "amount_tax": 2071
+      },
+      "metadata": {
+        "purpose": "boost",
+        "org_id": "7b0f6a53-2d2c-4a43-9b3b-0f5a3f4a1e11",
+        "sku": "boost_recruitment_14d"
+      },
+      "customer_details": {
+        "email": "billing@example.test",
+        "name": "Manila Skills Inc.",
+        "address": {
+          "line1": "Ayala Avenue 1",
+          "country": "PH"
+        }
+      }
+    }
+  }
+}

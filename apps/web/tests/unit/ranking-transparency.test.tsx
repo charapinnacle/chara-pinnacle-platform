@@ -31,6 +31,7 @@ import {
   suggestionOrderBy,
   suggestionSelection,
 } from "@/lib/partners/ranking";
+import { rankingBoostCopy } from "@/lib/boosts/presentation";
 import { matchedFilterNames } from "@/lib/partners/search-params";
 import { RANKING_PATH, releasedPagePaths } from "@/lib/public/navigation";
 import { suggestionCriteria } from "@/lib/requirements/suggestions";
@@ -373,5 +374,26 @@ describe("the ranking page (NFR-C8)", () => {
       vacancies: [],
     }).map(({ url }) => new URL(url).pathname);
     expect(paths).toContain("/en/legal/ranking");
+  });
+});
+
+describe("the boosted companies on the ranking page (ARCHITECTURE.md section 10.5)", () => {
+  const boostedPartners = latestDefinition("boosted_partners");
+
+  it("says what the rail does while the boosts are released, and nothing about them before", async () => {
+    expect(await renderPage()).toContain(squash(rankingBoostCopy).replaceAll('"', "&quot;"));
+    isReleased.mockImplementation((key: string) => Promise.resolve(key !== "release_boosts"));
+    const text = await renderPage();
+    expect(text).not.toContain("Boosted");
+    expect(isReleased).toHaveBeenCalledWith("release_boosts");
+  });
+
+  it("holds the copy to public.boosted_partners: three at most, turns every hour, apart from search_partners", () => {
+    expect(rankingBoostCopy).toContain("Up to three boosted companies that match every filter");
+    expect(boostedPartners).toContain("limit 3;");
+    expect(rankingBoostCopy).toContain("they take turns every hour");
+    expect(boostedPartners).toContain("order by md5(o.id::text || v_hour), o.id");
+    expect(boostedPartners).toContain("date_trunc('hour', now() at time zone 'utc')");
+    expect(searchPartners).not.toMatch(/boost|billing/i);
   });
 });

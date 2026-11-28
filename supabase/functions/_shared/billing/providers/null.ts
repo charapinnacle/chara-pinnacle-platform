@@ -49,6 +49,13 @@ export function nullProvider(siteUrl: string, webhookSecret?: string): BillingPr
         return { url: `${HOSTED}/checkout/null_cs_${crypto.randomUUID()}?${query}` };
       });
     },
+    createPaymentCheckout(input) {
+      return Promise.resolve().then(() => {
+        assertAppOrigin(siteUrl, input.successUrl, input.cancelUrl);
+        const query = new URLSearchParams({ success_url: input.successUrl, cancel_url: input.cancelUrl });
+        return { url: `${HOSTED}/checkout/null_cs_${crypto.randomUUID()}?${query}` };
+      });
+    },
     createPortal(input) {
       return Promise.resolve().then(() => {
         assertAppOrigin(siteUrl, input.returnUrl);

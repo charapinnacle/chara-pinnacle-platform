@@ -186,6 +186,12 @@ describe("the workforce profile page (FR-K1, FR-K2)", () => {
     expect(requireOrgRoleMock).not.toHaveBeenCalled();
   });
 
+  it("links to the boost page while the boosts are released, and not before", async () => {
+    expect(await render()).toContain('href="/en/org/manila-skills/boost"');
+    releasedMock.mockImplementation((key: string) => Promise.resolve(key !== "release_boosts"));
+    expect(await render()).not.toContain("/en/org/manila-skills/boost");
+  });
+
   it("opens to the members of a partner only, owners and admins at aal2", async () => {
     await render();
     expect(requireOrgRoleMock).toHaveBeenCalledWith("en", "manila-skills", "member", { hideFromOutsiders: true, partner: true });
