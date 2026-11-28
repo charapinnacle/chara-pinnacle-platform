@@ -84,6 +84,7 @@ const featureLabels = {
   csv_export: { label: "CSV export of the applicant list", release: null },
   advanced_partner_search: { label: "Advanced partner search filters", release: "release_partner_directories" },
   available_workforce_search: { label: "Available workforce search", release: "release_partner_directories" },
+  chara_match: { label: "CHARA Match", release: "release_chara_match" },
   job_order_access: { label: "Job order access", release: "release_job_orders" },
   employer_discovery: { label: "Find employers by destination and industry", release: "release_job_orders" },
   advanced_employer_discovery: { label: "Find employers by occupation and size, with saved searches", release: "release_job_orders" },

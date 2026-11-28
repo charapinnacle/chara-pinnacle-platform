@@ -28,7 +28,8 @@
 // for themselves, and such a row would count for an organisation its user later owns. Every granted partner DPA counts
 // until the DPA has an acceptance route (decision 6.3). While release_partner_directories is on any such row fails the
 // Phase 2 gate and the key is required; while it is off the count is listed with the pending items. The gate also prints every release switch that is on,
-// release_data_export (FR-S3) included: that switch needs no legal document, so it has no legal gate of its own.
+// release_data_export (FR-S3) and release_chara_match included: neither switch needs a legal document of its own (CHARA
+// Match also needs release_partner_directories), so neither has a legal gate of its own.
 import { readFileSync } from "node:fs";
 import { isSold } from "./sync-stripe-plans.mjs";
 
@@ -79,6 +80,7 @@ const RELEASE_SWITCHES = [
   "release_find_workers",
   "release_messaging",
   "release_data_export",
+  "release_chara_match",
 ];
 const USAGE = `Usage: node scripts/check-go-live.mjs [${ALLOW_DRAFT_LEGAL}] <settings.json> <plans.json> <release.json>\n`;
 
