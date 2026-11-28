@@ -3,6 +3,8 @@ import { partnerTypeLabels } from "@/components/forms/account-kind-options";
 import { BRAND_NAME } from "@/lib/brand";
 import type { PublicJob } from "@/lib/dal/hiring";
 import type { CompanyPage } from "@/lib/companies/page";
+import { corridorPath, corridorsPath, networkPath } from "@/lib/corridors/presentation";
+import type { Corridor, Network } from "@/lib/dal/corridors";
 import { env } from "@/lib/env";
 import { countryInSentence, formatDate } from "@/lib/i18n/format";
 import type { PartnerProfile } from "@/lib/partners/profile";
@@ -134,6 +136,39 @@ export function rankingPageMetadata(lang: string): Metadata {
     withBrand("How search results are ranked", " — "),
     `The parameters that decide the order of the recruitment and staffing partners in the searches of ${BRAND_NAME}, and what never does.`,
     `/${lang}/${RANKING_PATH}`,
+  );
+}
+
+export function corridorsPageMetadata(lang: string): Metadata {
+  return pageMetadata(
+    withBrand("Workforce corridors", " — "),
+    `Where the recruitment and staffing partners on ${BRAND_NAME} source workers from and the countries they serve, with the workers available as ranges.`,
+    corridorsPath(lang),
+  );
+}
+
+// A corridor with fewer partners than the threshold shows no figure: its page stays out of the index and of the sitemap,
+// and its links are still followed (as a company page without a vacancy).
+export function corridorPageMetadata(
+  lang: string,
+  corridor: Pick<Corridor, "source_country" | "source_name" | "destination_country" | "destination_name" | "listed">,
+): Metadata {
+  const source = countryInSentence(corridor.source_country, corridor.source_name);
+  const destination = countryInSentence(corridor.destination_country, corridor.destination_name);
+  const metadata = pageMetadata(
+    withBrand(`${corridor.source_name} to ${corridor.destination_name} workforce corridor`, " — "),
+    fit(`Recruitment and staffing partners on ${BRAND_NAME} that source workers from ${source} for employers in ${destination}.`, DESCRIPTION_MAX),
+    corridorPath(lang, corridor.source_country, corridor.destination_country),
+  );
+  return corridor.listed ? metadata : { ...metadata, robots: { index: false, follow: true } };
+}
+
+export function networkPageMetadata(lang: string, network: Pick<Network, "destination_country" | "destination_name">): Metadata {
+  const destination = countryInSentence(network.destination_country, network.destination_name);
+  return pageMetadata(
+    withBrand(`Workforce network for ${network.destination_name}`, " — "),
+    fit(`The recruitment and staffing partners on ${BRAND_NAME} that serve employers in ${destination}, by industry, occupation and country.`, DESCRIPTION_MAX),
+    networkPath(lang, network.destination_country),
   );
 }
 
