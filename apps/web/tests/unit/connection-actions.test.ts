@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { offersStaffing } from "@/lib/connections/contact-actions";
+import { offersStaffing, partnerInquiryAllowed } from "@/lib/connections/contact-actions";
 import { connectionKindLabels, typedMessageCard, type ConnectionKind, type ConnectionStatus, type ConversationConnection } from "@/lib/connections/typed-messages";
 import { inquiryFormSchema, jobInvitationFormSchema, workforceRequestFormSchema } from "@/lib/validation/connection-actions";
 
@@ -127,5 +127,14 @@ describe("the forms of the connection actions (FR-P2 Data and validation)", () =
     expect(offersStaffing("recruitment_company", ["staffing", "permanent"])).toBe(true);
     expect(offersStaffing("recruitment_company", ["permanent"])).toBe(false);
     expect(offersStaffing("employer", ["staffing"])).toBe(false);
+  });
+
+  it("lets recruitment companies write to recruitment and staffing companies, staffing companies to recruitment ones (D91)", () => {
+    expect(partnerInquiryAllowed("recruitment_company", "recruitment_company")).toBe(true);
+    expect(partnerInquiryAllowed("recruitment_company", "staffing_company")).toBe(true);
+    expect(partnerInquiryAllowed("staffing_company", "recruitment_company")).toBe(true);
+    expect(partnerInquiryAllowed("staffing_company", "staffing_company")).toBe(false);
+    expect(partnerInquiryAllowed("recruitment_company", "employer")).toBe(false);
+    expect(partnerInquiryAllowed("employer", "recruitment_company")).toBe(false);
   });
 });
