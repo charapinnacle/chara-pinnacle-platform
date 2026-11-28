@@ -185,6 +185,7 @@ const config = defineConfig({
         "**/messaging-dashboard-blocks.spec.ts",
         "**/release-2c-journey.spec.ts",
         "**/worker-identity.spec.ts",
+        "**/chara-match.spec.ts",
       ],
     },
     {
@@ -784,13 +785,21 @@ const config = defineConfig({
       testMatch: "**/worker-identity.spec.ts",
       dependencies: ["release-2c-journey"],
     },
+    // CHARA Match (section 9.3) sets release_chara_match with releases 2a and 2c for the whole database, makes workers
+    // visible and lists partners, so it follows the release 2c projects and comes before the sitemap.
+    {
+      name: "chara-match-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/chara-match.spec.ts",
+      dependencies: ["worker-identity-release"],
+    },
     // The sitemap is compared with every public vacancy of the database, so no other spec may open or close one while
     // these tests run: they follow every other project.
     {
       name: "sitemap",
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/search-engine-sitemap.spec.ts",
-      dependencies: ["worker-identity-release"],
+      dependencies: ["chara-match-release"],
     },
     // The load times of the performance smoke are measured when no other spec loads the server: last of all.
     {
