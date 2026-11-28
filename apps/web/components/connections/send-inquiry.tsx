@@ -19,21 +19,24 @@ import { INQUIRY_MAX, inquiryFormSchema, type InquiryFormInput, type InquiryForm
 const BODY_ID = "inquiry-body";
 
 type SendInquiryProps = {
-  // The employer the inquiry is sent for.
+  // The employer, or since D91 the partner company, the inquiry is sent for.
   slug: string;
-  employerName: string;
+  senderName: string;
   partnerId: string;
   partnerName: string;
+  // The button's words: "Send inquiry" for an employer, "Contact this company" for another partner.
+  label?: string;
 };
 
-// "Send inquiry" on a partner's public profile (FR-P2 AC1, AC9; SOP step Send inquiry): a short inquiry that opens, or
-// continues, the conversation of the employer with the partner, where the employer is then taken.
+// "Send inquiry" on a partner's public profile (FR-P2 AC1, AC9; SOP step Send inquiry; D91 for another partner): a short
+// inquiry that opens, or continues, the conversation of the sender with the partner, where the sender is then taken.
 export function SendInquiry(props: SendInquiryProps) {
   const [open, setOpen] = useState(false);
   return (
     <>
       <FormButton type="button" className="w-full sm:w-auto" onClick={() => setOpen(true)}>
-        Send inquiry<span className="sr-only normal-case"> to {props.partnerName}</span>
+        {props.label ?? "Send inquiry"}
+        <span className="sr-only normal-case"> to {props.partnerName}</span>
       </FormButton>
       <ModalDialog open={open} onClose={() => setOpen(false)} title={`Send an inquiry to ${props.partnerName}`}>
         <InquiryForm {...props} onClose={() => setOpen(false)} />
@@ -42,7 +45,7 @@ export function SendInquiry(props: SendInquiryProps) {
   );
 }
 
-function InquiryForm({ slug, employerName, partnerId, partnerName, onClose }: SendInquiryProps & { onClose: () => void }) {
+function InquiryForm({ slug, senderName, partnerId, partnerName, onClose }: SendInquiryProps & { onClose: () => void }) {
   const router = useRouter();
   const pathname = usePathname();
   const [existingHref, setExistingHref] = useState<string | null>(null);
@@ -77,7 +80,7 @@ function InquiryForm({ slug, employerName, partnerId, partnerName, onClose }: Se
         </p>
       ) : null}
       <p className="text-body leading-relaxed">
-        {partnerName} sees {employerName}&apos;s name and your inquiry, and answers in a conversation. An inquiry counts as one
+        {partnerName} sees {senderName}&apos;s name and your inquiry, and answers in a conversation. An inquiry counts as one
         message of your plan.
       </p>
       <TextareaField

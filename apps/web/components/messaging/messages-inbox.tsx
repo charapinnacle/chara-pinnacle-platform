@@ -17,7 +17,8 @@ const startText: Record<MessagingViewer["kind"], string> = {
     "A conversation starts when an employer writes to you about one of your applications or a submission you approved, or when you write to them from it.",
   employer:
     "A conversation starts when your team or the other side chooses Message on an application, an approved submission, an accepted invitation or a response.",
-  partner: "A conversation starts when your team or the employer chooses Message on an invitation you accepted or a response you sent.",
+  partner:
+    "A conversation starts when your team or the employer chooses Message on an invitation you accepted or a response you sent, or when a company sends an inquiry.",
 };
 
 const filterLabels: Record<PageContext, string> = {
@@ -27,6 +28,7 @@ const filterLabels: Record<PageContext, string> = {
   partner_response: "Responses",
   contact_request: "Contact requests",
   inquiry: "Inquiries",
+  partner_inquiry: "Partner inquiries",
 };
 
 type InboxProps = {

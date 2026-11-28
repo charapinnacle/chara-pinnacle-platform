@@ -43,9 +43,10 @@ export function parseMessageMaxChars(value: string | undefined): number {
 }
 
 // The contexts the pages open conversations for (V63, decision 5.1, contact requests since V70) and filter them by, with
-// the inquiries of V71, whose conversation only send_inquiry opens.
+// the inquiries of V71 and the partner inquiries of D91, whose conversations only send_inquiry and send_partner_inquiry
+// open.
 const openContexts = ["application", "candidate_submission", "requirement_invitation", "partner_response", "contact_request"] as const;
-const pageContexts = [...openContexts, "inquiry"] as const;
+const pageContexts = [...openContexts, "inquiry", "partner_inquiry"] as const;
 
 export type PageContext = (typeof pageContexts)[number];
 

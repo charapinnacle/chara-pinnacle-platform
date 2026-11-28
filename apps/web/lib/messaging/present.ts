@@ -43,12 +43,13 @@ export const contextLabels: Record<ConversationContext, string> = {
   partner_response: "Response",
   contact_request: "Contact request",
   inquiry: "Inquiry",
+  partner_inquiry: "Partner inquiry",
 };
 
 // The filters of the inbox, the contexts the viewer can take part in.
 export function inboxContexts(viewer: MessagingViewer): readonly PageContext[] {
   if (viewer.kind === "worker") return ["application", "candidate_submission", "contact_request"];
-  if (viewer.kind === "partner") return ["requirement_invitation", "partner_response", "contact_request", "inquiry"];
+  if (viewer.kind === "partner") return ["requirement_invitation", "partner_response", "contact_request", "inquiry", "partner_inquiry"];
   return ["application", "candidate_submission", "requirement_invitation", "partner_response", "contact_request", "inquiry"];
 }
 
@@ -88,6 +89,7 @@ const contextLinkLabels: Record<ConversationContext, string> = {
   partner_response: "Open the response",
   contact_request: "Open the contact request",
   inquiry: "Open the inquiry",
+  partner_inquiry: "Open the inquiry",
 };
 
 export function contextLinkLabel(viewer: MessagingViewer, contextType: ConversationContext): string {

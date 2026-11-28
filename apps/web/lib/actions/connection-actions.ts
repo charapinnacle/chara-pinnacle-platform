@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import * as z from "zod";
 import { GENERIC_FAILURE } from "@/lib/auth-errors";
-import { limitRefusalMessage } from "@/lib/billing/limits";
+import { limitRefusalMessage, type OrganizationType } from "@/lib/billing/limits";
 import { isReleased } from "@/lib/dal/release";
 import { requireOrgRole, requireUser } from "@/lib/dal/session";
 import { faultMessage, logFault } from "@/lib/fault";
@@ -42,6 +42,9 @@ const REFUSALS: Record<string, string> = {
   "CHARA_FORBIDDEN:direct_hiring_blocked": "The rules of the worker's country do not allow direct hiring for this vacancy's country.",
   "CHARA_FORBIDDEN:licensed_partner_required":
     "The rules of the worker's country ask for a licensed recruitment partner for this vacancy's country.",
+  "CHARA_FORBIDDEN:partner_pair_not_allowed": "A staffing company sends inquiries to recruitment companies only.",
+  "CHARA_FORBIDDEN:self": "Your company cannot send an inquiry to itself.",
+  "CHARA_FORBIDDEN:not_listed": "Your company can contact other companies once it is listed in the directory.",
   "CHARA_FORBIDDEN:": "You cannot do this for your organisation.",
   "CHARA_FEATURE_NOT_IN_PLAN:connection_actions": "Contacting partners needs a paid plan. An owner or administrator can upgrade it.",
   "CHARA_RATE_LIMITED:": "You sent many inquiries or messages in a short time. Please try again later.",
@@ -54,15 +57,16 @@ const REFUSALS: Record<string, string> = {
 
 // A refusal in words, a limit as the plan's limit; aal2_required sends an owner or admin to two-step verification and back
 // to returnTo, as the Message button does.
-function refusal(error: DatabaseError, returnTo: string, action: string): ConnectionActionResult {
+function refusal(error: DatabaseError, returnTo: string, action: string, type: OrganizationType = "employer"): ConnectionActionResult {
   if (error.details === "aal2_required") redirect(mfaPath(defaultLocale, safeNextPath(returnTo)));
-  if (error.message === "CHARA_LIMIT_REACHED") return { message: limitRefusalMessage(error.details, "employer") };
+  if (error.message === "CHARA_LIMIT_REACHED") return { message: limitRefusalMessage(error.details, type) };
   const known = REFUSALS[`${error.message}:${error.details ?? ""}`] ?? REFUSALS[`${error.message}:`];
   return known ? { message: known } : { message: faultMessage(logFault(action, error)) };
 }
 
-// Send inquiry (FR-P2 AC1, AC2; SOP step Send inquiry): any member of the employer slug writes to the partner. A second
-// inquiry while the first waits for an answer is answered with the way to its conversation.
+// Send inquiry (FR-P2 AC1, AC2; SOP step Send inquiry): any member of the employer slug writes to the partner, and since
+// D91 any member of a recruitment or staffing company slug to another partner (send_partner_inquiry, also while release
+// 2a is on). A second inquiry while one of the pair waits for an answer is answered with the way to its conversation.
 export async function sendInquiry(
   slug: string,
   partnerId: string,
@@ -75,10 +79,16 @@ export async function sendInquiry(
   const parsed = inquiryFormSchema.safeParse(input);
   if (!parsed.success) return { errors: fieldErrors(parsed.error) };
   if (!(await isReleased("release_messaging"))) return { message: RELEASE_OFF };
-  const { organization } = await requireOrgRole(defaultLocale, parsedSlug.data, "member", { mfa: false, hideFromOutsiders: true });
+  const { organization } = await requireOrgRole(defaultLocale, parsedSlug.data, "member", {
+    mfa: false,
+    hideFromOutsiders: true,
+    partner: "either",
+  });
+  const fromPartner = organization.type !== "employer";
+  if (fromPartner && !(await isReleased("release_partner_directories"))) return { message: RELEASE_OFF };
 
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("send_inquiry", {
+  const { data, error } = await supabase.rpc(fromPartner ? "send_partner_inquiry" : "send_inquiry", {
     p_org: organization.id,
     p_partner: partner.data,
     p_body: parsed.data.body,
@@ -91,11 +101,13 @@ export async function sendInquiry(
     const { data: open } = await supabase.rpc("open_inquiry", { p_org: organization.id, p_partner: partner.data });
     const conversation = open?.[0]?.conversation_id;
     return {
-      message: "Your earlier inquiry to this company is still waiting for an answer. Continue in its conversation.",
+      message: fromPartner
+        ? "An inquiry between your company and this company is still waiting for an answer. Continue in its conversation."
+        : "Your earlier inquiry to this company is still waiting for an answer. Continue in its conversation.",
       ...(conversation ? { existingHref: conversationPath(defaultLocale, organization.slug, conversation) } : {}),
     };
   }
-  return refusal(error, returnTo, "Sending an inquiry");
+  return refusal(error, returnTo, "Sending an inquiry", organization.type);
 }
 
 // Request workforce (FR-P2 AC3; SOP step Request workforce): an owner or admin of the employer slug asks a staffing
