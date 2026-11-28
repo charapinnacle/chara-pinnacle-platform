@@ -2,9 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { Band } from "@/components/public/band";
 import { ClosingCall } from "@/components/public/closing-call";
-import { EmployerBand } from "@/components/home/employer-band";
 import { Hero } from "@/components/home/hero";
-import { HowItWorks } from "@/components/home/how-it-works";
 import { PassportSection } from "@/components/home/passport-section";
 import { FooterColumns } from "@/components/layout/footer-links";
 import { SiteFooter } from "@/components/layout/site-footer";
@@ -38,10 +36,8 @@ const NEVER_SAID = [
 ];
 
 const sections = () => [
-  html(<Hero showHiringLine lang="en" what={[]} countries={[]} />),
-  html(<HowItWorks lang="en" />),
+  html(<Hero lang="en" what={[]} countries={[]} />),
   html(<PassportSection />),
-  html(<EmployerBand lang="en" postJobHref={COMPANY_SIGN_UP} />),
   html(<ClosingCall id="home-start-heading" title="Your Workforce. Your Network. One Platform." primary={{ href: "/en/signup", label: "Join Chara Pinnacle" }} />),
 ];
 
@@ -49,45 +45,22 @@ const headingsOf = (markup: string, level: number) =>
   [...markup.matchAll(new RegExp(`<h${level}[^>]*>([^<]+)</h${level}>`, "g"))].map(([, text]) => text);
 
 describe("the hero", () => {
-  const markup = html(<Hero showHiringLine lang="en" what={[]} countries={[]} />);
+  const markup = html(<Hero lang="en" what={[]} countries={[]} />);
 
-  it("holds the one h1, the client's line, the search and one quiet line that leads an employer to For employers", () => {
+  it("holds the one h1, the client's line and the search, and no line for employers", () => {
     expect(markup.match(/<h1/g)).toHaveLength(1);
     expect(markup).toMatch(/<h1 id="home-heading" class="[^"]*text-hero[^"]*">The Global Workforce Network<\/h1>/);
     expect(textOf(markup)).toContain("Connect with the people and companies that can build your workforce.");
     expect(markup).toContain('role="search"');
-    expect(textOf(markup)).toContain("Hiring? Post a job");
-    const employers = /<a [^>]*href="\/en\/employers"[^>]*>Post a job<\/a>/.exec(markup)?.[0] ?? "";
-    expect(employers).toContain("underline");
-    expect(employers).not.toContain("bg-primary");
+    expect(textOf(markup)).not.toContain("Hiring?");
     // The search is the one primary action of the hero.
     expect(markup.match(/bg-primary /g)).toHaveLength(1);
     expect(/<button[^>]*>Search jobs<\/button>/.exec(markup)?.[0]).toContain("bg-primary ");
   });
 
-  it("is centred, the search after the line and the employer line after the search", () => {
+  it("is centred, the search after the line", () => {
     expect(markup).toMatch(/text-center/);
     expect(markup.indexOf("Connect with the people")).toBeLessThan(markup.indexOf('role="search"'));
-    expect(markup.indexOf('role="search"')).toBeLessThan(markup.indexOf("Hiring?"));
-  });
-});
-
-describe("How it works", () => {
-  const markup = html(<HowItWorks lang="en" />);
-
-  it("gives the three steps of a candidate in order, each a title and one line, without icons or cards", () => {
-    expect(markup).toMatch(/<h2 id="home-how-heading"[^>]*>From profile to offer, in three steps.<\/h2>/);
-    expect(textOf(markup)).toContain("How it works");
-    expect(headingsOf(markup, 3)).toEqual(["Create your CHARA Passport", "Apply with the documents you choose", "Follow every stage of your application"]);
-    expect(markup.match(/<li/g)).toHaveLength(3);
-    expect(markup).not.toMatch(/<svg|bg-card|shadow-card/);
-    expect(textOf(markup)).toContain("Pick which of your documents each employer may see. The others stay private.");
-  });
-
-  it("numbers the steps for the eye only and has one button, to the candidate sign-up", () => {
-    expect([...markup.matchAll(/<span aria-hidden="true"[^>]*>(\d)<\/span>/g)].map(([, n]) => n)).toEqual(["1", "2", "3"]);
-    expect(markup.match(/<a /g)).toHaveLength(1);
-    expect(markup).toMatch(/<a [^>]*href="\/en\/signup\?kind=worker"[^>]*>Create your CHARA Passport<\/a>/);
   });
 });
 
@@ -105,20 +78,6 @@ describe("the CHARA Passport", () => {
     ]);
     expect(textOf(markup)).toContain("Your access log shows which organisation opened which document, and when.");
     expect(markup).not.toContain("<a ");
-  });
-});
-
-describe("the employer band", () => {
-  it("says the one line for employers with Post a job where the header leads and a link to For employers", () => {
-    const markup = html(<EmployerBand lang="en" postJobHref={COMPANY_SIGN_UP} />);
-    expect(markup).toMatch(/^<section class="border-t" aria-label="For employers">/);
-    expect(textOf(markup)).toContain("Hiring? Publish a vacancy and manage every applicant in one pipeline.");
-    expect(markup).toMatch(/<a [^>]*href="\/en\/signup\?kind=company"[^>]*>Post a job<\/a>/);
-    expect(markup).toMatch(/<a [^>]*href="\/en\/employers"[^>]*>For employers<\/a>/);
-    expect(html(<EmployerBand lang="en" postJobHref="/en/post-job" />)).toMatch(/<a [^>]*href="\/en\/post-job"[^>]*>Post a job<\/a>/);
-    const none = html(<EmployerBand lang="en" postJobHref={null} />);
-    expect(none).not.toContain("Post a job");
-    expect(none).toContain('href="/en/employers"');
   });
 });
 

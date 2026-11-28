@@ -4,12 +4,11 @@ import {
   forAccountKind,
   guestLinks,
   headerLinks,
-  howItWorksLink,
-  jobSeekersLink,
+  releasedHeaderLinks,
+  releasedPagePaths,
   laterPhaseFeatures,
   legalGroups,
   legalSlugs,
-  menuLinks,
   networkFeatures,
   networkMenu,
   publicFooterColumns,
@@ -17,27 +16,27 @@ import {
 import type { ReleaseSwitch } from "@/lib/release";
 
 const footerLinks = legalGroups.flatMap(({ links }) => links);
+const labelsOf = (links: readonly { label: string }[]) => links.map(({ label }) => label);
 
 describe("the navigation of the public pages (FR-H1 AC3, D90)", () => {
-  it("shows Find Jobs and For employers in the header, For job seekers on the For employers page, and only Sign in of the account links", () => {
-    expect(headerLinks.map(({ label }) => label)).toEqual(["Find jobs", "For employers"]);
-    expect(headerLinks.map(({ path }) => path)).toEqual(["jobs", "employers"]);
-    expect(jobSeekersLink).toEqual({ path: "", label: "For job seekers" });
-    expect(howItWorksLink).toEqual({ path: "how-it-works", label: "How it works" });
+  it("shows Find jobs, Employers and, while release 2a is on, both directories in the header, and only Sign in of the account links", () => {
+    expect(headerLinks.map(({ label }) => label)).toEqual(["Find jobs", "Employers", "Recruitment companies", "Staffing companies"]);
+    expect(headerLinks.map(({ path }) => path)).toEqual(["jobs", "employers", "partners/recruitment", "partners/staffing"]);
+    expect(releasedHeaderLinks([]).map(({ label }) => label)).toEqual(["Find jobs", "Employers"]);
+    expect(releasedHeaderLinks(["release_partner_directories"]).map(({ label }) => label)).toEqual(labelsOf(headerLinks));
+    expect(releasedPagePaths([])).not.toContain("for-partners");
+    expect(releasedPagePaths(["release_partner_directories"])).toContain("for-partners");
     expect(guestLinks).toEqual([
       { path: "login", label: "Sign in" },
       { path: "signup", label: "Sign up" },
     ]);
   });
 
-  it("keeps Pricing, Trust & Safety, About and Contact out of the header and the menu (P18)", () => {
-    const labels = [...headerLinks, howItWorksLink, ...menuLinks].map(({ label }) => label);
-    for (const footerOnly of ["Pricing", "Trust & Safety", "About", "Contact"]) expect(labels).not.toContain(footerOnly);
-  });
-
-  it("explores Find Jobs, For employers, For job seekers and How Chara Pinnacle works from the menu (the logo leads home)", () => {
-    expect(menuLinks.map(({ label }) => label)).toEqual(["Find jobs", "For employers", "For job seekers", "How Chara Pinnacle works"]);
-    expect(menuLinks.map(({ path }) => path)).toEqual(["jobs", "employers", "", "how-it-works"]);
+  it("keeps How it works, Pricing, Trust & Safety, About and Contact out of the header (P18)", () => {
+    const labels = headerLinks.map(({ label }) => label);
+    for (const footerOnly of ["How it works", "Pricing", "Trust & Safety", "About", "Contact"]) {
+      expect(labels).not.toContain(footerOnly);
+    }
   });
 
   it("names the client's later-phase navigation, which the header, the menu links and the footer never name", () => {
@@ -51,7 +50,7 @@ describe("the navigation of the public pages (FR-H1 AC3, D90)", () => {
       "Job orders",
     ]);
     const footer: readonly { label: string }[] = publicFooterColumns.flatMap(({ links }): readonly { label: string }[] => links);
-    const labels = [...headerLinks, ...menuLinks, ...footer].map(({ label }) => label);
+    const labels = [...headerLinks, ...footer].map(({ label }) => label);
     for (const feature of laterPhaseFeatures) expect(labels).not.toContain(feature);
   });
 
@@ -113,11 +112,10 @@ describe("the navigation of the public pages (FR-H1 AC3, D90)", () => {
 describe("the links for an account kind", () => {
   const labels = (links: readonly { label: string }[]) => links.map(({ label }) => label);
 
-  it("offers a worker no employer's page, a company no job seeker's page, and everyone else every link", () => {
-    expect(labels(forAccountKind(menuLinks, "worker"))).toEqual(["Find jobs", "For job seekers", "How Chara Pinnacle works"]);
-    expect(labels(forAccountKind(menuLinks, "company"))).toEqual(["For employers", "How Chara Pinnacle works"]);
-    expect(labels(forAccountKind(menuLinks, null))).toEqual(labels(menuLinks));
-    expect(labels(forAccountKind(headerLinks, undefined))).toEqual(labels(headerLinks));
+  it("offers a worker no company's page, a company no job seeker's page, and everyone else every link", () => {
+    expect(labels(forAccountKind(headerLinks, "worker"))).toEqual(["Find jobs"]);
+    expect(labels(forAccountKind(headerLinks, "company"))).toEqual(["Employers", "Recruitment companies", "Staffing companies"]);
+    expect(labels(forAccountKind(headerLinks, null))).toEqual(labels(headerLinks));
   });
 });
 
@@ -161,17 +159,17 @@ describe("the network items of the menu (FR-L5 AC4)", () => {
   });
 
   it("offers a worker none of the network's pages, and a company and a visitor every released one", () => {
-    const explore = [...menuLinks, ...networkMenu(["release_partner_directories"]).links];
+    const explore = networkMenu(["release_partner_directories"]).links;
     const labels = (links: readonly { label: string }[]) => links.map(({ label }) => label);
-    expect(labels(forAccountKind(explore, "worker"))).toEqual(["Find jobs", "For job seekers", "How Chara Pinnacle works"]);
-    expect(labels(forAccountKind(explore, "company"))).toEqual(["For employers", "How Chara Pinnacle works", "Recruitment partners", "Staffing partners"]);
+    expect(labels(forAccountKind(explore, "worker"))).toEqual([]);
+    expect(labels(forAccountKind(explore, "company"))).toEqual(["Recruitment partners", "Staffing partners"]);
     expect(labels(forAccountKind(explore, null))).toEqual(labels(explore));
-    const withJobOrders = [...menuLinks, ...networkMenu(["release_partner_directories", "release_job_orders"]).links];
+    const withJobOrders = [...networkMenu(["release_partner_directories", "release_job_orders"]).links];
     expect(labels(forAccountKind(withJobOrders, "worker"))).not.toContain("Job orders");
     expect(labels(forAccountKind(withJobOrders, "worker"))).not.toContain("Find companies");
     expect(labels(forAccountKind(withJobOrders, "company"))).toContain("Job orders");
     expect(labels(forAccountKind(withJobOrders, "company"))).toContain("Find companies");
-    const withFindWorkers = [...menuLinks, ...networkMenu(["release_find_workers"]).links];
+    const withFindWorkers = [...networkMenu(["release_find_workers"]).links];
     expect(labels(forAccountKind(withFindWorkers, "worker"))).not.toContain("Find workers");
     expect(labels(forAccountKind(withFindWorkers, "company"))).toContain("Find workers");
     expect(labels(forAccountKind(withFindWorkers, null))).toContain("Find workers");

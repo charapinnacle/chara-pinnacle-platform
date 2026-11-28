@@ -6,7 +6,7 @@ import type { CompanyPage } from "@/lib/companies/page";
 import { env } from "@/lib/env";
 import { countryInSentence, formatDate } from "@/lib/i18n/format";
 import type { PartnerProfile } from "@/lib/partners/profile";
-import { FIND_COMPANIES_PATH, FIND_WORKERS_PATH, JOB_ORDERS_PATH, RANKING_PATH, REQUEST_WORKERS_PATH } from "@/lib/public/navigation";
+import { FIND_COMPANIES_PATH, FIND_WORKERS_PATH, FOR_PARTNERS_PATH, JOB_ORDERS_PATH, RANKING_PATH, REQUEST_WORKERS_PATH } from "@/lib/public/navigation";
 import { companyPagePath, partnerProfilePath } from "@/lib/routes";
 import { staticPages, type StaticPageKey } from "./pages";
 
@@ -93,6 +93,15 @@ export function staffingDirectoryMetadata(lang: string): Metadata {
     withBrand("Find staffing partners", " — "),
     `Search staffing companies on ${BRAND_NAME} by market served, occupation, operating country, industry, staffing type and workforce size.`,
     `/${lang}/partners/staffing`,
+  );
+}
+
+// The page for recruitment and staffing companies (FR-L5).
+export function forPartnersPageMetadata(lang: string): Metadata {
+  return pageMetadata(
+    withBrand("For recruitment and staffing companies", " — "),
+    `How recruitment and staffing companies list themselves on ${BRAND_NAME}, where employers look for partners.`,
+    `/${lang}/${FOR_PARTNERS_PATH}`,
   );
 }
 

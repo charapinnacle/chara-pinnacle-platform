@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { ClosingCall } from "@/components/public/closing-call";
-import { EmployerBand } from "@/components/home/employer-band";
 import { Hero } from "@/components/home/hero";
-import { HowItWorks } from "@/components/home/how-it-works";
 import { PartnerBand } from "@/components/home/partner-band";
 import { PassportSection } from "@/components/home/passport-section";
 import { StatisticsBlock } from "@/components/home/statistics-block";
@@ -21,10 +19,8 @@ export async function generateMetadata({ params }: PageProps<"/[lang]">): Promis
   return staticPageMetadata("home", (await params).lang);
 }
 
-// One audience and one job, as Indeed's and Glassdoor's home pages have (OPEN_QUESTIONS.md D90): the search for the person
-// looking for work, how it works, the passport, one line for employers, the live figures when they are credible, and the
-// closing call. The employer's story is the For employers page. While release 2a is on the partner audience follows the
-// employer band (FR-L5). The home page is for visitors: someone signed in goes to their dashboard, or to onboarding
+// The search for the person looking for work, the passport, the recruitment and staffing companies while release 2a is on
+// (FR-L5), the live figures when they are credible, and the closing call. The home page is for visitors: someone signed in goes to their dashboard, or to onboarding
 // until they have one.
 export default async function Home({ params }: PageProps<"/[lang]">) {
   const { lang } = await params;
@@ -46,15 +42,12 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
   return (
     <>
       <Hero
-        showHiringLine
         lang={lang}
         what={what}
         countries={countries.map((country) => ({ value: country.code, label: country.name }))}
       />
-      <HowItWorks lang={lang} />
       <PassportSection />
-      <EmployerBand lang={lang} postJobHref={postJobHref} />
-      {released.includes("release_partner_directories") ? <PartnerBand lang={lang} visitor /> : null}
+      {released.includes("release_partner_directories") ? <PartnerBand lang={lang} /> : null}
       {tiles.length > 0 ? <StatisticsBlock tiles={tiles} /> : null}
       <ClosingCall
         id="home-start-heading"

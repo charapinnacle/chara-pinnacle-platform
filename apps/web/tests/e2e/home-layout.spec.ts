@@ -24,7 +24,6 @@ test.describe("the layout of the home page (U73)", () => {
     await expect(main.getByRole("heading", { level: 1 })).toBeVisible();
     for (const heading of HOME_SECTION_HEADINGS) await expect(main.getByRole("heading", { level: 2, name: heading })).toBeVisible();
     await expect(main.getByRole("search", { name: "Search jobs" })).toBeVisible();
-    await expect(main.getByRole("region", { name: "For employers" })).toBeVisible();
     await expect(page.getByRole("contentinfo").getByRole("link", { name: "All legal documents" })).toBeVisible();
     expect(await overflow(page)).toBeLessThanOrEqual(0);
     await context.close();
@@ -97,7 +96,7 @@ test.describe("the layout of the home page (U73)", () => {
     await page.goto("/en");
     await page.getByRole("button", { name: "Menu", exact: true }).click();
     const panel = page.getByRole("dialog", { name: "Menu" });
-    await expect(panel.getByRole("link", { name: "Find jobs" })).toBeVisible();
+    await expect(panel.getByRole("link", { name: "Sign in", exact: true })).toBeVisible();
     await expectNoAxeViolations(page);
     await page.setViewportSize({ width: 320, height: 256 });
     const last = panel.getByRole("link").last();
@@ -113,13 +112,13 @@ test.describe("the layout of the home page (U73)", () => {
     expect(fonts[0]).toMatch(/Geist/);
     const size = (selector: string) => page.locator(selector).evaluate((node) => `${getComputedStyle(node).fontSize} ${getComputedStyle(node).fontWeight}`);
     expect(await size("main h1")).toBe("80px 600");
-    expect(await size("#home-how-heading")).toBe("52px 600");
+    expect(await size("#home-passport-heading")).toBe("52px 600");
     await page.setViewportSize({ width: 1024, height: 800 });
     expect(await size("main h1")).toBe("72px 600");
-    expect(await size("#home-how-heading")).toBe("44px 600");
+    expect(await size("#home-passport-heading")).toBe("44px 600");
     await page.setViewportSize({ width: 375, height: 800 });
     expect(await size("main h1")).toBe("44px 600");
-    expect(await size("#home-how-heading")).toBe("32px 600");
+    expect(await size("#home-passport-heading")).toBe("32px 600");
     // next/font announces its preloads in the Link header of the response.
     const preloads = async (path: string): Promise<string[]> =>
       ((await page.request.get(path)).headers().link ?? "").match(/<\/_next\/static\/media\/[^>]+\.woff2>/g) ?? [];
@@ -179,19 +178,6 @@ test.describe("the layout of the home page (U73)", () => {
     await expect(search(page).getByRole("button", { name: "Search jobs" })).toHaveCSS("height", "56px");
   });
 
-  test("the steps stand in three columns on a desktop under one dark rule each, and in one column on a phone", async ({ page }) => {
-    const steps = page.getByRole("region", { name: "From profile to offer, in three steps." }).getByRole("listitem");
-    await page.setViewportSize({ width: 1280, height: 900 });
-    await page.goto("/en");
-    const tops = await steps.evaluateAll((items) => items.map((item) => Math.round(item.getBoundingClientRect().top)));
-    expect(new Set(tops).size).toBe(1);
-    const rule = await steps.first().evaluate((item) => getComputedStyle(item).borderTopColor);
-    expect(rule).toBe(await page.locator("body").evaluate((body) => getComputedStyle(body).color));
-    await page.setViewportSize({ width: 375, height: 800 });
-    const lefts = await steps.evaluateAll((items) => items.map((item) => Math.round(item.getBoundingClientRect().left)));
-    expect(new Set(lefts).size).toBe(1);
-  });
-
   test("a keyboard user sees a 2 px focus ring: bronze on the light page, gold on the near-black closing call and the footer", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto("/en");
@@ -201,8 +187,6 @@ test.describe("the layout of the home page (U73)", () => {
     for (const [target, ringed] of [
       [what, what.locator("xpath=../..")],
       ...[
-        page.getByRole("region", { name: "For employers" }).getByRole("link", { name: "Post a job", exact: true }),
-        page.getByRole("link", { name: "Create your CHARA Passport" }),
         page.getByRole("link", { name: "Join Chara Pinnacle" }),
         page.getByRole("contentinfo").getByRole("link", { name: "Find jobs" }),
       ].map((link) => [link, link]),
@@ -219,15 +203,14 @@ test.describe("the layout of the home page (U73)", () => {
       expect(found.width).toBe("2px");
       rings.push(found.color);
     }
-    expect(new Set(rings.slice(0, 3)).size).toBe(1);
-    expect(rings[3]).toBe(rings[4]);
-    expect(rings[0]).not.toBe(rings[3]);
+    expect(rings[1]).toBe(rings[2]);
+    expect(rings[0]).not.toBe(rings[1]);
   });
 
   test("buttons and links do not move on hover: only their colour changes", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto("/en");
-    for (const name of ["Create your CHARA Passport", "Start hiring", "Join Chara Pinnacle"]) {
+    for (const name of ["Start hiring", "Join Chara Pinnacle"]) {
       const button = page.getByRole("main").getByRole("link", { name });
       await button.scrollIntoViewIfNeeded();
       await button.hover();

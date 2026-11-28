@@ -148,7 +148,8 @@ const accountStatePages = [
 // candidate (empty, with messages and closed), are checked in messaging.spec.ts. Find Workers of an employer (with cards, a
 // rule notice, saved, empty, failed and from a requirement) and the public Find Workers page are checked in find-workers.spec.ts;
 // the contact requests of a worker (with requests, the decline dialog and empty) and of an organisation (with an accepted and
-// a waiting request, and filtered) in contact-requests.spec.ts.
+// a waiting request, and filtered) in contact-requests.spec.ts. The For partners page of release 2a is checked in
+// partner-network-pages.spec.ts.
 const releasedPages = [
   "/[lang]/appeals",
   "/[lang]/appeals/[id]",
@@ -158,6 +159,7 @@ const releasedPages = [
   "/[lang]/companies/[slug]",
   "/[lang]/contact-requests",
   "/[lang]/find-workers",
+  "/[lang]/for-partners",
   "/[lang]/request-workers",
   "/[lang]/following",
   "/[lang]/job-orders",

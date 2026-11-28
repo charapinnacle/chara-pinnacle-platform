@@ -3,17 +3,19 @@ import { expectNoAxeViolations } from "./support/axe";
 import { addCompanyUser, newCompany } from "./support/jobs";
 import { createCommittedUser } from "./support/login";
 import { logIn } from "./support/login-page";
-import { EMPLOYERS_HEADER_LABELS, HEADER_LABELS, LATER_PHASE, MENU_LINKS } from "./support/public-pages";
+import { HEADER_LABELS, LATER_PHASE, MENU_LINKS } from "./support/public-pages";
 import { expect, test } from "./support/test";
 
 const nav = (page: import("@playwright/test").Page) => page.getByRole("navigation", { name: "Main" });
 
 test.describe("the header of the public pages (FR-H1 AC3, D81, D90)", () => {
-  test("a visitor sees Find Jobs, For employers, How it works, Post a job and Sign in and no Menu, and Post a job opens the employer sign-up", async ({ page }) => {
+  test("a visitor sees Find jobs, Employers, Sign in and Post a job and no Menu, and Post a job opens the employer sign-up", async ({ page }) => {
     await page.goto("/en/pricing");
     await expect(nav(page).getByRole("link")).toHaveText(HEADER_LABELS);
-    await expect(nav(page).getByRole("link", { name: "For employers" })).toHaveAttribute("href", "/en/employers");
-    await expect(nav(page).getByRole("link", { name: "How it works" })).toHaveAttribute("href", "/en/how-it-works");
+    await expect(nav(page).getByRole("link", { name: "Find jobs" })).toHaveAttribute("href", "/en/jobs");
+    await expect(nav(page).getByRole("link", { name: "Employers" })).toHaveAttribute("href", "/en/employers");
+    // The directories exist only while release 2a is on.
+    await expect(nav(page).getByRole("link", { name: "Recruitment companies" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Menu", exact: true })).toBeHidden();
     await expect(page.locator('button[aria-controls="site-menu"]')).toHaveCount(1);
     await nav(page).getByRole("link", { name: "Sign in", exact: true }).click();
@@ -21,7 +23,7 @@ test.describe("the header of the public pages (FR-H1 AC3, D81, D90)", () => {
     await page.getByRole("main").getByRole("link", { name: "Create an account" }).click();
     await expect(page).toHaveURL("/en/signup");
     await page.goto("/en/pricing");
-    for (const hidden of ["Pricing", "Trust & Safety", "About", "Contact"]) {
+    for (const hidden of ["How it works", "Pricing", "Trust & Safety", "About", "Contact"]) {
       await expect(nav(page).getByRole("link", { name: hidden })).toHaveCount(0);
     }
     await expectNoAxeViolations(page);
@@ -67,7 +69,7 @@ test.describe("the header of the public pages (FR-H1 AC3, D81, D90)", () => {
     const memberSession = await signedInPage(browser, member);
     await memberSession.page.goto("/en/about");
     // A company is offered only the employer's side, a worker only the job seeker's.
-    await expect(nav(memberSession.page).getByRole("link")).toHaveText(["For employers", "How it works", "Go to my area"]);
+    await expect(nav(memberSession.page).getByRole("link")).toHaveText(["Employers", "Go to my area"]);
     await expect(nav(memberSession.page).getByRole("link", { name: "Post a job" })).toHaveCount(0);
     await memberSession.page.goto("/en/post-job");
     await expect(memberSession.page).toHaveURL(/\/en\/dashboard\/employer/);
@@ -76,7 +78,7 @@ test.describe("the header of the public pages (FR-H1 AC3, D81, D90)", () => {
     const worker = await createCommittedUser("worker");
     const { context, page } = await signedInPage(browser, worker);
     await page.goto("/en/about");
-    await expect(nav(page).getByRole("link")).toHaveText(["Find jobs", "How it works", "Go to my area"]);
+    await expect(nav(page).getByRole("link")).toHaveText(["Find jobs", "Go to my area"]);
     await expect(nav(page).getByRole("link", { name: "Post a job" })).toHaveCount(0);
     await page.goto("/en/post-job");
     await expect(page).toHaveURL("/en/dashboard/worker");
@@ -91,11 +93,8 @@ test.describe("the header of the public pages (FR-H1 AC3, D81, D90)", () => {
     await expect(page).toHaveURL(`/en/org/${company.slug}/jobs/new`);
   });
 
-  test("on the For employers page For job seekers replaces Find Jobs and For employers, and leads home", async ({ page }) => {
+  test("the For employers page has the same header", async ({ page }) => {
     await page.goto("/en/employers");
-    await expect(nav(page).getByRole("link")).toHaveText(EMPLOYERS_HEADER_LABELS);
-    await nav(page).getByRole("link", { name: "For job seekers" }).click();
-    await expect(page).toHaveURL("/en");
     await expect(nav(page).getByRole("link")).toHaveText(HEADER_LABELS);
   });
 
@@ -114,7 +113,6 @@ test.describe("the header of the public pages (FR-H1 AC3, D81, D90)", () => {
     await expect(menu).toHaveAttribute("aria-expanded", "true");
     await expect(panel.getByRole("button", { name: "Close menu" })).toBeFocused();
     await expect(panel.getByRole("navigation", { name: "Explore" }).getByRole("link")).toHaveText(MENU_LINKS);
-    await expect(panel.getByRole("navigation", { name: "Explore" }).getByRole("link", { name: "For job seekers" })).toHaveAttribute("href", "/en");
     const later = panel.getByRole("list", { name: "Coming in a later phase" });
     await expect(later.getByRole("listitem")).toHaveText(LATER_PHASE);
     await expect(panel.getByText("Not yet available", { exact: true })).toBeVisible();
@@ -152,7 +150,7 @@ test.describe("the header of the public pages (FR-H1 AC3, D81, D90)", () => {
     await page.setViewportSize({ width: 375, height: 800 });
     await page.goto("/en");
     await expect(nav(page).getByRole("link", { name: "Sign in", exact: true })).toBeVisible();
-    for (const hidden of ["Find jobs", "For employers", "Post a job"]) await expect(nav(page).getByRole("link", { name: hidden }), hidden).toBeHidden();
+    for (const hidden of ["Find jobs", "Employers", "Post a job"]) await expect(nav(page).getByRole("link", { name: hidden }), hidden).toBeHidden();
     await page.getByRole("button", { name: "Menu", exact: true }).click();
     const panel = page.getByRole("dialog", { name: "Menu" });
     await expect(panel.getByRole("link", { name: "Post a job" })).toBeVisible();
@@ -162,6 +160,5 @@ test.describe("the header of the public pages (FR-H1 AC3, D81, D90)", () => {
     await page.setViewportSize({ width: 600, height: 800 });
     await page.goto("/en");
     await expect(nav(page).getByRole("link", { name: "Post a job" })).toBeVisible();
-    await expect(nav(page).getByRole("link", { name: "Find jobs" })).toBeHidden();
   });
 });

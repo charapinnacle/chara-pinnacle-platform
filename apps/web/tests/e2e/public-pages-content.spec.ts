@@ -106,7 +106,7 @@ test.describe("the accessibility of the public pages", () => {
     await page.setViewportSize({ width: 360, height: 800 });
     await page.goto("/en");
     await page.getByRole("button", { name: "Menu", exact: true }).click();
-    await expect(page.getByRole("dialog", { name: "Menu" }).getByRole("link", { name: "How Chara Pinnacle works" })).toBeVisible();
+    await expect(page.getByRole("dialog", { name: "Menu" }).getByRole("link", { name: "Sign up" })).toBeVisible();
     await expectNoAxeViolations(page);
   });
 });

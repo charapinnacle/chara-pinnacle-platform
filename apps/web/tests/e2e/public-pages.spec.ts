@@ -3,7 +3,7 @@ import { newCompany, seedJob } from "./support/jobs";
 import { overflow } from "./support/login-page";
 import { waitForHydration } from "./support/hydration";
 import { uniqueToken } from "./support/organizations";
-import { EMPLOYERS_HEADER_LABELS, FOOTER_ALL_LABELS, FOOTER_LABELS, HEADER_LABELS, LEGAL_SLUGS, legalPaths, MENU_LINKS, openVacancyId, sitePaths } from "./support/public-pages";
+import { FOOTER_ALL_LABELS, FOOTER_LABELS, HEADER_LABELS, LEGAL_SLUGS, legalPaths, MENU_LINKS, openVacancyId, sitePaths } from "./support/public-pages";
 import { expect, test } from "./support/test";
 
 test.describe("the public pages without JavaScript", () => {
@@ -35,7 +35,7 @@ test.describe("the public pages without JavaScript", () => {
     await page.goto("/en");
     const nav = page.getByRole("navigation", { name: "Main" });
     await expect(nav.getByRole("link", { name: "Sign in", exact: true })).toBeVisible();
-    await expect(nav.getByRole("link", { name: "Find jobs" })).toBeHidden();
+    await expect(nav.getByRole("link", { name: "Post a job" })).toBeHidden();
     await expect(page.getByRole("button", { name: "Menu", exact: true })).toHaveCount(0);
     const menu = page.getByRole("dialog", { name: "Menu" });
     await expect(menu).toBeHidden();
@@ -107,7 +107,7 @@ test.describe("the public pages", () => {
     expect(seen[1]).toEqual(seen[0]);
     expect(seen[2]).toEqual(seen[0]);
     await page.goto("/en/employers");
-    await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link")).toHaveText(EMPLOYERS_HEADER_LABELS);
+    await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link")).toHaveText(HEADER_LABELS);
     await expect(page.getByRole("contentinfo").getByRole("link")).toHaveText(FOOTER_ALL_LABELS);
     // The one link out of the site is the credit of the city names (CC BY 4.0).
     expect(seen[0].footerTargets.at(-1)).toBe("https://www.geonames.org");
@@ -259,7 +259,7 @@ test.describe("the public pages at 360 px", () => {
       await menu.focus();
       await page.keyboard.press(key);
       await expect(menu).toHaveAttribute("aria-expanded", "true");
-      await expect(panel.getByRole("link", { name: "How Chara Pinnacle works" })).toBeVisible();
+      await expect(panel.getByRole("link", { name: "Sign up" })).toBeVisible();
       await expect(panel.getByRole("button", { name: "Close menu" })).toBeFocused();
       await page.keyboard.press("Tab");
       await expect(panel.getByRole("link", { name: "Find jobs" })).toBeFocused();
@@ -280,8 +280,8 @@ test.describe("the public pages at 360 px", () => {
     const menu = page.getByRole("button", { name: "Menu", exact: true });
     await waitForHydration(menu);
     await menu.click();
-    await page.getByRole("dialog", { name: "Menu" }).getByRole("link", { name: "How Chara Pinnacle works" }).click();
-    await expect(page).toHaveURL("/en/how-it-works");
+    await page.getByRole("dialog", { name: "Menu" }).getByRole("link", { name: "Find jobs" }).click();
+    await expect(page).toHaveURL("/en/jobs");
     await expect(menu).toHaveAttribute("aria-expanded", "false");
     await expect(page.getByRole("dialog", { name: "Menu" })).toBeHidden();
   });

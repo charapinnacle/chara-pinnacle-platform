@@ -4,8 +4,15 @@ import type { Step } from "@/lib/public/steps";
 // plain statements of what the release delivers, until the owner approves texts of their own. No string holds a number
 // (AC8): a figure on these pages comes only from the database (public.v_platform_counts, billing.plans).
 export const partnerNetworkCopy = {
+  homeEyebrow: "Partner network",
   homeHeading: "For recruitment and staffing companies",
-  homeText: "List your company in the partner directories, where employers look for recruitment and staffing partners.",
+  forPartnersLink: "How it works for partners",
+  forPartnersTitle: "For recruitment and staffing companies",
+  forPartnersLead: "List your company in the partner directories, where employers look for recruitment and staffing partners.",
+  recruitmentHeading: "Recruitment companies",
+  recruitmentText: "List your company where employers look for recruitment partners, by country, occupation and industry.",
+  staffingHeading: "Staffing companies",
+  staffingText: "Show the workers you can supply, and where, so employers find you when they need staff.",
   employersEyebrow: "Partner network",
   employersHeading: "Find recruitment and staffing partners.",
   employersText:
@@ -19,6 +26,8 @@ export const partnerNetworkCopy = {
   staffingSignUp: "Sign up as a staffing company",
   recruitmentDirectory: "Recruitment partners",
   staffingDirectory: "Staffing partners",
+  recruitmentBrowse: "See recruitment companies",
+  staffingBrowse: "See staffing companies",
 } as const;
 
 export const partnerSteps: readonly Step[] = [

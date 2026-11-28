@@ -58,7 +58,7 @@ describe("the content check of the partner network pages (FR-L5 AC8)", () => {
 
   it("renders no number on the home section or on How it works, other than the numbers of the steps", async () => {
     releasedSwitches.mockResolvedValue(["release_partner_directories"]);
-    for (const markup of [renderToStaticMarkup(<PartnerBand lang="en" visitor />), await renderHowItWorks()]) {
+    for (const markup of [renderToStaticMarkup(<PartnerBand lang="en" />), await renderHowItWorks()]) {
       expect(textOf(withoutStepNumbers(markup))).not.toMatch(/\d/);
     }
   });
@@ -103,14 +103,14 @@ describe("How Chara Pinnacle works (FR-L5 AC9)", () => {
 });
 
 describe("the partner band of the home page (FR-L5 AC9)", () => {
-  it("offers a visitor the sign-up as either partner type and both directories, and a signed-in company the directories only", () => {
-    const visitor = renderToStaticMarkup(<PartnerBand lang="en" visitor />);
-    expect(visitor).toContain('href="/en/signup?kind=recruitment_company"');
-    expect(visitor).toContain('href="/en/signup?kind=staffing_company"');
-    const company = renderToStaticMarkup(<PartnerBand lang="en" visitor={false} />);
-    expect(company).not.toContain("/en/signup");
-    expect(company).toContain('href="/en/partners/recruitment"');
-    expect(company).toContain('href="/en/partners/staffing"');
-    expect(company).not.toMatch(/<(img|picture)\b|\sstyle=/);
+  it("gives each partner type a card with its sign-up and its directory", () => {
+    const markup = renderToStaticMarkup(<PartnerBand lang="en" />);
+    expect(markup).toMatch(/<h2 id="home-partners-heading"[^>]*>For recruitment and staffing companies<\/h2>/);
+    expect([...markup.matchAll(/<h3[^>]*>([^<]+)<\/h3>/g)].map(([, title]) => title)).toEqual(["Recruitment companies", "Staffing companies"]);
+    expect(markup).toMatch(/<a [^>]*href="\/en\/signup\?kind=recruitment_company"[^>]*>Sign up as a recruitment company<\/a>/);
+    expect(markup).toMatch(/<a [^>]*href="\/en\/signup\?kind=staffing_company"[^>]*>Sign up as a staffing company<\/a>/);
+    expect(markup).toMatch(/<a [^>]*href="\/en\/partners\/recruitment"[^>]*>See recruitment companies<\/a>/);
+    expect(markup).toMatch(/<a [^>]*href="\/en\/partners\/staffing"[^>]*>See staffing companies<\/a>/);
+    expect(markup).not.toMatch(/<(img|picture)\b|\sstyle=/);
   });
 });

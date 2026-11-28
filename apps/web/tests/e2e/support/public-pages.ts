@@ -18,11 +18,12 @@ export const LEGAL_SLUGS = [
 // The links of the header of a visitor on a desktop (OPEN_QUESTIONS.md D90): three links, Post a job and Sign in, and no
 // Menu button (a phone's); on the For employers page For job seekers replaces Find Jobs and For employers. The other pages
 // about Chara Pinnacle are in the footer (P18).
-export const HEADER_LABELS = ["Find jobs", "For employers", "How it works", "Post a job", "Sign in"];
-export const EMPLOYERS_HEADER_LABELS = ["For job seekers", "How it works", "Post a job", "Sign in"];
+export const HEADER_LABELS = ["Find jobs", "Employers", "Sign in", "Post a job"];
+// The audience links of the Menu while no network page is released.
+export const MENU_LINKS = ["Find jobs", "Employers"];
 
-// The menu panel: the Explore links, the client's later-phase navigation as text, and the account actions.
-export const MENU_LINKS = ["Find jobs", "For employers", "For job seekers", "How Chara Pinnacle works"];
+// The menu panel: the Explore links of the released network pages, the client's later-phase navigation as text, and the
+// account actions.
 export const LATER_PHASE = ["Find workers", "Request workers", "Find companies", "Recruitment partners", "Staffing partners", "Workforce corridors", "Job orders"];
 
 // The footer reads in three columns: Platform, Company and Legal.
@@ -47,7 +48,6 @@ export const FOOTER_ALL_LABELS = [...FOOTER_LABELS, "GeoNames"];
 // The h2 of the home page's sections in reading order when no live figure is credible (U73, OPEN_QUESTIONS.md D90); the
 // employer band between the passport and the closing call is named by its aria-label, not a heading.
 export const HOME_SECTION_HEADINGS = [
-  "From profile to offer, in three steps.",
   "One professional profile. Multiple opportunities.",
   "Your Workforce. Your Network. One Platform.",
 ];
