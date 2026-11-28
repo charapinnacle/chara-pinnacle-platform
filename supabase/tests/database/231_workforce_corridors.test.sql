@@ -1,5 +1,5 @@
 begin;
-select plan(35);
+select plan(41);
 
 \ir organizations_fixture.inc
 
@@ -56,6 +56,29 @@ begin
     v_result := jsonb_build_object('error', v_state || '|' || v_message);
   end;
   reset role;
+  return v_result;
+end;
+$$;
+
+-- The same as a signed-in user (the owner of the fixtures, at aal1): the workforce range is for signed-in users only.
+create function pg_temp.signed(p_sql text) returns jsonb
+language plpgsql as $$
+declare
+  v_result jsonb;
+  v_state text;
+  v_message text;
+begin
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', current_setting('t.owner'), 'role', 'authenticated', 'aal', 'aal1')::text, true);
+  set local role authenticated;
+  begin
+    execute p_sql into v_result;
+  exception when others then
+    get stacked diagnostics v_state = returned_sqlstate, v_message = message_text;
+    v_result := jsonb_build_object('error', v_state || '|' || v_message);
+  end;
+  reset role;
+  perform set_config('request.jwt.claims', '', true);
   return v_result;
 end;
 $$;
@@ -158,13 +181,24 @@ select is(
 );
 
 -- list_corridors -----------------------------------------------------------------------------------------------------------
-select pg_temp.anon('select public.list_corridors()') as list \gset
+select pg_temp.signed('select public.list_corridors()') as list \gset
+select pg_temp.anon('select public.list_corridors()') as visitor_list \gset
 select is(pg_temp.pairs(:'list'), 'PH>DE,PL>DE', 'the index lists the corridors with at least k partners, the most partners first');
 select is(
   (:'list'::jsonb -> 'corridors' -> 0) - 'source_name' - 'destination_name',
   '{"source_country": "PH", "destination_country": "DE", "recruitment_partners": 6, "staffing_partners": null, "workers_available": "100–249"}'::jsonb,
-  'a count below k is null (fewer than k), and the workforce is a range, never the number'
+  'a count below k is null (fewer than k), and a signed-in user gets the workforce as a range, never the number'
 );
+select is(
+  (:'visitor_list'::jsonb -> 'corridors' -> 0) - 'source_name' - 'destination_name',
+  '{"source_country": "PH", "destination_country": "DE", "recruitment_partners": 6, "staffing_partners": null, "workers_available": null}'::jsonb,
+  'P26: a visitor gets the same corridors and counts but no workforce range'
+);
+select is(
+  (:'visitor_list'::jsonb ->> 'workforce_requires_sign_in') || ',' || (:'list'::jsonb ->> 'workforce_requires_sign_in'), 'true,false',
+  'P26: the flag tells the page to ask a visitor to sign in, and not a signed-in user'
+);
+select is(pg_temp.pairs(:'visitor_list'), pg_temp.pairs(:'list'), 'P26: the index itself is the same for both');
 select is((:'list'::jsonb -> 'corridors' -> 0 ->> 'source_name') || ' > ' || (:'list'::jsonb -> 'corridors' -> 0 ->> 'destination_name'),
   'Philippines > Germany', 'with the names of the countries');
 select is(
@@ -179,15 +213,24 @@ select ok(:'list'::text !~* '(cor-|legal |holdings|[0-9a-f]{8}-[0-9a-f]{4})', 'n
 
 -- get_corridor ---------------------------------------------------------------------------------------------------------------
 select is(
-  pg_temp.anon($$select public.get_corridor('ph', 'de')$$) - 'refreshed_at',
+  pg_temp.signed($$select public.get_corridor('ph', 'de')$$) - 'refreshed_at',
   '{"source_country": "PH", "source_name": "Philippines", "destination_country": "DE", "destination_name": "Germany", "listed": true,
-    "min_count": 5, "recruitment_partners": 6, "staffing_partners": null, "workers_available": "100–249",
+    "min_count": 5, "workforce_requires_sign_in": false, "recruitment_partners": 6, "staffing_partners": null, "workers_available": "100–249",
     "industries": [{"code": "C", "name": "Manufacturing"}, {"code": "F", "name": "Construction"}]}'::jsonb,
   'a listed corridor in any case of the codes: counts, the workforce range and its industries by most partners'
 );
 select is(
+  pg_temp.anon($$select public.get_corridor('ph', 'de')$$) - 'refreshed_at' - 'source_name' - 'destination_name' - 'industries',
+  '{"source_country": "PH", "destination_country": "DE", "listed": true, "min_count": 5, "workforce_requires_sign_in": true,
+    "recruitment_partners": 6, "staffing_partners": null, "workers_available": null}'::jsonb,
+  'P26: a visitor reads the counts of the corridor but no workforce range'
+);
+select is(jsonb_array_length(pg_temp.anon($$select public.get_corridor('ph', 'de')$$) -> 'industries'), 2,
+  'P26: and its industries');
+select is(
   pg_temp.anon($$select public.get_corridor('RO', 'DE')$$) - 'refreshed_at' - 'source_name' - 'destination_name',
-  '{"source_country": "RO", "destination_country": "DE", "listed": false, "min_count": 5, "recruitment_partners": null,
+  '{"source_country": "RO", "destination_country": "DE", "listed": false, "min_count": 5, "workforce_requires_sign_in": true,
+    "recruitment_partners": null,
     "staffing_partners": null, "workers_available": null, "industries": []}'::jsonb,
   'a corridor below k answers the suppressed form, so its link does not break'
 );
@@ -202,7 +245,8 @@ select is(pg_temp.anon($$select public.get_corridor('PHL', 'DE')$$), '{"error": 
   'nor three letters');
 
 -- get_network ----------------------------------------------------------------------------------------------------------------
-select pg_temp.anon($$select public.get_network('de')$$) as network \gset
+select pg_temp.signed($$select public.get_network('de')$$) as network \gset
+select pg_temp.anon($$select public.get_network('de')$$) as visitor_network \gset
 select is(
   (select string_agg(i ->> 'code', ',') from jsonb_array_elements(:'network'::jsonb -> 'industries') i), 'C',
   'only industries with at least k recruitment or staffing partners: F and A have one partner each'
@@ -220,6 +264,13 @@ select is(
   'the occupation: recruitment partners by source country and staffing partners by country of base, each country below k left out'
 );
 select is(
+  (:'visitor_network'::jsonb ->> 'workforce_requires_sign_in') || ','
+    || coalesce(:'visitor_network'::jsonb -> 'industries' -> 0 ->> 'workers_available', 'null') || ','
+    || coalesce(:'visitor_network'::jsonb -> 'industries' -> 0 -> 'occupations' -> 0 ->> 'workers_available', 'null') || ','
+    || (:'visitor_network'::jsonb -> 'industries' -> 0 ->> 'recruitment_partners'),
+  'true,null,null,6', 'P26: a visitor reads the network counts but no workforce range of an industry or an occupation'
+);
+select is(
   pg_temp.anon($$select public.get_network('NZ')$$) -> 'industries', '[]'::jsonb, 'a destination without partners has no industry'
 );
 select is(pg_temp.anon($$select public.get_network('Germany')$$), '{"error": "P0002|CHARA_NOT_FOUND"}'::jsonb,
@@ -228,7 +279,7 @@ select is(pg_temp.anon($$select public.get_network('Germany')$$), '{"error": "P0
 -- A higher threshold hides more; one below 5 is read as 5 -------------------------------------------------------------------
 update private.settings set value = '6' where key = 'stats_min_count';
 select is(pg_temp.pairs(pg_temp.anon('select public.list_corridors()')), 'PH>DE', 'with k 6 the corridor of five partners leaves the index');
-select is(pg_temp.anon($$select public.get_corridor('PH', 'DE')$$) ->> 'workers_available', null,
+select is(pg_temp.signed($$select public.get_corridor('PH', 'DE')$$) ->> 'workers_available', null,
   'and five partners with listings no longer show a workforce range');
 update private.settings set value = '2' where key = 'stats_min_count';
 select is(pg_temp.pairs(pg_temp.anon('select public.list_corridors()')), 'PH>DE,PL>DE', 'a threshold below 5 is read as 5');

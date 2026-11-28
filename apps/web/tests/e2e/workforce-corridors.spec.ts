@@ -1,6 +1,8 @@
 import type { Page } from "@playwright/test";
 import { expectAccessibleAtBothWidths } from "./support/applications";
 import { execute, literal } from "./support/db";
+import { createCommittedUser } from "./support/login";
+import { logIn } from "./support/login-page";
 import { uniqueToken } from "./support/organizations";
 import { partnerWithCompany, setPartnerRelease } from "./support/partners";
 import { readHead, SITE } from "./support/seo";
@@ -91,7 +93,11 @@ test.describe("Workforce corridors and the network view (brief sections 18 to 20
     const corridors = page.getByRole("list", { name: "Corridors" });
     const card = corridors.getByRole("listitem").filter({ hasText: "Nauru" });
     await expect(card.getByRole("link", { name: "Nauru to Liechtenstein" })).toHaveAttribute("href", LISTED);
-    await expect(card).toContainText("Workers available100–249");
+    await expect(card.getByRole("link", { name: "Sign in to see available workers" })).toHaveAttribute(
+      "href",
+      `/en/login?next=${encodeURIComponent("/en/corridors")}`,
+    );
+    await expect(card).not.toContainText("100–249");
     await expect(card).toContainText("Recruitment partners6");
     await expect(card).toContainText("Staffing partnersFewer than 5");
     await expect(corridors.getByText("Tuvalu")).toHaveCount(0);
@@ -113,7 +119,10 @@ test.describe("Workforce corridors and the network view (brief sections 18 to 20
     await expect(page).toHaveURL(LISTED);
     await expect(page.getByRole("heading", { level: 1, name: "Nauru to Liechtenstein" })).toBeVisible();
     const figures = page.getByRole("region", { name: "Corridor figures" });
-    await expect(figures).toContainText("Workers available100–249");
+    await expect(figures.getByRole("link", { name: "Sign in to see available workers" })).toHaveAttribute(
+      "href",
+      `/en/login?next=${encodeURIComponent(LISTED)}`,
+    );
     await expect(figures).toContainText("Recruitment partners6");
     await expect(figures).toContainText("Staffing partnersFewer than 5");
     await expect(figures).toContainText("IndustriesManufacturing");
@@ -129,6 +138,25 @@ test.describe("Workforce corridors and the network view (brief sections 18 to 20
 
     await page.getByRole("link", { name: "See recruitment partners" }).click();
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Find recruitment partners");
+  });
+
+  test("P26: a signed-in user sees the workers available as a range on the index, the corridor and the network, a visitor never", async ({ page }) => {
+    const user = await createCommittedUser("company");
+    await logIn(page, user);
+    await page.waitForURL((url) => !url.pathname.endsWith("/login"));
+    await page.goto(LISTED);
+    const figures = page.getByRole("region", { name: "Corridor figures" });
+    await expect(figures).toContainText("Workers available100–249");
+    await expect(page.getByRole("link", { name: "Sign in to see available workers" })).toHaveCount(0);
+    await page.goto("/en/corridors");
+    await expect(page.getByRole("list", { name: "Corridors" }).getByRole("listitem").filter({ hasText: "Nauru" })).toContainText("100–249");
+    await page.goto(NETWORK);
+    await expect(page.getByRole("region", { name: "Manufacturing" })).toContainText("Workers available100–249");
+
+    await page.context().clearCookies({ name: /^sb-/ });
+    await page.goto(LISTED);
+    await expect(figures.getByRole("link", { name: "Sign in to see available workers" })).toBeVisible();
+    await expect(figures).not.toContainText("100–249");
   });
 
   test("a corridor below k keeps its page in the suppressed form, out of the index of search engines; a non-corridor is not found", async ({ page }) => {
@@ -148,7 +176,13 @@ test.describe("Workforce corridors and the network view (brief sections 18 to 20
     const industry = page.getByRole("region", { name: "Manufacturing" });
     await expect(industry).toContainText("Recruitment partners6");
     const occupation = industry.getByRole("listitem").filter({ hasText: "Welders and flame cutters" }).first();
+    await expect(occupation).toContainText("Recruitment companies by the country they source workers from");
     await expect(occupation).toContainText("Nauru: 6 companies");
+    await expect(occupation).toContainText("Staffing companies by the country they are based in");
+    await expect(industry.getByRole("link", { name: "Sign in to see available workers" }).first()).toHaveAttribute(
+      "href",
+      `/en/login?next=${encodeURIComponent(NETWORK)}`,
+    );
     await expect(occupation).toContainText("No country with 5 or more companies yet");
     await expect(page.getByText("An interactive map of the network comes later.", { exact: false })).toBeVisible();
     await expectAccessibleAtBothWidths(page);

@@ -6,6 +6,7 @@ import { TextLink } from "@/components/forms/text-link";
 import { Card } from "@/components/layout/card";
 import { corridorPath, corridorsPath, countText, networkPath, workforceText } from "@/lib/corridors/presentation";
 import type { CorridorList, CorridorRow } from "@/lib/dal/corridors";
+import { loginPath } from "@/lib/routes";
 
 type Country = { code: string; name: string };
 type Filters = { source?: string; destination?: string };
@@ -34,10 +35,34 @@ function CountrySelect({ id, name, label, any, countries, value }: { id: string;
   );
 }
 
+// The workers available are shown to signed-in users only (OPEN_QUESTIONS.md P26): the database answers a visitor no
+// range, and signInHref (the login page that returns here) is set then.
+export function WorkersAvailable({ range, signInHref }: { range: string | null; signInHref: string | null }) {
+  return signInHref ? (
+    <TextLink href={signInHref} className="font-normal">
+      Sign in to see available workers
+    </TextLink>
+  ) : (
+    workforceText(range)
+  );
+}
+
+export function signInHrefFor(lang: string, requiresSignIn: boolean, path: string): string | null {
+  return requiresSignIn ? loginPath(lang, path) : null;
+}
+
 // A corridor as one compact card: the two countries and its three figures, as the brief lists them (section 18).
-export function CorridorFigures({ row, minCount }: { row: Pick<CorridorRow, "recruitment_partners" | "staffing_partners" | "workers_available">; minCount: number }) {
+export function CorridorFigures({
+  row,
+  minCount,
+  signInHref,
+}: {
+  row: Pick<CorridorRow, "recruitment_partners" | "staffing_partners" | "workers_available">;
+  minCount: number;
+  signInHref: string | null;
+}) {
   const items = [
-    { label: "Workers available", value: workforceText(row.workers_available) },
+    { label: "Workers available", value: <WorkersAvailable range={row.workers_available} signInHref={signInHref} /> },
     { label: "Recruitment partners", value: countText(row.recruitment_partners, minCount) },
     { label: "Staffing partners", value: countText(row.staffing_partners, minCount) },
   ];
@@ -60,6 +85,7 @@ export function CorridorList({ lang, list, filters }: { lang: string; list: Corr
   );
   const filtered = filters.source !== undefined || filters.destination !== undefined;
   const destination = filters.destination ? list.corridors.find((row) => row.destination_country === filters.destination) : undefined;
+  const signInHref = signInHrefFor(lang, list.workforce_requires_sign_in, corridorsPath(lang));
 
   return (
     <div className="grid gap-6">
@@ -121,7 +147,7 @@ export function CorridorList({ lang, list, filters }: { lang: string; list: Corr
                   <span className="sr-only">to</span> {row.destination_name}
                 </TextLink>
               </h2>
-              <CorridorFigures row={row} minCount={list.min_count} />
+              <CorridorFigures row={row} minCount={list.min_count} signInHref={signInHref} />
             </Card>
           ))}
         </ul>

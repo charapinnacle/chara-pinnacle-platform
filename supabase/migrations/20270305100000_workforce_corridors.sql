@@ -15,7 +15,9 @@
 -- never returned: with one of the two counts shown it would give back the other below k (complementary suppression); it
 -- only decides whether a corridor is listed and its place in the list. The available workforce is a range
 -- (private.workforce_band, 20270223100000_workforce_counts_as_ranges.sql), never a number, and only once at least k
--- partners have a fresh listing behind it, so no partner's own capacity is shown to a visitor.
+-- partners have a fresh listing behind it, so no partner's own capacity is shown in a range; and only to a signed-in
+-- caller (owner decision, OPEN_QUESTIONS.md P26), as the directories show available workforce to signed-in users only:
+-- a visitor gets null and workforce_requires_sign_in true. Partner counts and industries stay public.
 
 insert into private.settings (key, value) values ('release_corridors', 'false') on conflict (key) do nothing;
 
@@ -213,9 +215,9 @@ revoke all on function private.corridor_country(text) from public, anon, authent
 
 -- The listed corridors: those with at least k partners, the most partners first, then by the names of the source and the
 -- destination. One JSON value, so the Data API does not cut the list at its row limit:
--- {min_count, refreshed_at, corridors: [{source_country, source_name, destination_country, destination_name,
+-- {min_count, workforce_requires_sign_in, refreshed_at, corridors: [{source_country, source_name, destination_country, destination_name,
 -- recruitment_partners, staffing_partners, workers_available}]}, a count null below min_count, workers_available a range
--- or null.
+-- or null (always null for a visitor).
 create function public.list_corridors() returns jsonb
 language plpgsql
 stable
@@ -224,6 +226,7 @@ set search_path = ''
 as $$
 declare
   v_min integer;
+  v_signed_in boolean := (select auth.uid()) is not null;
 begin
   if not private.release_on('release_corridors') then
     raise exception 'CHARA_NOT_FOUND' using errcode = 'P0002';
@@ -231,6 +234,7 @@ begin
   v_min := private.stats_min_count();
   return jsonb_build_object(
     'min_count', v_min,
+    'workforce_requires_sign_in', not v_signed_in,
     'refreshed_at', (select max(c.refreshed_at) from stats.corridor_stats_mv c),
     'corridors', coalesce((
       select jsonb_agg(jsonb_build_object(
@@ -238,7 +242,7 @@ begin
           'destination_country', c.destination_country, 'destination_name', d.name,
           'recruitment_partners', case when c.recruitment_partners >= v_min then c.recruitment_partners end,
           'staffing_partners', case when c.staffing_partners >= v_min then c.staffing_partners end,
-          'workers_available', case when c.workforce_partners >= v_min then private.workforce_band(c.workers_available) end
+          'workers_available', case when v_signed_in and c.workforce_partners >= v_min then private.workforce_band(c.workers_available) end
         ) order by c.partners desc, s.name, d.name)
       from stats.corridor_stats_mv c
       join public.countries s on s.code = c.source_country
@@ -256,7 +260,7 @@ revoke all on function public.list_corridors() from public, anon, authenticated,
 grant execute on function public.list_corridors() to anon, authenticated;
 
 -- One corridor, listed or not: {source_country, source_name, destination_country, destination_name, listed, min_count,
--- refreshed_at, recruitment_partners, staffing_partners, workers_available, industries: [{code, name}]}. A corridor with
+-- workforce_requires_sign_in, refreshed_at, recruitment_partners, staffing_partners, workers_available, industries: [{code, name}]}. A corridor with
 -- fewer than k partners (none included) answers listed false and every figure null, no industry. Codes that are not two
 -- letters, not a country, or the same country twice answer CHARA_NOT_FOUND.
 create function public.get_corridor(p_source text, p_destination text) returns jsonb
@@ -271,6 +275,7 @@ declare
   v_destination text := private.corridor_country(p_destination);
   v_row stats.corridor_stats_mv;
   v_listed boolean;
+  v_signed_in boolean := (select auth.uid()) is not null;
 begin
   if not private.release_on('release_corridors') then
     raise exception 'CHARA_NOT_FOUND' using errcode = 'P0002';
@@ -288,10 +293,11 @@ begin
     'destination_name', (select c.name from public.countries c where c.code = v_destination),
     'listed', v_listed,
     'min_count', v_min,
+    'workforce_requires_sign_in', not v_signed_in,
     'refreshed_at', (select max(c.refreshed_at) from stats.corridor_stats_mv c),
     'recruitment_partners', case when v_listed and v_row.recruitment_partners >= v_min then v_row.recruitment_partners end,
     'staffing_partners', case when v_listed and v_row.staffing_partners >= v_min then v_row.staffing_partners end,
-    'workers_available', case when v_listed and v_row.workforce_partners >= v_min then private.workforce_band(v_row.workers_available) end,
+    'workers_available', case when v_signed_in and v_listed and v_row.workforce_partners >= v_min then private.workforce_band(v_row.workers_available) end,
     'industries', case when v_listed then coalesce((
       select jsonb_agg(jsonb_build_object('code', i.code, 'name', i.name) order by t.n)
       from unnest(v_row.industries) with ordinality t (code, n)
@@ -307,7 +313,8 @@ comment on function public.get_corridor(text, text) is
 revoke all on function public.get_corridor(text, text) from public, anon, authenticated, service_role;
 grant execute on function public.get_corridor(text, text) to anon, authenticated;
 
--- The network of one destination (brief section 19): {destination_country, destination_name, min_count, refreshed_at,
+-- The network of one destination (brief section 19): {destination_country, destination_name, min_count,
+-- workforce_requires_sign_in, refreshed_at,
 -- industries: [{code, name, recruitment_partners, staffing_partners, workers_available, occupations: [{code, label,
 -- recruitment_partners, staffing_partners, workers_available, recruitment_sources: [{code, name, partners}],
 -- staffing_bases: [{code, name, partners}]}]}]}. An industry or an occupation is included only when its recruitment or its
@@ -323,6 +330,7 @@ as $$
 declare
   v_min integer;
   v_destination text := private.corridor_country(p_destination);
+  v_signed_in boolean := (select auth.uid()) is not null;
 begin
   if not private.release_on('release_corridors') then
     raise exception 'CHARA_NOT_FOUND' using errcode = 'P0002';
@@ -351,7 +359,7 @@ begin
         jsonb_build_object(
           'recruitment_partners', case when c.recruitment >= v_min then c.recruitment end,
           'staffing_partners', case when c.staffing >= v_min then c.staffing end,
-          'workers_available', case when c.workforce_partners >= v_min then private.workforce_band(c.workers) end
+          'workers_available', case when v_signed_in and c.workforce_partners >= v_min then private.workforce_band(c.workers) end
         ) as counts
       from cells c
     )
@@ -359,6 +367,7 @@ begin
       'destination_country', v_destination,
       'destination_name', (select c.name from public.countries c where c.code = v_destination),
       'min_count', v_min,
+      'workforce_requires_sign_in', not v_signed_in,
       'refreshed_at', (select max(n.refreshed_at) from stats.network_stats_mv n),
       'industries', coalesce((
         select jsonb_agg(

@@ -35,8 +35,8 @@ export default async function CorridorsPage({ params, searchParams }: PageProps<
       <div className="grid gap-2 text-small text-muted-foreground">
         <p>
           A corridor is listed once {list.min_count} or more partners work in it. Counts below {list.min_count} are shown as
-          “Fewer than {list.min_count}”, and workers available is a range, shown once {list.min_count} or more partners list
-          workers in the corridor.
+          “Fewer than {list.min_count}”, and workers available is a range, shown to signed-in users once {list.min_count} or
+          more partners list workers in the corridor.
         </p>
         {list.refreshed_at ? <p>Figures as of {formatDateTime(list.refreshed_at)}.</p> : null}
       </div>

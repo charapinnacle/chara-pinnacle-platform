@@ -44,11 +44,12 @@ const phDe = {
   workers_available: "100–249",
 };
 const plDe = { ...phDe, source_country: "PL", source_name: "Poland", recruitment_partners: null, staffing_partners: 5, workers_available: null };
-const list: CorridorList = { min_count: 5, refreshed_at: "2026-11-28T10:30:00+00:00", corridors: [phDe, plDe] };
+const list: CorridorList = { min_count: 5, workforce_requires_sign_in: false, refreshed_at: "2026-11-28T10:30:00+00:00", corridors: [phDe, plDe] };
 const corridor: Corridor = {
   ...phDe,
   listed: true,
   min_count: 5,
+  workforce_requires_sign_in: false,
   refreshed_at: "2026-11-28T10:30:00+00:00",
   industries: [
     { code: "C", name: "Manufacturing" },
@@ -69,6 +70,7 @@ const network: Network = {
   destination_country: "DE",
   destination_name: "Germany",
   min_count: 5,
+  workforce_requires_sign_in: false,
   refreshed_at: "2026-11-28T10:30:00+00:00",
   industries: [
     {
@@ -250,14 +252,51 @@ describe("a corridor page", () => {
   });
 });
 
+describe("the workers available for a visitor (OPEN_QUESTIONS.md P26)", () => {
+  const visitorList: CorridorList = { ...list, workforce_requires_sign_in: true, corridors: list.corridors.map((row) => ({ ...row, workers_available: null })) };
+
+  it("offers a sign-in link that returns to the page in place of the range, and keeps the partner counts public", () => {
+    const index = renderToStaticMarkup(<CorridorListView lang="en" list={visitorList} filters={{}} />);
+    expect(textOf(index)).toContain("Workers available Sign in to see available workers Recruitment partners 6");
+    expect(index).toContain(`href="/en/login?next=${encodeURIComponent("/en/corridors")}"`);
+    expect(textOf(index)).not.toContain("100–249");
+
+    const page = renderToStaticMarkup(
+      <CorridorView lang="en" corridor={{ ...corridor, workforce_requires_sign_in: true, workers_available: null }} directories />,
+    );
+    expect(textOf(page)).toContain("Sign in to see available workers");
+    expect(textOf(page)).toContain("Industries Manufacturing, Construction");
+    expect(page).toContain(`href="/en/login?next=${encodeURIComponent("/en/corridors/ph-de")}"`);
+
+    const visitorNetwork: Network = {
+      ...network,
+      workforce_requires_sign_in: true,
+      industries: network.industries.map((industry) => ({
+        ...industry,
+        workers_available: null,
+        occupations: industry.occupations.map((occupation) => ({ ...occupation, workers_available: null })),
+      })),
+    };
+    const networkMarkup = renderToStaticMarkup(<NetworkView lang="en" network={visitorNetwork} directories />);
+    expect(networkMarkup.match(/Sign in to see available workers/g)).toHaveLength(2);
+    expect(networkMarkup).toContain(`href="/en/login?next=${encodeURIComponent("/en/network/de")}"`);
+  });
+
+  it("shows a signed-in user the range and no sign-in link", () => {
+    const index = renderToStaticMarkup(<CorridorListView lang="en" list={list} filters={{}} />);
+    expect(index).not.toContain("Sign in to see available workers");
+    expect(textOf(index)).toContain("Workers available 100–249");
+  });
+});
+
 describe("the network page", () => {
   it("shows per industry and occupation the recruitment network by source country, the staffing network and the workers available", () => {
     const text = textOf(renderToStaticMarkup(<NetworkView lang="en" network={network} directories />));
     expect(text).toContain("Workforce network for Germany");
     expect(text).toContain("Manufacturing Workers available 100–249 Recruitment partners 6 Staffing partners 9");
     expect(text).toContain("Welders and flame cutters");
-    expect(text).toContain("Recruitment network by source country Philippines: 6 companies");
-    expect(text).toContain("Staffing network by country No country with 5 or more companies yet");
+    expect(text).toContain("Recruitment companies by the country they source workers from Philippines: 6 companies");
+    expect(text).toContain("Staffing companies by the country they are based in No country with 5 or more companies yet");
     expect(text).toContain("An interactive map of the network comes later.");
   });
 

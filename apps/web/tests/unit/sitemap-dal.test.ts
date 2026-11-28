@@ -183,7 +183,7 @@ describe("listSitemapCorridorPaths (brief section 18)", () => {
   });
 
   it("lists the page of every listed corridor in lower case, as the corridor pages are addressed", async () => {
-    results = [{ data: { min_count: 5, refreshed_at: null, corridors: [corridor("PH", "DE"), corridor("PL", "DE")] }, error: null }];
+    results = [{ data: { min_count: 5, workforce_requires_sign_in: true, refreshed_at: null, corridors: [corridor("PH", "DE"), corridor("PL", "DE")] }, error: null }];
     expect(await listSitemapCorridorPaths()).toEqual(["corridors/ph-de", "corridors/pl-de"]);
     expect(calls).toEqual([{ name: "list_corridors", args: undefined }]);
   });

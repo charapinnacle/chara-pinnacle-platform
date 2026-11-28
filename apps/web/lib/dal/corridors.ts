@@ -5,7 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 // The workforce corridors and the network view (brief sections 18 to 20; 20270305100000_workforce_corridors.sql). The
 // database answers aggregates only: a count it holds back below stats_min_count is null, the workforce a range or null.
 // It answers CHARA_NOT_FOUND (P0002) while release_corridors is off and for an address that is not a corridor or a
-// country; the reads below answer null then, so the page is not found.
+// country; the reads below answer null then, so the page is not found. The workforce range comes only to a signed-in
+// caller (workforce_requires_sign_in false): the client carries the session cookie, and the pages render per request.
 
 const count = z.number().int().nullable();
 const range = z.string().nullable();
@@ -22,6 +23,7 @@ const corridorRowSchema = z.object({
 
 const corridorListSchema = z.object({
   min_count: z.number().int(),
+  workforce_requires_sign_in: z.boolean(),
   refreshed_at: z.string().nullable(),
   corridors: z.array(corridorRowSchema),
 });
@@ -29,6 +31,7 @@ const corridorListSchema = z.object({
 const corridorSchema = corridorRowSchema.extend({
   listed: z.boolean(),
   min_count: z.number().int(),
+  workforce_requires_sign_in: z.boolean(),
   refreshed_at: z.string().nullable(),
   industries: z.array(z.object({ code: z.string(), name: z.string() })),
 });
@@ -40,6 +43,7 @@ const networkSchema = z.object({
   destination_country: z.string(),
   destination_name: z.string(),
   min_count: z.number().int(),
+  workforce_requires_sign_in: z.boolean(),
   refreshed_at: z.string().nullable(),
   industries: z.array(
     z.object({

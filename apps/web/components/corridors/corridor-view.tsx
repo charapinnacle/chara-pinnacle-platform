@@ -4,9 +4,9 @@ import { Card } from "@/components/layout/card";
 import { LinkButton } from "@/components/layout/link-button";
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/layout/page-header";
-import { CorridorFigures } from "@/components/corridors/corridor-list";
+import { CorridorFigures, signInHrefFor } from "@/components/corridors/corridor-list";
 import { ImmigrationNotice } from "@/components/public/immigration-notice";
-import { corridorDirectoryPaths, corridorsPath, networkPath } from "@/lib/corridors/presentation";
+import { corridorDirectoryPaths, corridorPath, corridorsPath, networkPath } from "@/lib/corridors/presentation";
 import type { Corridor } from "@/lib/dal/corridors";
 import { countryInSentence, formatDateTime } from "@/lib/i18n/format";
 
@@ -39,7 +39,11 @@ export function CorridorView({ lang, corridor, directories }: { lang: string; co
       <Card as="section" aria-label="Corridor figures" padding="md" className="gap-6">
         {corridor.listed ? (
           <>
-            <CorridorFigures row={corridor} minCount={corridor.min_count} />
+            <CorridorFigures
+              row={corridor}
+              minCount={corridor.min_count}
+              signInHref={signInHrefFor(lang, corridor.workforce_requires_sign_in, corridorPath(lang, corridor.source_country, corridor.destination_country))}
+            />
             {corridor.industries.length > 0 ? (
               <div className="grid gap-1">
                 <h2 className="text-small text-muted-foreground">Industries</h2>
@@ -65,7 +69,8 @@ export function CorridorView({ lang, corridor, directories }: { lang: string; co
       <div className="grid gap-2 text-small text-muted-foreground">
         <p>
           Counts below {corridor.min_count} are shown as “Fewer than {corridor.min_count}”. Workers available is a range of the
-          listings partners confirmed recently, shown once {corridor.min_count} or more partners list workers here.
+          listings partners confirmed recently, shown to signed-in users once {corridor.min_count} or more partners list workers
+          here.
         </p>
         {corridor.refreshed_at ? <p>Figures as of {formatDateTime(corridor.refreshed_at)}.</p> : null}
         <p>

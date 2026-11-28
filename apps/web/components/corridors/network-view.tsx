@@ -6,13 +6,14 @@ import { Card } from "@/components/layout/card";
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/layout/page-header";
 import { ImmigrationNotice } from "@/components/public/immigration-notice";
-import { corridorsPath, countText, workforceText } from "@/lib/corridors/presentation";
+import { signInHrefFor, WorkersAvailable } from "@/components/corridors/corridor-list";
+import { corridorsPath, countText, networkPath } from "@/lib/corridors/presentation";
 import type { Network } from "@/lib/dal/corridors";
 import { countryInSentence, formatCount, formatDateTime } from "@/lib/i18n/format";
 
 type Occupation = Network["industries"][number]["occupations"][number];
 
-function Figure({ label, value }: { label: string; value: string }) {
+function Figure({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="grid gap-0.5">
       <dt className="text-small text-muted-foreground">{label}</dt>
@@ -45,6 +46,7 @@ function Countries({ label, countries, minCount }: { label: string; countries: O
 // in, and the workers available. A list, not a map: the interactive map comes later.
 export function NetworkView({ lang, network, directories }: { lang: string; network: Network; directories: boolean }) {
   const min = network.min_count;
+  const signInHref = signInHrefFor(lang, network.workforce_requires_sign_in, networkPath(lang, network.destination_country));
   return (
     <PageContainer layout="page" className="grid max-w-5xl gap-8">
       <PageHeader
@@ -81,7 +83,7 @@ export function NetworkView({ lang, network, directories }: { lang: string; netw
                 {industry.name}
               </h2>
               <dl className="grid gap-x-6 gap-y-2 sm:grid-cols-3">
-                <Figure label="Workers available" value={workforceText(industry.workers_available)} />
+                <Figure label="Workers available" value={<WorkersAvailable range={industry.workers_available} signInHref={signInHref} />} />
                 <Figure label="Recruitment partners" value={countText(industry.recruitment_partners, min)} />
                 <Figure label="Staffing partners" value={countText(industry.staffing_partners, min)} />
               </dl>
@@ -92,13 +94,13 @@ export function NetworkView({ lang, network, directories }: { lang: string; netw
                   <Card as="li" key={occupation.code} padding="sm" className="gap-4">
                     <h3 className="text-h3">{occupation.label}</h3>
                     <dl className="grid gap-x-6 gap-y-2 sm:grid-cols-3">
-                      <Figure label="Workers available" value={workforceText(occupation.workers_available)} />
+                      <Figure label="Workers available" value={<WorkersAvailable range={occupation.workers_available} signInHref={signInHref} />} />
                       <Figure label="Recruitment partners" value={countText(occupation.recruitment_partners, min)} />
                       <Figure label="Staffing partners" value={countText(occupation.staffing_partners, min)} />
                     </dl>
                     <div className="grid gap-3 sm:grid-cols-2">
-                      <Countries label="Recruitment network by source country" countries={occupation.recruitment_sources} minCount={min} />
-                      <Countries label="Staffing network by country" countries={occupation.staffing_bases} minCount={min} />
+                      <Countries label="Recruitment companies by the country they source workers from" countries={occupation.recruitment_sources} minCount={min} />
+                      <Countries label="Staffing companies by the country they are based in" countries={occupation.staffing_bases} minCount={min} />
                     </div>
                   </Card>
                 ))}
@@ -111,7 +113,7 @@ export function NetworkView({ lang, network, directories }: { lang: string; netw
       <div className="grid gap-2 text-small text-muted-foreground">
         <p>
           Counts below {min} are shown as “Fewer than {min}”, and industries, occupations and countries with fewer than {min}{" "}
-          partners are not listed. The staffing network counts companies by the country they are based in. An interactive map
+          partners are not listed. Workers available are shown to signed-in users. An interactive map
           of the network comes later.
         </p>
         {network.refreshed_at ? <p>Figures as of {formatDateTime(network.refreshed_at)}.</p> : null}
