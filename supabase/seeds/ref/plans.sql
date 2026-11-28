@@ -195,7 +195,7 @@ values
 on conflict (plan_code, feature_key) do nothing;
 
 -- Boost products (ARCHITECTURE.md section 10.1; OPEN_QUESTIONS.md C8, draft prices): one per partner type and duration,
--- EUR minor units, exclusive of VAT. As in migration 20270303100000_partner_boosts.sql.
+-- EUR minor units, exclusive of VAT. As in migration 20270304100000_partner_boosts.sql.
 insert into billing.boost_products (sku, target_type, org_type, days, price_minor, currency, sort)
 values
   ('boost_recruitment_7d', 'organization', 'recruitment_company', 7, 5900, 'EUR', 10),

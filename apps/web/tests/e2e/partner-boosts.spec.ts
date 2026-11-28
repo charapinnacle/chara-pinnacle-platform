@@ -35,7 +35,7 @@ const boostCount = (organizationId: string) =>
 
 // Release 2a and the boosts are set for the whole database while this file runs, so it is a project of its own that
 // follows the other release projects (playwright.config.ts), one test after the other. The order of the organic results
-// with and without a boost is proved in supabase/tests/database/229_partner_boosts.test.sql.
+// with and without a boost is proved in supabase/tests/database/230_partner_boosts.test.sql.
 test.describe("boosted partner profiles (ARCHITECTURE.md section 10.1)", () => {
   test.describe.configure({ mode: "serial" });
   const created: string[] = [];
