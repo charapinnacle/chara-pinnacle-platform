@@ -708,13 +708,13 @@ isOneToOne: false
                   ]
                 },"match_results": {
                   Row: {
-                    "entity_id": string,"entity_type": string,"reasons": Json,"run_id": string,"score": number
+                    "entity_id": string,"entity_type": string,"reasons": NonNullable<Json>,"run_id": string,"score": number
                   }
                   Insert: {
-                    "entity_id": string,"entity_type": string,"reasons": Json,"run_id": string,"score": number
+                    "entity_id": string,"entity_type": string,"reasons": NonNullable<Json>,"run_id": string,"score": number
                   }
                   Update: {
-                    "entity_id"?: string,"entity_type"?: string,"reasons"?: Json,"run_id"?: string,"score"?: number
+                    "entity_id"?: string,"entity_type"?: string,"reasons"?: NonNullable<Json>,"run_id"?: string,"score"?: number
                   }
                   Relationships: [
                     {
@@ -740,13 +740,13 @@ isOneToOne: false
                   ]
                 },"match_runs": {
                   Row: {
-                    "created_at": string,"created_by": string | null,"id": string,"inputs": Json,"organization_id": string,"summary": Json
+                    "created_at": string,"created_by": string | null,"id": string,"inputs": NonNullable<Json>,"organization_id": string,"summary": NonNullable<Json>
                   }
                   Insert: {
-                    "created_at"?: string,"created_by"?: string | null,"id"?: string,"inputs": Json,"organization_id": string,"summary"?: Json
+                    "created_at"?: string,"created_by"?: string | null,"id"?: string,"inputs": NonNullable<Json>,"organization_id": string,"summary"?: NonNullable<Json>
                   }
                   Update: {
-                    "created_at"?: string,"created_by"?: string | null,"id"?: string,"inputs"?: Json,"organization_id"?: string,"summary"?: Json
+                    "created_at"?: string,"created_by"?: string | null,"id"?: string,"inputs"?: NonNullable<Json>,"organization_id"?: string,"summary"?: NonNullable<Json>
                   }
                   Relationships: [
                     {
@@ -769,7 +769,7 @@ isOneToOne: false
       referencedColumns: ["organization_id"]
     }
                   ]
-},"messages": {
+                },"messages": {
                   Row: {
                     "body": string,"connection_id": string | null,"conversation_id": string,"created_at": string,"id": string,"kind": Database["public"]['Enums']["message_kind"],"moderation_state": Database["public"]['Enums']["job_moderation_state"],"sender_organization_id": string | null,"sender_user_id": string | null
                   }
