@@ -24,7 +24,7 @@ export type CharaMatchResult = {
   runHref?: string;
 };
 
-export const CHARA_MATCH_UNAVAILABLE = "CHARA Match is not available for this organisation.";
+const CHARA_MATCH_UNAVAILABLE = "CHARA Match is not available for this organisation.";
 
 // The argument chara_match names in a refusal of its input, as the field of the form.
 const inputFields: Record<string, keyof CharaMatchFormValues> = {
