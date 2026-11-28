@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { AgencyWorkNotice } from "@/components/compliance/agency-work-notice";
+import { BoostedRail } from "@/components/boosts/boosted-rail";
 import { LoadingSkeleton } from "@/components/feedback/loading-skeleton";
 import { Notice } from "@/components/forms/notice";
 import { TextLink } from "@/components/forms/text-link";
@@ -25,17 +26,19 @@ export async function generateMetadata({ params }: PageProps<"/[lang]/partners/s
 
 // The directory of staffing partners (FR-L2): staffing companies and recruitment companies that also offer staffing,
 // rendered per request with the filters and the page cursor in the address, as the recruitment directory. An employer
-// also finds the Available workforce search here (FR-K3). Nothing is shown while release 2a is off.
+// also finds the Available workforce search here (FR-K3). Nothing is shown while release 2a is off. While release_boosts
+// is on, the boosted companies that match the search have a rail of their own above the results, read apart from them.
 export default async function StaffingPartnersPage({ params, searchParams }: PageProps<"/[lang]/partners/staffing">) {
   const [{ lang }, rawParams] = await Promise.all([params, searchParams]);
   if (!(await isReleased("release_partner_directories"))) notFound();
-  const [occupations, industries, countries, languages, employer, agencyRules] = await Promise.all([
+  const [occupations, industries, countries, languages, employer, agencyRules, boosts] = await Promise.all([
     getOccupations(),
     getIndustries(),
     getCountries(),
     getLanguages(),
     isEmployerMember(),
     getAgencyWorkRules(),
+    isReleased("release_boosts"),
   ]);
   const { filters, errors } = parsePartnerSearchParams(rawParams, "staffing");
   const ignored = Object.values(errors);
@@ -75,6 +78,11 @@ export default async function StaffingPartnersPage({ params, searchParams }: Pag
         advancedOpen={usesAdvancedFilters(filters)}
       />
       <AgencyWorkNotice rules={agencyWorkRulesFor(agencyRules, filters.destination)} />
+      {boosts ? (
+        <Suspense key={`boosted-${partnerSearchQuery({ ...filters, cursor: undefined })}`} fallback={null}>
+          <BoostedRail lang={lang} kind="staffing" filters={filters} />
+        </Suspense>
+      ) : null}
       <Suspense key={partnerSearchQuery(filters)} fallback={<LoadingSkeleton rows={5} />}>
         <PartnerResults lang={lang} kind="staffing" filters={filters} />
       </Suspense>
