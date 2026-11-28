@@ -75,6 +75,8 @@ insert into catalogue values
   ('public.saved_jobs', 'cascade', 'policy:saved_jobs', 'export:saved_vacancies'),
   ('private.worker_search_log', 'cascade', 'policy:worker_search_log',
    'a record that a member searched Find Workers, with filter names and a count only; kept 90 days against scraping'),
+  ('public.match_runs', 'cascade', 'policy:match_runs',
+   'organisation data: the CHARA Match runs of an employer, with counts and the pseudonymous card ids of the matched workers; created_by only names the member who ran one'),
   ('public.saved_worker_cards', 'cascade',
    'organisation data kept until a member removes the card; the card goes with the worker''s passport and saved_by is cleared with the profile',
    'organisation data: the Find Workers cards an organisation saved; saved_by only names the member who saved one'),

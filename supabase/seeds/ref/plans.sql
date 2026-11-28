@@ -193,3 +193,12 @@ values
   ('staffing_enterprise', 'job_order_access'),
   ('staffing_enterprise', 'worker_search')
 on conflict (plan_code, feature_key) do nothing;
+
+-- CHARA Match is on every paid employer plan and never reserved for a higher one (OPEN_QUESTIONS.md C2, R21; migration
+-- 20270306100000_chara_match.sql holds the same rows).
+insert into billing.plan_features (plan_code, feature_key)
+values
+  ('employer_starter', 'chara_match'),
+  ('employer_professional', 'chara_match'),
+  ('employer_enterprise', 'chara_match')
+on conflict (plan_code, feature_key) do nothing;

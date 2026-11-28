@@ -1,5 +1,5 @@
 begin;
-select plan(146);
+select plan(147);
 
 \ir organizations_fixture.inc
 
@@ -108,9 +108,14 @@ select results_eq(
   'shortlisting and csv_export are on every paid plan, analytics_advanced on Professional and Enterprise, and the free plan has no feature'
 );
 select is_empty(
-  $$select 1 from billing.plan_features where feature_key = any (array['chara_match', 'corridors', 'multi_partner_invitation',
+  $$select 1 from billing.plan_features where feature_key = any (array['corridors', 'multi_partner_invitation',
       'priority_visibility'])$$,
   'no feature key of a phase after Phase 2 is seeded'
+);
+select results_eq(
+  $$select plan_code from billing.plan_features where feature_key = 'chara_match' order by plan_code$$,
+  $$values ('employer_enterprise'), ('employer_professional'), ('employer_starter')$$,
+  'chara_match is on every paid employer plan and never reserved for a higher one (C2, R21); the free plan has none'
 );
 select is(
   (select count(*) from billing.plans p
@@ -143,7 +148,7 @@ select is(
 select is(
   (select format('%s|%s|%s', count(*), sum(price_minor), (select count(*) from billing.plan_limits) + (select count(*) from billing.plan_features))
    from billing.plans),
-  '12|90200|142', 'no plan, limit or feature row changed'
+  '12|90200|145', 'no plan, limit or feature row changed'
 );
 select is(
   (select count(*) from (values ('anon'), ('authenticated')) r (rol)
@@ -192,7 +197,7 @@ select is(
 );
 select is(
   pg_temp.read_as(null, 'anon', 'aal1', $$select format('%s|%s|%s|%s|%s|%s|%s|%s|%s', code, name, price_minor, currency, interval, trial_days, limits ->> 'active_jobs', limits ->> 'members', features) from public.v_plans where code = 'employer_professional'$$),
-  'employer_professional|Professional|7900|EUR|month|30|15|5|["advanced_partner_search", "advanced_worker_search", "analytics_advanced", "available_workforce_search", "csv_export", "multi_country_requirements", "shortlisting", "worker_search"]',
+  'employer_professional|Professional|7900|EUR|month|30|15|5|["advanced_partner_search", "advanced_worker_search", "analytics_advanced", "available_workforce_search", "chara_match", "csv_export", "multi_country_requirements", "shortlisting", "worker_search"]',
   'a plan row carries code, name, price, currency, interval, trial days, limits and features'
 );
 select is(
@@ -263,7 +268,7 @@ select throws_ok($$insert into billing.plan_limits values ('employer_starter', '
 select throws_ok($$insert into billing.plan_limits values ('no_such_plan', 'probe_limit', 1)$$, '23503', null, 'a limit of a plan that does not exist is refused');
 select throws_ok($$insert into billing.plan_features values ('no_such_plan', 'probe_feature')$$, '23503', null, 'a feature of a plan that does not exist is refused');
 select throws_ok($$insert into billing.plan_features values ('employer_starter', 'Bad Key')$$, '23514', null, 'a feature key that is not snake_case is refused');
-select is((select count(*) from billing.plans) + (select count(*) from billing.plan_limits) + (select count(*) from billing.plan_features), 154::bigint,
+select is((select count(*) from billing.plans) + (select count(*) from billing.plan_limits) + (select count(*) from billing.plan_features), 157::bigint,
   'the refused statements wrote no row');
 select lives_ok(
   $$insert into billing.plans (code, org_type, name, price_minor, currency, interval, trial_days, is_public, sort) values ('probe_zero', 'employer', 'Zero', 0, 'EUR', 'month', 0, false, 90),

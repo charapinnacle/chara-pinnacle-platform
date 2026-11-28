@@ -4,6 +4,7 @@ import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { LinkButton } from "@/components/layout/link-button";
 import { PageHeader } from "@/components/layout/page-header";
 import { SuspendedOrganization } from "@/components/layout/suspended-organization";
+import { RequirementCharaMatch } from "@/components/requirements/requirement-chara-match";
 import { RequirementFindWorkers } from "@/components/requirements/requirement-find-workers";
 import { RequirementInvitations } from "@/components/requirements/requirement-invitations";
 import { RequirementHistory } from "@/components/requirements/requirement-history";
@@ -40,8 +41,9 @@ export const metadata: Metadata = { title: "Workforce requirement", robots: { in
 // (FR-O1, V42) and the partners' responses (FR-O2, V46), the change history of a published requirement (FR-M2 step Edit,
 // V43), and for an owner or admin the capacity tolerance partners' offers must keep within (FR-O2 AC4), and while
 // submissions are released the candidates partners submitted (FR-O5 AC1), and while Find Workers is released the way to
-// it with the requirement's occupation and destination (FR-Q2 AC10). A failed read of the responses or the
-// submissions leaves their count out, and of the tolerance its form. A requirement hidden by moderation shows the badge,
+// it with the requirement's occupation and destination (FR-Q2 AC10), and while CHARA Match is released Find matches with
+// what the requirement asks for (section 9.3). A failed read of the responses or the submissions leaves their count out,
+// and of the tolerance its form. A requirement hidden by moderation shows the badge,
 // the statement of reasons and the appeal (FR-S1 AC12), and no action of the employer on it.
 export default async function RequirementPage({ params }: PageProps<"/[lang]/org/[slug]/requirements/[id]">) {
   const { lang, slug, id } = await params;
@@ -51,7 +53,7 @@ export default async function RequirementPage({ params }: PageProps<"/[lang]/org
   if (organization.suspended) return <SuspendedOrganization title="Workforce requirement" subject="workforce requirements" />;
   const parsedId = requirementIdSchema.safeParse(id);
   if (!parsedId.success) notFound();
-  const [requirement, durations, vacancies, directories, usage, versions, countries, industries, responses, tolerance, submissions, moderation, findWorkers] = await Promise.all([
+  const [requirement, durations, vacancies, directories, usage, versions, countries, industries, responses, tolerance, submissions, moderation, findWorkers, charaMatch] = await Promise.all([
     getRequirement(organization.id, parsedId.data),
     getRequirementDurations(),
     listRequirementVacancies(organization.id, parsedId.data).catch(() => null),
@@ -67,6 +69,7 @@ export default async function RequirementPage({ params }: PageProps<"/[lang]/org
     ),
     getItemModeration(organization.id, "requirement", parsedId.data),
     isReleased("release_find_workers"),
+    isReleased("release_chara_match"),
   ]);
   if (!requirement) notFound();
   const appeal = moderation?.decision ? await listMyAppeals(moderation.decision.id).catch(() => null) : null;
@@ -112,6 +115,9 @@ export default async function RequirementPage({ params }: PageProps<"/[lang]/org
       ) : null}
       {findWorkers && requirement.status !== "closed" && requirement.status !== "filled" ? (
         <RequirementFindWorkers lang={lang} slug={slug} requirement={requirement} />
+      ) : null}
+      {charaMatch && directories && requirement.status !== "closed" && requirement.status !== "filled" ? (
+        <RequirementCharaMatch lang={lang} slug={slug} requirement={requirement} today={today} />
       ) : null}
       {requirement.status !== "draft" ? (
         <RequirementInvitations lang={lang} slug={slug} requirementId={requirement.id} usage={usage} />

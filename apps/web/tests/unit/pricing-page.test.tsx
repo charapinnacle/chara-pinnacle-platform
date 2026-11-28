@@ -206,4 +206,13 @@ describe("the pricing tabs of the company types (FR-R1 AC3, release 2a)", () => 
     const orders = renderToStaticMarkup(await PricingPage(props));
     expect(orders).toContain("Job order access");
   });
+
+  it("lists CHARA Match on a paid employer plan only while its release is on (C2)", async () => {
+    plans = [plan({ features: ["shortlisting", "chara_match"] })];
+    released = ["release_partner_directories"];
+    expect(renderToStaticMarkup(await PricingPage(props))).not.toContain("CHARA Match");
+
+    released = ["release_partner_directories", "release_chara_match"];
+    expect(renderToStaticMarkup(await PricingPage(props))).toContain("CHARA Match");
+  });
 });

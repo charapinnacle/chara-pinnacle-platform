@@ -17,29 +17,34 @@ language sql as $$
   select (select count(*) from audit.log) || '|' || (select md5(string_agg(key || value::text, ',' order by key)) from private.settings)
 $$;
 
+-- release_boosts (20270304100000_partner_boosts.sql) and release_corridors (20270305100000_workforce_corridors.sql) are
+-- checked by their own tests; they are left out below so that these lists hold whether or not those migrations are present.
 select is(
   (select string_agg(key || '=' || (value #>> '{}') || ':' || jsonb_typeof(value), ',' order by key) from private.settings
-   where key like 'release\_%'),
-  'release_candidate_submissions=false:boolean,release_data_export=false:boolean,release_find_workers=false:boolean,'
-  || 'release_job_orders=false:boolean,release_messaging=false:boolean,release_partner_directories=false:boolean',
-  'the six release switches of DATA_MODEL.md section 1 (the five releases and the data export of V29) exist as jsonb booleans and are off by default'
+   where key like 'release\_%' and key not in ('release_boosts', 'release_corridors')),
+  'release_candidate_submissions=false:boolean,release_chara_match=false:boolean,release_data_export=false:boolean,'
+  || 'release_find_workers=false:boolean,release_job_orders=false:boolean,release_messaging=false:boolean,'
+  || 'release_partner_directories=false:boolean',
+  'the seven release switches (the five releases of DATA_MODEL.md section 1, the data export of V29 and CHARA Match) exist as jsonb booleans and are off by default'
 );
 
 set local role anon;
 select is(
-  (select string_agg(key || '=' || value, ',' order by key) from public.get_public_settings() where key like 'release\_%'),
-  'release_candidate_submissions=false,release_data_export=false,release_find_workers=false,release_job_orders=false,'
-  || 'release_messaging=false,release_partner_directories=false',
+  (select string_agg(key || '=' || value, ',' order by key) from public.get_public_settings()
+   where key like 'release\_%' and key not in ('release_boosts', 'release_corridors')),
+  'release_candidate_submissions=false,release_chara_match=false,release_data_export=false,release_find_workers=false,'
+  || 'release_job_orders=false,release_messaging=false,release_partner_directories=false',
   'AC2: an anonymous caller reads every release switch and its boolean value through get_public_settings'
 );
 reset role;
 
 select is(
   (select string_agg(key || ':' || value_type || ':' || coalesce(release_feature, 'none'), ',' order by key) from private.setting_rules
-   where key like 'release\_%'),
-  'release_candidate_submissions:boolean:job_orders,release_data_export:boolean:none,release_find_workers:boolean:find_workers,'
-  || 'release_job_orders:boolean:job_orders,release_messaging:boolean:find_workers,release_partner_directories:boolean:partner_accounts',
-  'each release switch is a boolean of the settings editor with the legal release feature it puts live (as check-go-live maps them); the data export needs none'
+   where key like 'release\_%' and key not in ('release_boosts', 'release_corridors')),
+  'release_candidate_submissions:boolean:job_orders,release_chara_match:boolean:none,release_data_export:boolean:none,'
+  || 'release_find_workers:boolean:find_workers,release_job_orders:boolean:job_orders,release_messaging:boolean:find_workers,'
+  || 'release_partner_directories:boolean:partner_accounts',
+  'each release switch is a boolean of the settings editor with the legal release feature it puts live (as check-go-live maps them); the data export and CHARA Match (which needs release 2a) need none'
 );
 select is(
   (select count(*) from jsonb_array_elements(pg_temp.json_as(:'st_admin', $$select * from public.admin_list_settings()$$, 'aal2')) x
