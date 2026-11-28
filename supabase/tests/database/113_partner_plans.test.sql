@@ -244,11 +244,11 @@ select is(
 );
 select is(
   pg_temp.read_as(null, 'anon', $$select (select count(*) from billing.limit_keys) || '/' || (select count(*) from billing.feature_keys)$$),
-  '10/13', 'a visitor reads the whole catalogue'
+  '10/14', 'a visitor reads the whole catalogue'
 );
 select is(
   pg_temp.read_as(:'wkr', 'authenticated', $$select (select count(*) from billing.limit_keys) || '/' || (select count(*) from billing.feature_keys)$$),
-  '10/13', 'a signed-in user reads the whole catalogue'
+  '10/14', 'a signed-in user reads the whole catalogue'
 );
 select is(
   (select count(*) from (values (:'own1'::uuid, 'authenticated'), (:'wkr'::uuid, 'authenticated'), (null::uuid, 'anon')) u (uid, r)
@@ -262,7 +262,7 @@ select is(
 );
 select is(
   (select (select count(*) from billing.limit_keys) || '/' || (select count(*) from billing.feature_keys)),
-  '10/13', 'the refused writes changed nothing'
+  '10/14', 'the refused writes changed nothing'
 );
 
 -- AC9: features are read from plan rows
