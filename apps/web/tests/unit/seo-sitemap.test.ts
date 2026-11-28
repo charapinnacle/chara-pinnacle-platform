@@ -81,6 +81,20 @@ describe("the pages of the network in the sitemap (FR-L5 AC3)", () => {
     expect(pathsOf(["release_partner_directories"])).not.toContain("/en/job-orders");
   });
 
+  it("lists the corridor index with release_corridors, and the listed corridors after the network pages", () => {
+    expect(pathsOf(["release_corridors"]).slice(8)).toEqual(["/en/corridors"]);
+    expect(pathsOf(["release_partner_directories"])).not.toContain("/en/corridors");
+    const withCorridors = sitemapEntries({
+      siteUrl: SITE,
+      lang: "en",
+      legalSlugs: [],
+      networkPaths: [...networkPaths(["release_corridors"]), "corridors/ph-de"],
+      vacancies: [],
+    });
+    expect(withCorridors.slice(8).map((entry) => new URL(entry.url).pathname)).toEqual(["/en/corridors", "/en/corridors/ph-de"]);
+    expect(withCorridors.slice(8).every((entry) => entry.lastModified === undefined)).toBe(true);
+  });
+
   it("keeps the vacancies, profiles and company pages within the file after the network pages", () => {
     const network = networkPaths(["release_partner_directories"]);
     const full = sitemapEntries({
