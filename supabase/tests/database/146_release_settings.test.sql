@@ -20,16 +20,17 @@ $$;
 select is(
   (select string_agg(key || '=' || (value #>> '{}') || ':' || jsonb_typeof(value), ',' order by key) from private.settings
    where key like 'release\_%'),
-  'release_candidate_submissions=false:boolean,release_data_export=false:boolean,release_find_workers=false:boolean,'
-  || 'release_job_orders=false:boolean,release_messaging=false:boolean,release_partner_directories=false:boolean',
-  'the six release switches of DATA_MODEL.md section 1 (the five releases and the data export of V29) exist as jsonb booleans and are off by default'
+  'release_candidate_submissions=false:boolean,release_corridors=false:boolean,release_data_export=false:boolean,'
+  || 'release_find_workers=false:boolean,release_job_orders=false:boolean,release_messaging=false:boolean,'
+  || 'release_partner_directories=false:boolean',
+  'the seven release switches (the five releases of DATA_MODEL.md section 1, the data export of V29 and the workforce corridors) exist as jsonb booleans and are off by default'
 );
 
 set local role anon;
 select is(
   (select string_agg(key || '=' || value, ',' order by key) from public.get_public_settings() where key like 'release\_%'),
-  'release_candidate_submissions=false,release_data_export=false,release_find_workers=false,release_job_orders=false,'
-  || 'release_messaging=false,release_partner_directories=false',
+  'release_candidate_submissions=false,release_corridors=false,release_data_export=false,release_find_workers=false,'
+  || 'release_job_orders=false,release_messaging=false,release_partner_directories=false',
   'AC2: an anonymous caller reads every release switch and its boolean value through get_public_settings'
 );
 reset role;
@@ -37,14 +38,15 @@ reset role;
 select is(
   (select string_agg(key || ':' || value_type || ':' || coalesce(release_feature, 'none'), ',' order by key) from private.setting_rules
    where key like 'release\_%'),
-  'release_candidate_submissions:boolean:job_orders,release_data_export:boolean:none,release_find_workers:boolean:find_workers,'
-  || 'release_job_orders:boolean:job_orders,release_messaging:boolean:find_workers,release_partner_directories:boolean:partner_accounts',
-  'each release switch is a boolean of the settings editor with the legal release feature it puts live (as check-go-live maps them); the data export needs none'
+  'release_candidate_submissions:boolean:job_orders,release_corridors:boolean:partner_accounts,release_data_export:boolean:none,'
+  || 'release_find_workers:boolean:find_workers,release_job_orders:boolean:job_orders,release_messaging:boolean:find_workers,'
+  || 'release_partner_directories:boolean:partner_accounts',
+  'each release switch is a boolean of the settings editor with the legal release feature it puts live (as check-go-live maps them); the data export needs none, the corridors those of release 2a'
 );
 select is(
   (select count(*) from jsonb_array_elements(pg_temp.json_as(:'st_admin', $$select * from public.admin_list_settings()$$, 'aal2')) x
    where x ->> 'key' like 'release\_%' and x ->> 'release_feature' is not null and x ->> 'value' = 'false'),
-  5::bigint, 'the console lists the five release switches among the releases, each with its state'
+  6::bigint, 'the console lists the six release switches with legal documents among the releases, each with its state'
 );
 select is(
   (select x -> 'release_gaps' from jsonb_array_elements(pg_temp.json_as(:'st_admin', $$select * from public.admin_list_settings()$$, 'aal2')) x
@@ -120,8 +122,8 @@ select is(
 reset role;
 select is(
   (select string_agg(key || '=' || (value #>> '{}'), ',' order by key) from private.settings
-   where key in ('release_candidate_submissions', 'release_partner_directories')),
-  'release_candidate_submissions=false,release_partner_directories=false', 'the other switches keep their own value'
+   where key in ('release_candidate_submissions', 'release_corridors', 'release_partner_directories')),
+  'release_candidate_submissions=false,release_corridors=false,release_partner_directories=false', 'the other switches keep their own value'
 );
 
 select * from finish();
