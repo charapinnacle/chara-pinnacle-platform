@@ -16,15 +16,19 @@ export type HeroSearchProps = {
 // The field cell, not the input, shows focus, as marketplace searches do: the whole cell takes a soft rounded highlight
 // and the 2 px focus outline of the site, and the input inside it has no border or outline of its own. The outline of
 // the input is set by an unlayered rule of globals.css, which only an important utility overrides.
-const fieldClassName =
-  "grid rounded-xl px-4 py-2 transition-colors duration-150 hover:bg-muted/70 focus-within:bg-muted/70 focus-within:outline-2 focus-within:outline-ring max-md:not-first:border-t md:not-first:border-s";
-const inputClassName =
+// The Find partners search uses the same cells.
+export const searchCellClassName =
+  "grid rounded-xl px-4 py-2 transition-colors duration-150 hover:bg-muted/70 focus-within:bg-muted/70 focus-within:outline-2 focus-within:outline-ring";
+const fieldClassName = `${searchCellClassName} max-md:not-first:border-t md:not-first:border-s`;
+export const searchInputClassName =
   "rounded-none border-transparent bg-transparent ps-0 text-base shadow-none hover:border-transparent focus-visible:border-transparent focus-visible:ring-0 focus-visible:outline-none! md:text-base";
+const inputClassName = searchInputClassName;
 // The popup is wider than a narrow field and floats as a rounded card; the highlighted row has a brand bar at its start.
 const listClassName = "mt-2 min-w-64 rounded-xl border-border p-1.5 shadow-lg";
 const optionClassName =
   "min-h-10 rounded-lg px-3 py-2 hover:bg-muted aria-selected:bg-accent aria-selected:shadow-[inset_3px_0_0_var(--color-brand)]";
-const popup = { listClassName, optionClassName, checkChosen: true } as const;
+export const searchPopup = { listClassName, optionClassName, checkChosen: true } as const;
+const popup = searchPopup;
 const aria = { "aria-invalid": false, "aria-describedby": undefined } as const;
 const ignore = () => {};
 
