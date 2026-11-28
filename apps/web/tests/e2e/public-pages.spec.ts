@@ -280,8 +280,8 @@ test.describe("the public pages at 360 px", () => {
     const menu = page.getByRole("button", { name: "Menu", exact: true });
     await waitForHydration(menu);
     await menu.click();
-    await page.getByRole("dialog", { name: "Menu" }).getByRole("link", { name: "Sign up" }).click();
-    await expect(page).toHaveURL("/en/signup");
+    await page.getByRole("dialog", { name: "Menu" }).getByRole("link", { name: "Find jobs" }).click();
+    await expect(page).toHaveURL("/en/jobs");
     await expect(menu).toHaveAttribute("aria-expanded", "false");
     await expect(page.getByRole("dialog", { name: "Menu" })).toBeHidden();
   });
