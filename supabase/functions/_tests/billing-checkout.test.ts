@@ -1,12 +1,18 @@
 import assert from "node:assert/strict";
 import { handleBillingCheckout, type PortalConfigurations } from "../billing-checkout/handler.ts";
-import { type BillingProvider, BillingProviderError, type CheckoutInput } from "../_shared/billing/provider.ts";
+import {
+  type BillingProvider,
+  BillingProviderError,
+  type CheckoutInput,
+  type PaymentCheckoutInput,
+} from "../_shared/billing/provider.ts";
 import { harness, reply, type Route } from "./harness.ts";
 
 const ORG = "7b0f6a53-2d2c-4a43-9b3b-0f5a3f4a1e11";
 const SITE = "https://app.chara.example";
 const START = "POST /rest/v1/rpc/billing_checkout_start";
 const PORTAL = "POST /rest/v1/rpc/billing_portal_start";
+const BOOST = "POST /rest/v1/rpc/billing_boost_checkout_start";
 const AUDIT = "POST /rest/v1/rpc/billing_record_worker_attempt";
 const USER = "3f1c2a54-8d7e-4c1b-9a60-2b5d6e7f8a90";
 
@@ -28,14 +34,21 @@ const database = (message: string, code: string, details: string | null = null) 
 
 function providerSpy(options: { fail?: boolean; name?: "null" | "stripe" } = {}) {
   const checkouts: CheckoutInput[] = [];
+  const payments: PaymentCheckoutInput[] = [];
   const portals: { customerRef: string; returnUrl: string; configuration?: string }[] = [];
-  const provider: Pick<BillingProvider, "name" | "createCheckout" | "createPortal"> = {
+  const provider: Pick<BillingProvider, "name" | "createCheckout" | "createPaymentCheckout" | "createPortal"> = {
     name: options.name ?? "stripe",
     createCheckout(input) {
       checkouts.push(input);
       return options.fail
         ? Promise.reject(new BillingProviderError("stripe_http_400"))
         : Promise.resolve({ url: "https://checkout.stripe.com/c/pay/cs_1" });
+    },
+    createPaymentCheckout(input) {
+      payments.push(input);
+      return options.fail
+        ? Promise.reject(new BillingProviderError("stripe_http_400"))
+        : Promise.resolve({ url: "https://checkout.stripe.com/c/pay/cs_boost" });
     },
     createPortal(input) {
       portals.push(input);
@@ -44,7 +57,7 @@ function providerSpy(options: { fail?: boolean; name?: "null" | "stripe" } = {})
         : Promise.resolve({ url: "https://billing.stripe.com/p/session/s_1" });
     },
   };
-  return { provider, checkouts, portals };
+  return { provider, checkouts, payments, portals };
 }
 
 const checkoutBody = {
@@ -428,4 +441,96 @@ Deno.test("FR-G6: a refusal that merely carries the detail text on another error
   );
   assert.equal((await response).status, 400);
   assert.equal(audit.calls.length, 0);
+});
+
+const boostRow = { slug: "manila-skills", customer_ref: null, amount_minor: 10900, currency: "EUR", days: 14 };
+
+Deno.test("boost: the start runs with the caller's token and the payment takes the product's amount, never the body's", async () => {
+  const body = {
+    action: "boost",
+    orgId: ORG,
+    sku: "boost_recruitment_14d",
+    amountMinor: 1,
+    currency: "USD",
+    successUrl: "https://evil.example/ok",
+  };
+  const { database, spy, seen, response } = run(body, { [BOOST]: reply(200, [boostRow]) });
+  const result = await response;
+  assert.equal(result.status, 200);
+  assert.deepEqual(await result.json(), { url: "https://checkout.stripe.com/c/pay/cs_boost" });
+  assert.deepEqual(seen, [`Bearer ${SIGNED_IN}`]);
+  assert.deepEqual(database.calls.map((c) => [c.path, c.body]), [["/rest/v1/rpc/billing_boost_checkout_start", {
+    p_org: ORG,
+    p_sku: "boost_recruitment_14d",
+    p_provider: "stripe",
+  }]]);
+  assert.deepEqual(spy.payments, [{
+    orgId: ORG,
+    sku: "boost_recruitment_14d",
+    productName: "Profile boost, 14 days",
+    amountMinor: 10900,
+    currency: "EUR",
+    successUrl: `${SITE}/en/org/manila-skills/boost`,
+    cancelUrl: `${SITE}/en/org/manila-skills/boost`,
+    customerRef: undefined,
+  }]);
+  assert.deepEqual([spy.checkouts.length, spy.portals.length], [0, 0]);
+});
+
+Deno.test("boost: a linked customer pays as that customer", async () => {
+  const { spy, response } = run({ action: "boost", orgId: ORG, sku: "boost_staffing_7d" }, {
+    [BOOST]: reply(200, [{ ...boostRow, customer_ref: "cus_linked", days: 7, amount_minor: 4900 }]),
+  });
+  assert.equal((await response).status, 200);
+  assert.equal(spy.payments[0].customerRef, "cus_linked");
+  assert.equal(spy.payments[0].productName, "Profile boost, 7 days");
+});
+
+Deno.test("boost: the refusals of the database keep their reason, and no payment is started", async () => {
+  for (
+    const reason of [
+      "boosts_off",
+      "unknown_product",
+      "product_not_for_org_type",
+      "product_not_sold",
+      "not_listed",
+      "aal2_required",
+    ]
+  ) {
+    const { spy, response } = run({ action: "boost", orgId: ORG, sku: "boost_recruitment_7d" }, {
+      [BOOST]: database("CHARA_FORBIDDEN", "42501", reason),
+    });
+    const result = await response;
+    assert.equal(result.status, 403);
+    assert.deepEqual(await result.json(), { error: "forbidden", reason });
+    assert.equal(spy.payments.length, 0);
+  }
+  const { spy, response } = run({ action: "boost", orgId: ORG, sku: "boost_recruitment_7d" }, {
+    [BOOST]: database("CHARA_FORBIDDEN", "42501"),
+  });
+  assert.deepEqual(await (await response).json(), { error: "forbidden", reason: null });
+  assert.equal(spy.payments.length, 0);
+});
+
+Deno.test("boost: a malformed request is refused before the database, and a provider failure is generic", async () => {
+  for (
+    const body of [{ action: "boost", orgId: ORG }, { action: "boost", orgId: ORG, sku: 7 }, {
+      action: "boost",
+      orgId: ORG,
+      sku: "b".repeat(65),
+    }]
+  ) {
+    const { database, response } = run(body, { [BOOST]: reply(200, [boostRow]) });
+    assert.equal((await response).status, 400, JSON.stringify(body));
+    assert.equal(database.calls.length, 0);
+  }
+  const failing = run(
+    { action: "boost", orgId: ORG, sku: "boost_recruitment_14d" },
+    { [BOOST]: reply(200, [boostRow]) },
+    bearer(SIGNED_IN),
+    providerSpy({ fail: true }),
+  );
+  const failed = await failing.response;
+  assert.equal(failed.status, 502);
+  assert.deepEqual(await failed.json(), { error: "unavailable" });
 });

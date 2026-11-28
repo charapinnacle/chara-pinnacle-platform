@@ -221,3 +221,86 @@ Deno.test("the null provider answers with hosted addresses that cannot exist, an
   const error = await failureOf(() => provider.createCheckout({ ...input, successUrl: "https://evil.example/" }));
   assert.equal(error?.code, "foreign_origin");
 });
+
+const BOOST_PAGE = `${SITE}/en/org/manila-skills/boost`;
+const payment = {
+  orgId: ORG,
+  sku: "boost_recruitment_14d",
+  productName: "Profile boost, 14 days",
+  amountMinor: 10900,
+  currency: "EUR",
+  successUrl: BOOST_PAGE,
+  cancelUrl: BOOST_PAGE,
+};
+
+Deno.test("boosts: a boost checkout is a one-time payment of the product's amount, excl. VAT, marked with its purpose", async () => {
+  const { fetchFn, seen } = fetching(Response.json(checkoutSession));
+  const result = await stripeProvider({ secretKey: "sk_test_x", siteUrl: SITE }, fetchFn).createPaymentCheckout(
+    payment,
+  );
+  assert.deepEqual(result, { url: checkoutSession.url });
+  assert.equal(seen[0].url, "https://api.stripe.com/v1/checkout/sessions");
+  assert.ok(seen[0].headers["idempotency-key"], "a double submit creates one session");
+  assert.deepEqual(seen[0].params, {
+    mode: "payment",
+    "line_items[0][price_data][currency]": "eur",
+    "line_items[0][price_data][unit_amount]": "10900",
+    "line_items[0][price_data][tax_behavior]": "exclusive",
+    "line_items[0][price_data][product_data][name]": "Profile boost, 14 days",
+    "line_items[0][quantity]": "1",
+    client_reference_id: ORG,
+    "metadata[purpose]": "boost",
+    "metadata[org_id]": ORG,
+    "metadata[sku]": "boost_recruitment_14d",
+    "payment_intent_data[metadata][purpose]": "boost",
+    "payment_intent_data[metadata][org_id]": ORG,
+    "payment_intent_data[metadata][sku]": "boost_recruitment_14d",
+    "automatic_tax[enabled]": "true",
+    billing_address_collection: "required",
+    "tax_id_collection[enabled]": "true",
+    "invoice_creation[enabled]": "true",
+    success_url: BOOST_PAGE,
+    cancel_url: BOOST_PAGE,
+    customer_creation: "always",
+  });
+});
+
+Deno.test("boosts: with a customer reference the payment belongs to that customer and none is created", async () => {
+  const { fetchFn, seen } = fetching(Response.json(checkoutSession));
+  await stripeProvider({ secretKey: "sk_test_x", siteUrl: SITE }, fetchFn).createPaymentCheckout({
+    ...payment,
+    customerRef: "cus_1",
+  });
+  assert.equal(seen[0].params.customer, "cus_1");
+  assert.equal(seen[0].params["customer_update[address]"], "auto");
+  assert.equal("customer_creation" in seen[0].params, false);
+});
+
+Deno.test("boosts: a foreign return address or an input that is not a product row is refused before any call", async () => {
+  const { fetchFn, seen } = fetching(Response.json(checkoutSession));
+  const provider = stripeProvider({ secretKey: "sk_test_x", siteUrl: SITE }, fetchFn);
+  const origin = await failureOf(() =>
+    provider.createPaymentCheckout({ ...payment, successUrl: "https://evil.example/" })
+  );
+  assert.equal(origin?.code, "foreign_origin");
+  for (
+    const bad of [{ amountMinor: 0 }, { amountMinor: 10.5 }, { currency: "eur" }, { sku: "Boost 14" }, {
+      productName: "",
+    }]
+  ) {
+    const error = await failureOf(() => provider.createPaymentCheckout({ ...payment, ...bad }));
+    assert.equal(error?.code, "stripe_bad_payment_input", JSON.stringify(bad));
+  }
+  assert.equal(seen.length, 0);
+});
+
+Deno.test("boosts: the null provider answers with its own hosted address and refuses a foreign one", async () => {
+  const provider = nullProvider(SITE);
+  const { url } = await provider.createPaymentCheckout(payment);
+  assert.match(url, /^https:\/\/null-provider\.invalid\/checkout\/null_cs_/);
+  assert.equal(new URL(url).searchParams.get("success_url"), BOOST_PAGE);
+  const error = await failureOf(() =>
+    provider.createPaymentCheckout({ ...payment, cancelUrl: "https://evil.example/" })
+  );
+  assert.equal(error?.code, "foreign_origin");
+});
